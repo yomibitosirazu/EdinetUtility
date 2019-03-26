@@ -1,7 +1,7 @@
 ﻿# EdinetViewer
 
 WebAPIを利用してEdinetの開示書類を閲覧するアプリ。
-[実行画面](./images/DisclosureViewer.png)
+[実行画面](https://github.com/yomibitosirazu/EdinetUtility/blob/master/EdinetViewer/images/DisclosureViewer.png)
 ## Description
 1. EdinetのWebAPIを介して、指定した日付の開示書類リストをJSONレスポンスで取得。
 2. JSON生データはWebBrowserに出力、リストはテーブル表示。
@@ -22,12 +22,12 @@ WebAPIを利用してEdinetの開示書類を閲覧するアプリ。
     「ツール」「NuGetパッケージマネージャー」「ソリューションのNuGetパッケージの管理」 
 
 ## 使い方
-[スタート画面](./images/001start.png)
+[スタート画面](https://github.com/yomibitosirazu/EdinetUtility/blob/master/EdinetViewer/images/001start.png)
 初回起動時に作業ディレクトリ（キャッシュファイル保存ディレクトリ）をファイルダイアログで選択します。
 
-[右クリックメニュー](./images/002.png)  
-[タクソノミダウンロード](./images/003.png)  
-[画面](./images/004.png)
+[右クリックメニュー](https://github.com/yomibitosirazu/EdinetUtility/blob/master/EdinetViewer/images/002.png)  
+[タクソノミダウンロード](https://github.com/yomibitosirazu/EdinetUtility/blob/master/EdinetViewer/images/003.png)  
+[画面](https://github.com/yomibitosirazu/EdinetUtility/blob/master/EdinetViewer/images/004.png)
 1. ステータスバー　タクソノミのダウンロード後にバックグラウンドでデータベースを構築している
 2. 日付を選択するDateTimePicker 選択した日付の書類一覧リストをAPIリクエスト
 　　丸一日以上経過して確定したキャッシュがある場合はAPIを投げずにこれを読み込む
@@ -48,8 +48,8 @@ WebAPIを利用してEdinetの開示書類を閲覧するアプリ。
 　　過去の書類一覧を取得していなければヒットしない
 9. 将来APIバージョンが変わった場合ラベルをダブルクリックすることでテキストボックス編集が可能
 　　バージョン情報はディレクトリ情報とともに、ビルド先のフォルダにマシン名のxmlファイルで保存
-[画面](./images/005.png)  
-[画面](./images/006.png)  
+[画面](https://github.com/yomibitosirazu/EdinetUtility/blob/master/EdinetViewer/images/005.png)  
+[画面](https://github.com/yomibitosirazu/EdinetUtility/blob/master/EdinetViewer/images/006.png)  
 
 
 ## 注記
