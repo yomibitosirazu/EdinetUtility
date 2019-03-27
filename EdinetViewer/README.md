@@ -122,3 +122,5 @@ Edinetトップページの表示、バックグラウンドで過去の書類�
 
 sqliteデーターベースをGUIで確認編集できる[DB Browser for SQLite](https://sqlitebrowser.org)が便利です。
 
+## License
+Apache License Version 2.0
