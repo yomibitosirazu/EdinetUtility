@@ -21,6 +21,17 @@ WebAPIを利用してEdinetの開示書類を閲覧するだけのアプリ。
 3. デバッグまたはビルドでSqliteのエラーが出る場合には、Nugetでインストールが必要。  
     「ツール」「NuGetパッケージマネージャー」「ソリューションのNuGetパッケージの管理」 
 
+## sqliteエラーが出る場合
+1. Nugetパッケージ管理を表示
+<img src="./images/sqlite2.png">  
+2. インストール済でsqliteと入力して検索
+<img src="./images/sqlite3.png">  
+3. これら4つのパッケージを全て削除します
+<img src="./images/sqlite4.png">
+4. 全部削除できたら、「参照」をクリックして「System.Data.Sqlite.Core」を選択してインストール
+<img src="./images/sqlite5.png">  
+オリジナルのプロジェクトには「System.Data.Sqlite」をインストールしているため４つのパッケージがインストールされていますが、利用しているライブラリは「Core」だけでこれ以外は必要なさそうです。
+
 ## 使い方
 <img src="./images/001start.png">  
 
