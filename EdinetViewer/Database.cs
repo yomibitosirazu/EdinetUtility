@@ -16,14 +16,19 @@ using System.Data.SQLite;
 using System.Xml;
 using System.IO;
 using System.IO.Compression;
+using Microsoft.VisualBasic.FileIO;
 
 namespace Disclosures.Database {
     public class Sqlite {
         public static string DbPath { get; private set; }
-        
+
         public Sqlite(string dbpath) {
             DbPath = dbpath;
             bool exist = Initialize();
+            //bool change = ChangeTable();
+        }
+        public void ChangeDirectory(string dir) {
+            DbPath = dir;
         }
         private bool Initialize() {
             bool exist = File.Exists(DbPath);
@@ -35,37 +40,81 @@ namespace Disclosures.Database {
                         "CREATE INDEX IF NOT EXISTS `TaxonomyName` on Taxonomy(`name`)",
                         //"CREATE INDEX IF NOT EXISTS `taxonomy_namelang` ON `Taxonomy` ( `name`, `lang`, `label_to` )",
                         "CREATE TABLE IF NOT EXISTS `FormCodes` ( `id` text NOT NULL, `OrdinanceCode` text DEFAULT NULL, `FormCode` text DEFAULT NULL, `FormNumber` text DEFAULT NULL, `Name` text DEFAULT NULL, `DocType` text DEFAULT NULL, `Disclose` text DEFAULT NULL, `Remarks` text DEFAULT NULL, PRIMARY KEY(`id`) )",
-                        "CREATE TABLE IF NOT EXISTS `Disclosures` ( `seqNumber` integer NOT NULL, `docID` text NOT NULL, `edinetCode` text DEFAULT NULL, `secCode` text DEFAULT NULL, `JCN` text DEFAULT NULL, `filerName` text DEFAULT NULL, `fundCode` text DEFAULT NULL, `ordinanceCode` text DEFAULT NULL, `formCode` text DEFAULT NULL, `docTypeCode` text DEFAULT NULL, `periodStart` text DEFAULT NULL, `periodEnd` text DEFAULT NULL, `submitDateTime` text DEFAULT NULL, `docDescription` text DEFAULT NULL, `issuerEdinetCode` text DEFAULT NULL, `subjectEdinetCode` text DEFAULT NULL, `subsidiaryEdinetCode` text DEFAULT NULL, `currentReportReason` text DEFAULT NULL, `parentDocID` text DEFAULT NULL, `opeDateTime` text DEFAULT NULL, `withdrawalStatus` text DEFAULT NULL, `docInfoEditStatus` text DEFAULT NULL, `disclosureStatus` text DEFAULT NULL, `xbrlFlag` text DEFAULT NULL, `pdfFlag` text DEFAULT NULL, `attachDocFlag` text DEFAULT NULL, `englishDocFlag` text DEFAULT NULL, `id` integer primary key,`xbrl` text DEFAULT NULL,`pdf` text DEFAULT NULL,`attach` text DEFAULT NULL,`english` text DEFAULT NULL )",
-                        "CREATE INDEX IF NOT EXISTS `DisclosuresNumber` on Disclosures(`seqNumber`)",
+                        "CREATE TABLE IF NOT EXISTS `Disclosures` ( `seqNumber` integer NOT NULL, `docID` text NOT NULL, `edinetCode` text DEFAULT NULL, `secCode` text DEFAULT NULL, `JCN` text DEFAULT NULL, `filerName` text DEFAULT NULL, `fundCode` text DEFAULT NULL, `ordinanceCode` text DEFAULT NULL, `formCode` text DEFAULT NULL, `docTypeCode` text DEFAULT NULL, `periodStart` text DEFAULT NULL, `periodEnd` text DEFAULT NULL, `submitDateTime` text DEFAULT NULL, `docDescription` text DEFAULT NULL, `issuerEdinetCode` text DEFAULT NULL, `subjectEdinetCode` text DEFAULT NULL, `subsidiaryEdinetCode` text DEFAULT NULL, `currentReportReason` text DEFAULT NULL, `parentDocID` text DEFAULT NULL, `opeDateTime` text DEFAULT NULL, `withdrawalStatus` text DEFAULT NULL, `docInfoEditStatus` text DEFAULT NULL, `disclosureStatus` text DEFAULT NULL, `xbrlFlag` text DEFAULT NULL, `pdfFlag` text DEFAULT NULL, `attachDocFlag` text DEFAULT NULL, `englishDocFlag` text DEFAULT NULL, `id` integer primary key,`xbrl` text DEFAULT NULL,`pdf` text DEFAULT NULL,`attach` text DEFAULT NULL,`english` text DEFAULT NULL , `date` text, `status` text DEFAULT NULL, `code` integer DEFAULT NULL )",
+                        //"CREATE INDEX IF NOT EXISTS `DisclosuresNumber` on Disclosures(`seqNumber`)",
                         "CREATE INDEX IF NOT EXISTS `DisclosuresDocID` on Disclosures(`docID`)",
                         "CREATE INDEX IF NOT EXISTS `DisclosuresCode` on Disclosures(`secCode`)",
                         "CREATE INDEX IF NOT EXISTS `DisclosuresDocType` on Disclosures(`docTypeCode`)",
-                        "CREATE INDEX IF NOT EXISTS `DisclosuresDate` on Disclosures(`submitDateTime`)",
-                        "CREATE INDEX IF NOT EXISTS `DisclosuresXbrl` on Disclosures(`xbrlFlag`)",
+                        //"CREATE INDEX IF NOT EXISTS `DisclosuresDate` on Disclosures(`submitDateTime`)",
+                        //"CREATE INDEX IF NOT EXISTS `DisclosuresXbrl` on Disclosures(`xbrlFlag`)",
                         "CREATE TABLE IF NOT EXISTS `Metadata` ( `title` text DEFAULT NULL, `date` text NOT NULL primary key, `type` text DEFAULT NULL, `count` integer DEFAULT NULL, `processDateTime` text DEFAULT NULL, `status` text DEFAULT NULL, `message` text DEFAULT NULL,`access` text DEFAULT NULL);",
                         //"CREATE INDEX IF NOT EXISTS `MetadataDate` on Metadata(`date`)",
+                        "CREATE INDEX IF NOT EXISTS `DisclosuresDate` on Disclosures(`date`)"
                     };
                     foreach (string query in queries) {
-                        command.CommandText = query;
-                        command.Connection.Open();
-                        command.ExecuteNonQuery();
-                        command.Connection.Close();
+                        try {
+                            command.CommandText = query;
+                            command.Connection.Open();
+                            command.ExecuteNonQuery();
+
+                        } catch (Exception ex) {
+                            Console.WriteLine(ex.InnerException.Message);
+                        } finally {
+                            command.Connection.Close();
+                        }
                     }
                 }
             }
             return exist;
         }
+
+
+        public void Vacuum() {
+            //string dbpath = Path.Combine(setting.Directory, "edinet.db");
+            //InvokeProgressLabel(0, 0, "データベースVACUUM実行中");
+            using (SQLiteConnection conn = new SQLiteConnection(string.Format("Data Source={0}", DbPath))) {
+                using (SQLiteCommand command = new SQLiteCommand(conn)) {
+                    command.CommandText = "VACUUM;";
+                    command.Connection.Open();
+                    command.ExecuteNonQuery();
+                    command.Connection.Close();
+                }
+            }
+        }
+
+        public object[] GetMetadata(DateTime target) {
+            using (var conn = new SQLiteConnection(string.Format("Data Source={0}", DbPath))) {
+                using (SQLiteCommand command = new SQLiteCommand()) {
+                    command.Connection = conn;
+                    //command.CommandText = string.Format("select max(datetime(processDateTime)) from Metadata where date = '{0:yyyy-MM-dd}';", target);
+                    command.CommandText = string.Format("select processDateTime, count from Metadata where `status` = '200' and `date` = '{0:yyyy-MM-dd}';", target);
+                    command.Connection.Open();
+                    using (SQLiteDataReader reader = command.ExecuteReader()) {
+                        if (reader.HasRows) {
+                            reader.Read();
+                            object[] value = new object[2];
+                            value[0] = DateTime.Parse(reader.GetString(0));
+                            value[1] = reader.GetInt32(1);
+                            return value;
+                        }
+                    }
+                    command.Connection.Close();
+                }
+            }
+            return null;
+        }
+
         public Nullable<DateTime> GetMetadataProcessDateTime(DateTime target) {
             using (var conn = new SQLiteConnection(string.Format("Data Source={0}", DbPath))) {
                 using (SQLiteCommand command = new SQLiteCommand()) {
                     command.Connection = conn;
                     //command.CommandText = string.Format("select max(datetime(processDateTime)) from Metadata where date = '{0:yyyy-MM-dd}';", target);
-                    command.CommandText = string.Format("select processDateTime from Metadata where `date` = '{0:yyyy-MM-dd}';", target);
+                    command.CommandText = string.Format("select processDateTime from Metadata where `status` = '200' and `date` = '{0:yyyy-MM-dd}';", target);
                     command.Connection.Open();
                     using (SQLiteDataReader reader = command.ExecuteReader()) {
                         if (reader.HasRows) {
                             reader.Read();
-                            if(!reader.IsDBNull(0))
+                            if (!reader.IsDBNull(0))
                                 return DateTime.Parse(reader.GetString(0));
                         }
                     }
@@ -79,7 +128,7 @@ namespace Disclosures.Database {
             using (var conn = new SQLiteConnection(string.Format("Data Source={0}", DbPath))) {
                 using (SQLiteCommand command = new SQLiteCommand()) {
                     command.Connection = conn;
-                    command.CommandText ="select `date` from Metadata where strftime('%Y-%m-%d', date(`date`)) <> strftime('%Y-%m-%d', date(processDateTime));";
+                    command.CommandText = "select `date` from Metadata where `status` = '200' and strftime('%Y-%m-%d', date(`date`)) <> strftime('%Y-%m-%d', date(processDateTime));";
                     command.Connection.Open();
                     using (SQLiteDataReader reader = command.ExecuteReader()) {
                         if (reader.HasRows) {
@@ -98,19 +147,217 @@ namespace Disclosures.Database {
             using (var conn = new SQLiteConnection(string.Format("Data Source={0}", DbPath))) {
                 using (SQLiteCommand command = new SQLiteCommand()) {
                     command.Connection = conn;
-                    command.CommandText = string.Format("select max(`seqNumber`) from Disclosures where date(`submitDateTime`) = '{0:yyyy-MM-dd}';", target); 
+                    command.CommandText = string.Format("select max(`seqNumber`) from Disclosures where date(`submitDateTime`) = '{0:yyyy-MM-dd}';", target);
                     command.Connection.Open();
                     using (SQLiteDataReader reader = command.ExecuteReader()) {
                         if (reader.HasRows) {
                             reader.Read();
                             if (!reader.IsDBNull(0))
-                                return reader.GetInt32(0);  
+                                return reader.GetInt32(0);
                         }
                     }
                     command.Connection.Close();
                 }
             }
             return 0;
+        }
+
+        public void ReadSchema(string tablename, out DataTable table) {
+            table = new DataTable();
+            using (var conn = new SQLiteConnection(string.Format("Data Source={0}", DbPath))) {
+                using (SQLiteCommand command = new SQLiteCommand(conn)) {
+                    command.CommandText = string.Format("select * from {0} limit 1;", tablename);
+                    command.Connection.Open();
+                    using (SQLiteDataReader reader = command.ExecuteReader()) {
+                        DataTable schema = reader.GetSchemaTable();
+                        List<DataColumn> keys = new List<DataColumn>();
+                        for (int i = 0; i < schema.Rows.Count; i++) {
+                            DataRow r = schema.Rows[i];
+                            table.Columns.Add(r["ColumnName"].ToString(), Type.GetType(r["DataType"].ToString()));
+                            //if ((bool)r["IsUnique"])
+                            table.Columns[i].Unique = (bool)r["IsUnique"];
+                            table.Columns[i].AllowDBNull = (bool)r["AllowDBNull"];
+                            if ((bool)r["IsKey"])
+                                keys.Add(table.Columns[i]);
+                        }
+                        table.PrimaryKey = keys.ToArray();
+                    }
+                    command.Connection.Close();
+                }
+            }
+        }
+        public void ReadQuery(string query, out DataTable table) {
+            table = new DataTable();
+            using (var conn = new SQLiteConnection(string.Format("Data Source={0}", DbPath))) {
+                using (SQLiteCommand command = new SQLiteCommand(conn)) {
+                    command.CommandText = query;
+                    command.Connection.Open();
+                    using (SQLiteDataReader reader = command.ExecuteReader()) {
+                        DataTable schema = reader.GetSchemaTable();
+                        List<DataColumn> keys = new List<DataColumn>();
+                        for (int i = 0; i < schema.Rows.Count; i++) {
+                            DataRow r = schema.Rows[i];
+                            table.Columns.Add(r["ColumnName"].ToString(), Type.GetType(r["DataType"].ToString()));
+                            //if ((bool)r["IsUnique"])
+                            table.Columns[i].Unique = (bool)r["IsUnique"];
+                            table.Columns[i].AllowDBNull = (bool)r["AllowDBNull"];
+                            if ((bool)r["IsKey"])
+                                keys.Add(table.Columns[i]);
+                        }
+                        table.PrimaryKey = keys.ToArray();
+                        if (reader.HasRows) {
+                            while (reader.Read()) {
+                                DataRow r = table.NewRow();
+                                for (int i = 0; i < table.Columns.Count; i++) {
+                                    if (reader.IsDBNull(i))
+                                        r[i] = DBNull.Value;
+                                    else
+                                        r[i] = reader.GetValue(i);
+                                }
+                                table.Rows.Add(r);
+                            }
+                        }
+                    }
+                    command.Connection.Close();
+                }
+            }
+        }
+
+        public void UpdateInsertDisclosures(ref DataTable table, Disclosures.JsonList json) {
+            //try {
+                DataView dv = new DataView(table, "", "id", DataViewRowState.CurrentRows);
+                using (var conn = new SQLiteConnection(string.Format("Data Source={0}", DbPath))) {
+                    using (SQLiteCommand command = new SQLiteCommand()) {
+                        command.Connection = conn;
+                        DateTime target = DateTime.Parse(json.Root.metadata.parameter.date);
+                        StringBuilder sb = new StringBuilder();
+                        string[] fieldsMetadata = "title,date,type,count,processDateTime,status,message,access".Split(',');
+                        sb.Append("replace into Metadata(");
+                        for (int j = 0; j < fieldsMetadata.Length; j++) {
+                            if (j > 0)
+                                sb.Append(", ");
+                            sb.AppendFormat("`{0}`", fieldsMetadata[j]);
+                        }
+                        sb.Append(") values (");
+                        for (int j = 0; j < fieldsMetadata.Length; j++) {
+                            if (j > 0)
+                                sb.Append(", ");
+                            sb.AppendFormat("@{0}", fieldsMetadata[j]);
+                        }
+                        sb.Append(");");
+                        command.CommandText = sb.ToString();
+                        command.Parameters.AddWithValue("@title", json.Root.metadata.title);
+                        command.Parameters.AddWithValue("@date", json.Root.metadata.parameter.date);
+                        command.Parameters.AddWithValue("@type", json.Root.metadata.parameter.type);
+                        command.Parameters.AddWithValue("@count", json.Root.metadata.resultset.count);
+                        command.Parameters.AddWithValue("@processDateTime", json.Root.metadata.processDateTime);
+                        command.Parameters.AddWithValue("@status", json.Root.metadata.status);
+                        command.Parameters.AddWithValue("@message", json.Root.metadata.message);
+                        command.Parameters.AddWithValue("@access", DateTime.Now.ToString());
+
+                        command.Connection.Open();
+                        command.ExecuteNonQuery();
+                        command.Connection.Close();
+                        command.Parameters.Clear();
+                        if (json.Root.metadata.resultset.count == 0)
+                            return;
+                        string[] fields = new string[] { "id", "xbrl", "pdf", "attach", "english", "date", "status", "code" };
+                        dv.RowFilter = "new ='new'";
+                        if (dv.Count > 0) {
+                            sb.Clear();
+                            sb.Append("insert into Disclosures(");
+                            for (int i = 0; i < Disclosures.Const.FieldName.Count; i++) {
+                                if (i > 0)
+                                    sb.Append(", ");
+                                sb.AppendFormat("`{0}`", Disclosures.Const.FieldName.ElementAt(i).Key);
+                            }
+                            //sb.Append(", id, `date`, `status`");
+                            for (int i = 0; i < fields.Length; i++)
+                                sb.AppendFormat(", {0}", fields[i]);
+                            sb.Append(") values (");
+                            for (int i = 0; i < Disclosures.Const.FieldName.Count; i++) {
+                                if (i > 0)
+                                    sb.Append(", ");
+                                sb.AppendFormat("@{0}", Disclosures.Const.FieldName.ElementAt(i).Key);
+                            }
+                            //sb.Append(", @id, @date, @status");
+                            for (int i = 0; i < fields.Length; i++)
+                                sb.AppendFormat(", @{0}", fields[i]);
+                            sb.Append(");");
+                            //SQLiteTransaction ts = null;
+                            command.CommandText = sb.ToString();
+                            for (int i = 0; i < Disclosures.Const.FieldName.Count; i++)
+                                command.Parameters.AddWithValue("@" + Disclosures.Const.FieldName.ElementAt(i).Key, null);
+                            command.Parameters.Add("@id", DbType.Int64);
+                            for (int i = 1; i < fields.Length; i++)
+                                command.Parameters.AddWithValue("@" + fields[i], null);
+                            command.Connection.Open();
+                            using (SQLiteTransaction ts = command.Connection.BeginTransaction()) {
+
+                                foreach (DataRowView r in dv) {
+                                    for (int i = 0; i < Disclosures.Const.FieldName.Count; i++)
+                                        command.Parameters["@" + Disclosures.Const.FieldName.ElementAt(i).Key].Value = r[Disclosures.Const.FieldName.ElementAt(i).Key];
+                                    for(int i = 0; i < fields.Length; i++) {
+                                        if (fields[i] == "date") {
+                                            DateTime dt = DateTime.Parse(r["date"].ToString());
+                                            command.Parameters["@date"].Value = dt.ToString("yyyy-MM-dd");
+                                        }else
+                                            command.Parameters["@" + fields[i]].Value = r[fields[i]];
+                                    }
+                                //command.Parameters["@id"].Value = r["id"];
+                                //DateTime dt = DateTime.Parse(r["date"].ToString());
+                                //command.Parameters["@date"].Value = dt.ToString("yyyy-MM-dd");
+                                //command.Parameters["@status"].Value = r["status"];
+                                try {
+                                    command.ExecuteNonQuery();
+
+                                } catch (Exception ex) {
+                                    Console.WriteLine("id:" + command.Parameters["@id"].Value);
+                                    Console.WriteLine(ex.Message);
+                                    throw;
+                                }
+                                }
+                                ts.Commit();
+                            }
+                            command.Connection.Close();
+                            command.Parameters.Clear();
+                        }
+                        dv.RowFilter = "new='change'";
+                        if (dv.Count > 0) {
+                            sb.Clear();
+
+                            string[] fields1 = new string[] { "edinetCode", "withdrawalStatus", "docInfoEditStatus", "disclosureStatus", "submitDateTime", "opeDateTime", "status" };
+                            sb.Append("update Disclosures set ");
+                            for (int i = 0; i < fields1.Length; i++) {
+                                if (i > 0)
+                                    sb.Append(",");
+                                sb.AppendFormat(" {0} = @{0}", fields1[i]);
+                            }
+                            sb.Append(" where id = @id;");
+                            command.CommandText = sb.ToString();
+                            for (int i = 0; i < fields1.Length; i++)
+                                command.Parameters.AddWithValue("@" + fields1[i], null);
+                            command.Parameters.Add("@id", DbType.Int32);
+                            command.Connection.Open();
+                            using (SQLiteTransaction ts = command.Connection.BeginTransaction()) {
+                                foreach (DataRowView r in dv) {
+                                    for (int i = 0; i < fields1.Length; i++)
+                                        command.Parameters[fields1[i]].Value = r[fields1[i]];
+                                    command.ExecuteNonQuery();
+                                }
+                                ts.Commit();
+                            }
+                            command.Connection.Close();
+                            command.Parameters.Clear();
+                        }
+                        dv.RowFilter = null;
+                    }
+                }
+            //} catch (Exception ex) {
+            //    Console.WriteLine(ex.ToString());
+            //    Debug.ProgramCodeInfo info = new Debug.ProgramCodeInfo();
+            //    System.Windows.Forms.MessageBox.Show(ex.InnerException.Message + "\r\n" + info.Message);
+            //}
         }
 
         public void UpdateInsertDisclosures(Disclosures.JsonList json) {
@@ -175,7 +422,7 @@ namespace Disclosures.Database {
                     command.Connection.Open();
                     ts = command.Connection.BeginTransaction();
                     int updated = -1;
-                    for (int i = 0;i< json.Root.results.Length;i++) {
+                    for (int i = 0; i < json.Root.results.Length; i++) {
                         if (json.Root.results[i].seqNumber > max)
                             break;
                         command.Parameters["@seqNumber"].Value = json.Root.results[i].seqNumber;
@@ -187,10 +434,7 @@ namespace Disclosures.Database {
                         command.Parameters[6].Value = json.Root.results[i].fundCode;
                         command.Parameters[7].Value = json.Root.results[i].ordinanceCode;
                         command.Parameters[8].Value = json.Root.results[i].formCode;
-                        if (json.Root.results[i].docTypeCode != null)
-                            command.Parameters[9].Value = Disclosures.Const.DocTypeCode[json.Root.results[i].docTypeCode];
-                        else
-                            command.Parameters[9].Value = null;
+                        command.Parameters[9].Value = json.Root.results[i].docTypeCode;
                         command.Parameters[10].Value = json.Root.results[i].periodStart;
                         command.Parameters[11].Value = json.Root.results[i].periodEnd;
                         command.Parameters[12].Value = json.Root.results[i].submitDateTime;
@@ -251,10 +495,7 @@ namespace Disclosures.Database {
                         command.Parameters[6].Value = json.Root.results[i].fundCode;
                         command.Parameters[7].Value = json.Root.results[i].ordinanceCode;
                         command.Parameters[8].Value = json.Root.results[i].formCode;
-                        if (json.Root.results[i].docTypeCode != null)
-                            command.Parameters[9].Value = Disclosures.Const.DocTypeCode[json.Root.results[i].docTypeCode];
-                        else
-                            command.Parameters[9].Value = null;
+                        command.Parameters[9].Value = json.Root.results[i].docTypeCode;
                         command.Parameters[10].Value = json.Root.results[i].periodStart;
                         command.Parameters[11].Value = json.Root.results[i].periodEnd;
                         command.Parameters[12].Value = json.Root.results[i].submitDateTime;
@@ -330,15 +571,22 @@ namespace Disclosures.Database {
                         if (reader.HasRows) {
                             while (reader.Read()) {
                                 DataRow r = table.NewRow();
-                                for (int i = 0; i < Disclosures.Const.FieldName.Count; i++) {
-                                    if (i == 0)
-                                        r[0] = reader.GetInt32(0);
+
+                                for (int i = 0; i < reader.FieldCount; i++) {
+                                    Type type = reader.GetFieldType(i);
+                                    string name = reader.GetName(i);
+                                    if (type == typeof(int))
+                                        r[i] = reader.GetInt32(i);
+                                    else if (type == typeof(Int64))
+                                        r[i] = reader.GetInt64(i);
                                     else {
                                         if (reader.IsDBNull(i))
                                             r[i] = DBNull.Value;
                                         else
                                             r[i] = reader.GetString(i);
                                     }
+                                    if (name == "docTypeCode" && Disclosures.Const.DocTypeCode.ContainsKey(r[i].ToString()))
+                                        r["タイプ"] = Disclosures.Const.DocTypeCode[r[i].ToString()];
                                 }
                                 table.Rows.Add(r);
                             }
@@ -447,23 +695,23 @@ namespace Disclosures.Database {
             StringBuilder sb = new StringBuilder();
             List<string[]> list = new List<string[]>() {
                 new string[]{
-                    apiresult.Json.Root.metadata.title,
-                    apiresult.Json.Root.metadata.parameter.date,
-                    apiresult.Json.Root.metadata.parameter.type,
-                    apiresult.Json.Root.metadata.resultset.count.ToString(),
-                    apiresult.Json.Root.metadata.processDateTime,
-                    apiresult.Json.Root.metadata.status,
-                    apiresult.Json.Root.metadata.message,
+                    apiresult.ListResult.Json.Root.metadata.title,
+                    apiresult.ListResult.Json.Root.metadata.parameter.date,
+                    apiresult.ListResult.Json.Root.metadata.parameter.type,
+                    apiresult.ListResult.Json.Root.metadata.resultset.count.ToString(),
+                    apiresult.ListResult.Json.Root.metadata.processDateTime,
+                    apiresult.ListResult.Json.Root.metadata.status,
+                    apiresult.ListResult.Json.Root.metadata.message,
                     DateTime.Now.ToString()} };
             InsertToTable("Metadata", fields, list);
 
             Dictionary<string, string[]> dic = new Dictionary<string, string[]>();
-            for(int i=0;i< Disclosures.Const.FieldName.Keys.Count; i++) {
+            for (int i = 0; i < Disclosures.Const.FieldName.Keys.Count; i++) {
                 string key = Disclosures.Const.FieldName.Keys.ElementAt(i);
                 List<string> values = new List<string>();
-                for (int j = 0; j < apiresult.Json.Root.results.Length; j++) {
-                    values.Add(apiresult.Json.Root.results[j].seqNumber.ToString());
-                        }
+                for (int j = 0; j < apiresult.ListResult.Json.Root.results.Length; j++) {
+                    values.Add(apiresult.ListResult.Json.Root.results[j].seqNumber.ToString());
+                }
             }
         }
 
@@ -471,7 +719,7 @@ namespace Disclosures.Database {
             using (var conn = new SQLiteConnection(string.Format("Data Source={0}", DbPath))) {
                 using (SQLiteCommand command = new SQLiteCommand()) {
                     command.Connection = conn;
-                    command.CommandText = string.Format("select label from Taxonomy where `name` = Replace(label_to, 'label_','') and lang = 'ja' and `name` = '{0}';",key);
+                    command.CommandText = string.Format("select label from Taxonomy where `name` = Replace(label_to, 'label_','') and lang = 'ja' and `name` = '{0}';", key);
                     command.Connection.Open();
                     using (SQLiteDataReader reader = command.ExecuteReader()) {
                         if (reader.HasRows) {
@@ -501,7 +749,7 @@ namespace Disclosures.Database {
                         }
                     }
                     command.Connection.Close();
-                    if(dic.Count == 0) {
+                    if (dic.Count == 0) {
                         string[] lines = File.ReadAllLines(filepath);
                         StringBuilder sb = new StringBuilder();
                         string[] fields = "id,OrdinanceCode,FormCode,FormNumber,Name,DocType,Disclose,Remarks".Split(',');
@@ -527,7 +775,7 @@ namespace Disclosures.Database {
 
                         foreach (string line in lines) {
                             string[] cols = line.Split(',');
-                            if(cols[0]!= "府令コード") {
+                            if (cols[0] != "府令コード") {
                                 string id = cols[0] + "-" + cols[1];
                                 command.Parameters[0].Value = id;
                                 for (int j = 1; j < fields.Length; j++) {
@@ -728,7 +976,7 @@ namespace Disclosures.Database {
         }
 
 
-        public void SaveTaxonomy(Dictionary<string, string> dicTaxonomy,  string url, XmlNodeList arcs, Dictionary<string, string> dicArc, Dictionary<string, XmlNode> dicLoc, Dictionary<string, string[]> dicLabel) {
+        public void SaveTaxonomy(Dictionary<string, string> dicTaxonomy, string url, XmlNodeList arcs, Dictionary<string, string> dicArc, Dictionary<string, XmlNode> dicLoc, Dictionary<string, string[]> dicLabel) {
             string[] path = url.Split('/');
             string fn = path[path.Length - 1];
             using (var conn = new SQLiteConnection(string.Format("Data Source={0}", DbPath))) {
@@ -801,102 +1049,165 @@ namespace Disclosures.Database {
                             }
                         }
                         ts.Commit();
+                        command.Connection.Close();
+
                     }
-                    command.Connection.Close();
                 }
             }
         }
 
+        /*
+        EDINETコードとファンドコードをデータベースにインポートする場合
+        Microsoft.VisualBasic参照追加が必要（文字列をダブルクォーテーションで包むCSVを読み込むため）
+        */
+        public delegate void Delegate(int value, int max = 0);
+        public bool UpdateEdinetCodelist(string zip, Delegate delegateMethod, out Dictionary<string, int> dic) {
+            dic = null;
+            using (SQLiteConnection conn = new SQLiteConnection(string.Format("Data Source={0}", DbPath))) {
+                using (SQLiteCommand command = new SQLiteCommand()) {
+                    //id ednet 15   docid 8  code 6 
+                    //code,brand,market,title,id,xbrl,date
+                    command.Connection = conn;
+                    command.CommandText = "CREATE TABLE IF NOT EXISTS edinet_code (`code_edinet` text NOT NULL,`syubetu` text DEFAULT NULL,`listed` text DEFAULT NULL,`renketu` text DEFAULT NULL,`sihonkin` integer DEFAULT NULL,`kessan` text DEFAULT NULL,`brand` text DEFAULT NULL,`brand_en` text DEFAULT NULL,`kana` text DEFAULT NULL,`address` text DEFAULT NULL,`indust` text DEFAULT NULL,`code5` integer DEFAULT NULL,`teisyutu` integer DEFAULT NULL,PRIMARY KEY (`code_edinet`) );";
+                    command.Connection.Open();
+                    command.ExecuteNonQuery();
+                    command.Connection.Close();
+                    command.CommandText = "CREATE TABLE IF NOT EXISTS edinet_fund (`code_fund` text DEFAULT NULL,`code_brand` integer DEFAULT NULL,`name` text DEFAULT NULL,`kana` text DEFAULT NULL,`kubun` text DEFAULT NULL,`teikibin1` text DEFAULT NULL,`teikibin2` text DEFAULT NULL,`code_edinet` text NOT NULL,`hakkousya` text DEFAULT NULL,PRIMARY KEY (`code_fund`) );";
+                    command.Connection.Open();
+                    command.ExecuteNonQuery();
+                    command.Connection.Close();
+                    using (ZipArchive archive = ZipFile.OpenRead(zip)) {
+                        using (var stream = archive.Entries[0].Open()) {
+                            using (TextFieldParser parser = new TextFieldParser(stream, Encoding.GetEncoding("shift_jis"))) {
+                                parser.TextFieldType = FieldType.Delimited;
 
-        //EDINETコードとファンドコードをデータベースにインポートする場合
-        //Microsoft.VisualBasic参照追加が必要（文字列をダブルクォーテーションで包むCSVを読み込むため）
-        //public bool UpdateEdinetCodelist(string zip) {
-        //    using (SQLiteConnection conn = new SQLiteConnection(string.Format("Data Source={0}", DbPath))) {
-        //        using (SQLiteCommand command = new SQLiteCommand()) {
-        //            //id ednet 15   docid 8  code 6 
-        //            //code,brand,market,title,id,xbrl,date
-        //            command.Connection = conn;
-        //            command.CommandText = "CREATE TABLE IF NOT EXISTS edinet_code (`code_edinet` text NOT NULL,`syubetu` text DEFAULT NULL,`listed` text DEFAULT NULL,`renketu` text DEFAULT NULL,`sihonkin` integer DEFAULT NULL,`kessan` text DEFAULT NULL,`brand` text DEFAULT NULL,`brand_en` text DEFAULT NULL,`kana` text DEFAULT NULL,`address` text DEFAULT NULL,`indust` text DEFAULT NULL,`code5` integer DEFAULT NULL,`teisyutu` integer DEFAULT NULL,PRIMARY KEY (`code_edinet`) );";
-        //            command.Connection.Open();
-        //            command.ExecuteNonQuery();
-        //            command.Connection.Close();
-        //            command.CommandText = "CREATE TABLE IF NOT EXISTS edinet_fund (`code_fund` text DEFAULT NULL,`code_brand` integer DEFAULT NULL,`name` text DEFAULT NULL,`kana` text DEFAULT NULL,`kubun` text DEFAULT NULL,`teikibin1` text DEFAULT NULL,`teikibin2` text DEFAULT NULL,`code_edinet` text NOT NULL,`hakkousya` text DEFAULT NULL,PRIMARY KEY (`code_fund`) );";
-        //            command.Connection.Open();
-        //            command.ExecuteNonQuery();
-        //            command.Connection.Close();
-        //            using (ZipArchive archive = ZipFile.OpenRead(zip)) {
-        //                using (var stream = archive.Entries[0].Open()) {
-        //                    using (TextFieldParser parser = new TextFieldParser(stream, Encoding.GetEncoding("shift_jis"))) {
-        //                        parser.TextFieldType = FieldType.Delimited;
-        //                        parser.SetDelimiters(",");
-        //                        string[] fields = null;
-        //                        int i = 0;
-        //                        SQLiteTransaction ts = null;
-        //                        while (!parser.EndOfData) {
-        //                            string[] row = parser.ReadFields();
-        //                            if (i == 1) {
-        //                                StringBuilder sb = new StringBuilder();
-        //                                if (row[0] == "ＥＤＩＮＥＴコード") {
-        //                                    fields = "code_edinet,syubetu,listed,renketu,sihonkin,kessan,brand,brand_en,kana,address,indust,code5,teisyutu".Split(',');
-        //                                    sb.Append("replace into edinet_code(");
-        //                                    for (int j = 0; j < fields.Length; j++) {
-        //                                        if (j > 0)
-        //                                            sb.Append(", ");
-        //                                        sb.AppendFormat("`{0}`", fields[j]);
-        //                                    }
-        //                                    sb.Append(") values (");
-        //                                    for (int j = 0; j < fields.Length; j++) {
-        //                                        if (j > 0)
-        //                                            sb.Append(", ");
-        //                                        sb.AppendFormat("@{0}", fields[j]);
-        //                                    }
-        //                                    sb.Append(");");
-        //                                } else if (row[0] == "ファンドコード") {
-        //                                    fields = "code_fund,code_brand,name,kana,kubun,teikibin1,teikibin2,code_edinet,hakkousya".Split(',');
-        //                                    sb.Append("replace into edinet_fund(");
-        //                                    for (int j = 0; j < fields.Length; j++) {
-        //                                        if (j > 0)
-        //                                            sb.Append(", ");
-        //                                        sb.AppendFormat("`{0}`", fields[j]);
-        //                                    }
-        //                                    sb.Append(") values (");
-        //                                    for (int j = 0; j < fields.Length; j++) {
-        //                                        if (j > 0)
-        //                                            sb.Append(", ");
-        //                                        sb.AppendFormat("@{0}", fields[j]);
-        //                                    }
-        //                                    sb.Append(");");
-        //                                } else {
-        //                                    return false;
-        //                                }
-        //                                command.CommandText = sb.ToString();
-        //                                //command.Connection.Close();
-        //                                for (int j = 0; j < fields.Length; j++)
-        //                                    command.Parameters.AddWithValue("@" + fields[j], null);
-        //                                command.Connection.Open();
-        //                                ts = command.Connection.BeginTransaction();
-        //                            }
-        //                            if (i > 1) {
-        //                                for (int j = 0; j < row.Length; j++) {
-        //                                    command.Parameters[j].Value = row[j];
-        //                                }
-        //                                command.ExecuteNonQuery();
-        //                            }
-        //                            i++;
-        //                        }
-        //                        ts.Commit();
-        //                        ts.Dispose();
-        //                        command.Connection.Close();
-        //                    }
+                                parser.SetDelimiters(",");
+                                string[] fields = null;
+                                int i = 0;
+                                List<string[]> list = new List<string[]>();
+                                SQLiteTransaction ts = null;
+                                while (!parser.EndOfData) {
+                                    string[] cols = parser.ReadFields();
+                                    if (i == 1) {
+                                        StringBuilder sb = new StringBuilder();
+                                        if (cols[0] == "ＥＤＩＮＥＴコード") {
+                                            fields = "code_edinet,syubetu,listed,renketu,sihonkin,kessan,brand,brand_en,kana,address,indust,code5,teisyutu".Split(',');
+                                            sb.Append("replace into edinet_code(");
+                                            for (int j = 0; j < fields.Length; j++) {
+                                                if (j > 0)
+                                                    sb.Append(", ");
+                                                sb.AppendFormat("`{0}`", fields[j]);
+                                            }
+                                            sb.Append(") values (");
+                                            for (int j = 0; j < fields.Length; j++) {
+                                                if (j > 0)
+                                                    sb.Append(", ");
+                                                sb.AppendFormat("@{0}", fields[j]);
+                                            }
+                                            sb.Append(");");
+                                        } else if (cols[0] == "ファンドコード") {
+                                            fields = "code_fund,code_brand,name,kana,kubun,teikibin1,teikibin2,code_edinet,hakkousya".Split(',');
+                                            sb.Append("replace into edinet_fund(");
+                                            for (int j = 0; j < fields.Length; j++) {
+                                                if (j > 0)
+                                                    sb.Append(", ");
+                                                sb.AppendFormat("`{0}`", fields[j]);
+                                            }
+                                            sb.Append(") values (");
+                                            for (int j = 0; j < fields.Length; j++) {
+                                                if (j > 0)
+                                                    sb.Append(", ");
+                                                sb.AppendFormat("@{0}", fields[j]);
+                                            }
+                                            sb.Append(");");
+                                        } else {
+                                            return false;
+                                        }
+                                        command.CommandText = sb.ToString();
+                                        //command.Connection.Close();
+                                        for (int j = 0; j < fields.Length; j++)
+                                            command.Parameters.AddWithValue("@" + fields[j], null);
+                                    }
+                                    if (i > 1) {
+                                        list.Add(cols);
+                                    }
 
-        //                }
-        //            }
-        //        }
-        //    }
-        //    return true;
-        //}
+                                    i++;
+                                }
 
+                                dic = new Dictionary<string, int>();
+                                command.Connection.Open();
+                                ts = command.Connection.BeginTransaction();
 
+                                delegateMethod(0, list.Count);
+                                i = 0;
+                                foreach (string[] cols in list) {
+                                    string edinet = null;
+                                    int code = 0;
+                                    for (int j = 0; j < cols.Length; j++) {
+                                        command.Parameters[j].Value = cols[j].Trim() == "" ? null : cols[j];
+                                        if (fields[j] == "code_edinet")
+                                            edinet = cols[j];
+                                        if (fields[j] == "code5" & int.TryParse(cols[j], out code)) {
+                                            if (code > 0)
+                                                dic.Add(edinet, code);
+                                        }
+                                    }
+                                    command.ExecuteNonQuery();
+                                    i++;
+                                    delegateMethod(i);
+                                }
+                                ts.Commit();
+                                ts.Dispose();
+                                command.Connection.Close();
+                                command.CommandText = "UPDATE Disclosures SET code = (SELECT edinet_code.code5 FROM edinet_code WHERE Disclosures.edinetCode = edinet_code.code_edinet) WHERE EXISTS (SELECT edinet_code.code5 FROM edinet_code WHERE Disclosures.edinetCode = edinet_code.code_edinet);";
+                                command.Connection.Open();
+                                command.ExecuteNonQuery();
+                                command.Connection.Close();
+
+                            }
+
+                        }
+                    }
+                }
+            }
+            return true;
+        }
+
+        public void ReadEdinetCodelist(out Dictionary<string, int> dic) {
+            dic = new Dictionary<string, int>();
+            using (SQLiteConnection conn = new SQLiteConnection(string.Format("Data Source={0}", DbPath))) {
+                using (SQLiteCommand command = new SQLiteCommand()) {
+                    //id ednet 15   docid 8  code 6 
+                    //code,brand,market,title,id,xbrl,date
+                    command.Connection = conn;
+                    command.CommandText = "SELECT count(*) FROM sqlite_master WHERE type='table' AND name='edinet_code';";
+                    int count = -1;
+                    command.Connection.Open();
+                    using (SQLiteDataReader reader = command.ExecuteReader()) {
+                        if (reader.HasRows) {
+                            reader.Read();
+                            if(!reader.IsDBNull(0))
+                            count = reader.GetInt32(0);
+                        }
+                    }
+                    command.Connection.Close();
+                    if (count > 0) {
+                        command.CommandText = "select code_edinet, code5 from edinet_code where code5 > 0;";
+                        command.Connection.Open();
+                        using (SQLiteDataReader reader = command.ExecuteReader()) {
+                            if (reader.HasRows) {
+                                while (reader.Read()) {
+                                    dic.Add(reader.GetString(0), reader.GetInt32(1));
+                                }
+                            }
+                        }
+                        command.Connection.Close();
+                    }
+                }
+
+            }
+        }
     }
 }
 

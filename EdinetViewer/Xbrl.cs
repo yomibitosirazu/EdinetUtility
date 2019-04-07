@@ -64,15 +64,8 @@ namespace Disclosures {
                     Prefix = node.Attributes["name"].InnerText.Split(':')[0],
                     Name = node.Attributes["name"].InnerText.Split(':')[1]
                 };
-                //if (Disclosures.Const.DicContextDifinition.ContainsKey(element.Name)) {
-
-                //}
-                //if (Disclosures.Const.DicLabelDifinition.ContainsKey(node.Attributes["name"].InnerText)) {
-                //    element.Label = Disclosures.Const.DicLabelDifinition[node.Attributes["name"].InnerText];
-                //}
                 if (Taxonomy.DicTaxonomy.ContainsKey(element.Name))
                     element.Label = Taxonomy.DicTaxonomy[element.Name];
-                //element.Label = Database.Sqlite.SearchTaxonomy(element.Name);
                 element.ContextRef = node.Attributes["contextRef"].InnerText;
                 if (node.Attributes["unitRef"] != null)
                     element.UnitRef = node.Attributes["unitRef"].InnerText;
@@ -101,12 +94,6 @@ namespace Disclosures {
                     Prefix = node.Attributes["name"].InnerText.Split(':')[0],
                     Name = node.Attributes["name"].InnerText.Split(':')[1]
                 };
-                //if (Disclosures.Const.DicContextDifinition.ContainsKey(element.Name)) {
-
-                //}
-                //if (Disclosures.Const.DicLabelDifinition.ContainsKey(node.Attributes["name"].InnerText)) {
-                //    element.Label = Disclosures.Const.DicLabelDifinition[node.Attributes["name"].InnerText];
-                //}
                 if (Taxonomy.DicTaxonomy.ContainsKey(element.Name))
                     element.Label = Taxonomy.DicTaxonomy[element.Name];
                 //element.Label = Database.Sqlite.SearchTaxonomy(element.Name);
@@ -154,7 +141,6 @@ namespace Disclosures {
             string element = folders[folders.Length - 1];
             string name = element.Contains(":") ? element.Split(':')[1] : element;
             string parentLabel = Taxonomy.DicTaxonomy.ContainsKey(name) ? Taxonomy.DicTaxonomy[name] : "";
-            //string parentLabel = Database.Sqlite.SearchTaxonomy(name);
 
             if (parentLabel == "") {
             }

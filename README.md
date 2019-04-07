@@ -4,6 +4,16 @@ VisualStudio2017 C#を利用して作成した EDINET API を利用するユー�
 EDINETの開示書類を表示するだけのC#Windowsフォームアプリケーション  
 EDINET API を利用して日付ごとの開示書類のリスト一覧を取得  
 一覧から選択したXBRLの開示書類をAPIでダウンロードしてエレメントを解析してテーブル表示
+
+### バージョンについて
+#### v0.2.101.0 マスターブランチ（現在のブランチ）
+- APIの取得を非同期に変更
+- 多少の並列処理を可能
+- 開発途中で不安定
+- SqliteCoreのアンインストールとインストールが必要
+#### v0.1.00 ブランチv0100 初期公開バージョン
+- APIの取得をHttpClientの同期処理を利用
+
 <img src="https://github.com/yomibitosirazu/EdinetUtility/blob/master/EdinetViewer/images/DisclosureViewer.png">
 
 ## 開発環境
