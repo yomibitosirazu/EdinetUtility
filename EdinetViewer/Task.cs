@@ -9,6 +9,7 @@ using System.Threading;
 
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Text;
 
 namespace EdinetViewer {
 
@@ -17,41 +18,7 @@ namespace EdinetViewer {
 
     partial class Form1 {
 
-
-
         public enum TaskType { List, Archive, TodayArchive, Taxonomy, EdinetCode, Start, VersionUp, test };
-        //private Task taskBackground;
-        //private CancellationTokenSource tokenSource;
-        //private async Task StartTask(TaskType type, string parameter = null) {
-        //    if (taskBackground == null) {
-        //        tokenSource = new CancellationTokenSource();
-        //        switch (type) {
-        //            case TaskType.List:
-        //                taskBackground = DownloadLists(tokenSource.Token);
-
-        //                break;
-        //            case TaskType.Archive:
-        //                taskBackground = DownloadArchives(tokenSource.Token);
-        //                break;
-        //            case TaskType.Taxonomy:
-        //                taskBackground = ImportTaxonomy(parameter);
-        //                break;
-        //            case TaskType.VersionUp:
-        //                taskBackground = VersionUp(parameter);
-        //                break;
-        //            case TaskType.Start:
-        //                break;
-        //            case TaskType.test:
-        //                taskBackground = ReadMetadataList(tokenSource.Token);
-        //                break;
-        //        }
-        //        await taskBackground;
-        //        taskBackground = null;
-        //    }
-        //}
-        //private void CancelTask() {
-        //    tokenSource.Cancel();
-        //}
 
         //非同期を３分類（⓪書類一覧取得、①アーカイブ連続ダウンロード、②その他）して同時実行可能にする
         private Task[] backgroundTask;
@@ -60,14 +27,15 @@ namespace EdinetViewer {
             if(backgroundTask == null) {
                 backgroundTask = new Task[3];
                 backgroundCancel = new CancellationTokenSource[3];
-                for (int i = 0; i < backgroundTask.Length; i++) {
-                    backgroundCancel[i] = new CancellationTokenSource(); 
-                }
+                //for (int i = 0; i < backgroundTask.Length; i++) {
+                //    backgroundCancel[i] = new CancellationTokenSource(); 
+                //}
             }
             int typeNo = (int)type < 2 ? (int)type : ((int)type == 2 ? 1 : 2);
             //if ((int)type > 2)
             //    typeNo = 2;
             if (backgroundTask[typeNo] == null) {
+                backgroundCancel[typeNo] = new CancellationTokenSource();
                 switch (type) {
                     case TaskType.List:
                             backgroundTask[0] = DownloadLists(backgroundCancel[0].Token);
@@ -317,16 +285,40 @@ namespace EdinetViewer {
             System.Diagnostics.Stopwatch sw = new System.Diagnostics.Stopwatch();
             sw.Start();
             Random random = new Random();
+            StringBuilder sb = new StringBuilder();
+            if (setting.Xbrl)
+                sb.Append("xbrlFlag = '1'");
+            if (setting.Pdf)
+                sb.Append((sb.Length > 0 ? " or  " : "") + "pdfFlag = '1'");
+            if (setting.Attach)
+                sb.Append((sb.Length > 0 ? " or  " : "") + "attachDocFlag = '1'");
+            if (setting.English)
+                sb.Append((sb.Length > 0 ? " or  " : "") + "englishDocFlag = '1'");
+            if (sb.Length > 0) {
+                sb.Insert(0, "and (");
+                sb.Append(")");
+            }
+            if (setting.DocumentTypes.Length > 0) {
+                sb.Append( " and docTypeCode in (");
+                for (int j = 0; j < setting.DocumentTypes.Length; j++) {
+                    if (j > 0)
+                        sb.Append(",");
+                    sb.AppendFormat(" '{0}'", setting.DocumentTypes[j]);
+                }
+                sb.Append(")");
+            }
             DateTime start = today ? DateTime.Now.Date : DateTime.Now.AddYears(-5).Date;
-            string query = string.Format("select id, secCode, filerName, docDescription, docid, docTypeCode, edinetCode, withdrawalStatus, xbrlFlag, pdfFlag, attachDocFlag, englishDocFlag, xbrl, pdf, attach, english from disclosures where date(`date`) >= '{0:yyyy-MM-dd}' order by id{1};", start, today ? " desc" : "");
+            string query = string.Format("select id, secCode, filerName, docDescription, docid, docTypeCode, edinetCode, withdrawalStatus, xbrlFlag, pdfFlag, attachDocFlag, englishDocFlag, xbrl, pdf, attach, english from disclosures where date(`date`) >= '{0:yyyy-MM-dd}' {2} order by id{1};", start, today ? " desc" : "", sb.ToString());
             edinet.Database.ReadQuery(query, out DataTable table);
             int i = 0;
             InvokeVisible(true);
+            InvokeProgress(0, table.Rows.Count);
             if (table.Rows.Count == 0) {
                 InvokeProgressLabel(0, 0, "ダウンロードする銘柄はありません");
                 await Task.Delay(5000);
                 InvokeMenuCheck("MenuDownload");
                 InvokeVisible(false);
+                Console.WriteLine("canceled background download archive");
                 return;
             }
             InvokeProgressLabel(table.Rows.Count, 0, "");
@@ -379,6 +371,7 @@ namespace EdinetViewer {
                 string english = r["english"] == DBNull.Value ? null : r["english"].ToString();
                 bool[] flag = new bool[] { r["xbrlFlag"].ToString() == "1", r["pdfFlag"].ToString() == "1",
                         r["attachDocFlag"].ToString() == "1", r["englishDocFlag"].ToString() == "1" };
+                bool[] check = new bool[] { setting.Xbrl, setting.Pdf, setting.Attach, setting.English };
                 //string[] saved = new string[] { xbrl, pdf, attach, english };
                 bool[] notsaved = new bool[] {r["xbrl"] == DBNull.Value || r["xbrl"].ToString().Trim() =="",
                         r["pdf"] == DBNull.Value || r["pdf"].ToString().Trim() =="",
@@ -388,18 +381,24 @@ namespace EdinetViewer {
                 bool access = false;
                 for (int j = 0; j < fields.Length; j++) {
                     if (flag[j]) {
-                        if (all | notsaved[j]) {
-                            Console.Write("(delay[{1:s\\.fff}]{0} )", fields[j], DateTime.Now - last);
-                            Disclosures.ApiArchiveResult result = await edinet.DownloadArchive(id, docid, j + 1);
-                            last = DateTime.Now;
-                            access = true;
-                            InvokeProgressLabel(0, 0, string.Format("バックグラウンドダウンロード {0}/{1} {2:mm':'ss}経過 {3:yyyy-MM-dd} {4}[{5}] status[{6}]", i, table.Rows.Count, sw.Elapsed, date, result.Name, fields[j], result.StatusCode.ToString()));
+                        if (all | check[j]) {
+                            int year = 20 * 100 + id / 100000000;
+                            string filepath = string.Format(@"{0}\Documents\{1}\{2}_{3}.{4}", setting.Directory, year, docid, j+1, j == 1 ? "pdf" : "zip");
+                            bool exists = File.Exists(filepath);
+                            if (!exists) {
+                                Console.Write("(delay[{1:s\\.fff}]{0} )", fields[j], DateTime.Now - last);
+                                Disclosures.ApiArchiveResult result = await edinet.DownloadArchive(id, docid, j + 1);
+                                last = DateTime.Now;
+                                access = true;
+                                InvokeProgressLabel(0, 0, string.Format("バックグラウンドダウンロード {0}/{1} {2:mm':'ss}経過 {3:yyyy-MM-dd} {4}[{5}] status[{6}]", i, table.Rows.Count, sw.Elapsed, date, result.Name, fields[j], result.StatusCode.ToString()));
 
-                            int wait = random.Next((int)(setting.Wait[0] * 1000), (int)(setting.Wait[1] * 1000));
-                            await Task.Delay(wait);
-                            Console.Write(" wait[{0}]", wait);
+                                int wait = random.Next((int)(setting.Wait[0] * 1000), (int)(setting.Wait[1] * 1000));
+                                await Task.Delay(wait);
+                                Console.Write(" wait[{0}]", wait);
+                            }else
+                                Console.Write(" ex[{0}]", r[fields[j]]);
                         } else {
-                            Console.Write(" ex[{0}]", r[fields[j]]);
+                            
                         }
                     }
                 }
@@ -413,6 +412,10 @@ namespace EdinetViewer {
 
                 //}
             }
+            InvokeProgressLabel(0, 0, "バックグラウンド終了しました");
+            Console.WriteLine("finish background download archive");
+            await Task.Delay(1000);
+            InvokeVisible(false);
             InvokeMenuCheck("MenuDownload");
 
         }

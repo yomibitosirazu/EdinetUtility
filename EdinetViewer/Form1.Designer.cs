@@ -35,6 +35,7 @@
             this.MenuPastList = new System.Windows.Forms.ToolStripMenuItem();
             this.MenuDownload = new System.Windows.Forms.ToolStripMenuItem();
             this.MenuImportTaxonomy = new System.Windows.Forms.ToolStripMenuItem();
+            this.MenuIEdinetCodeImport = new System.Windows.Forms.ToolStripMenuItem();
             this.statusStrip1 = new System.Windows.Forms.StatusStrip();
             this.ProgressBar1 = new System.Windows.Forms.ToolStripProgressBar();
             this.ProgressLabel1 = new System.Windows.Forms.ToolStripStatusLabel();
@@ -52,7 +53,9 @@
             this.splitForm = new System.Windows.Forms.SplitContainer();
             this.toolTip1 = new System.Windows.Forms.ToolTip(this.components);
             this.timer1 = new System.Windows.Forms.Timer(this.components);
-            this.MenuIEdinetCodeImport = new System.Windows.Forms.ToolStripMenuItem();
+            this.checkTimer = new System.Windows.Forms.CheckBox();
+            this.MenuXbrl = new System.Windows.Forms.ContextMenuStrip(this.components);
+            this.MenuShowBrowser = new System.Windows.Forms.ToolStripMenuItem();
             ((System.ComponentModel.ISupportInitialize)(this.dgvList)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.dgvContents)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.dgvXbrl)).BeginInit();
@@ -75,6 +78,7 @@
             this.splitForm.Panel1.SuspendLayout();
             this.splitForm.Panel2.SuspendLayout();
             this.splitForm.SuspendLayout();
+            this.MenuXbrl.SuspendLayout();
             this.SuspendLayout();
             // 
             // dgvList
@@ -119,6 +123,7 @@
             this.dgvXbrl.AllowUserToAddRows = false;
             this.dgvXbrl.AllowUserToDeleteRows = false;
             this.dgvXbrl.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            this.dgvXbrl.ContextMenuStrip = this.MenuXbrl;
             this.dgvXbrl.Dock = System.Windows.Forms.DockStyle.Fill;
             this.dgvXbrl.Location = new System.Drawing.Point(0, 0);
             this.dgvXbrl.MultiSelect = false;
@@ -128,6 +133,7 @@
             this.dgvXbrl.RowTemplate.Height = 21;
             this.dgvXbrl.Size = new System.Drawing.Size(360, 365);
             this.dgvXbrl.TabIndex = 0;
+            this.dgvXbrl.CellDoubleClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.DgvXbrl_CellDoubleClick);
             this.dgvXbrl.CellFormatting += new System.Windows.Forms.DataGridViewCellFormattingEventHandler(this.DataGridView_CellFormatting);
             this.dgvXbrl.CurrentCellChanged += new System.EventHandler(this.DgvXbrl_CurrentCellChanged);
             this.dgvXbrl.DataError += new System.Windows.Forms.DataGridViewDataErrorEventHandler(this.DataGridView_DataError);
@@ -151,7 +157,7 @@
             this.MenuEdinet,
             this.MenuBackground});
             this.MenuToolbar.Name = "contextMenuStrip1";
-            this.MenuToolbar.Size = new System.Drawing.Size(194, 92);
+            this.MenuToolbar.Size = new System.Drawing.Size(194, 70);
             // 
             // MenuSetting
             // 
@@ -186,7 +192,7 @@
             this.MenuPastList.Text = "過去5年間の書類一覧取得";
             this.MenuPastList.ToolTipText = "5年前から日付ごとに順次書類一覧を取得します。\r\n設定ダイアログでチェックされた書類タイプのアーカイブは合わせてダウンロードします。\r\n書類一覧および書類アーカイ" +
     "ブの取得とダウンロードのリクエストごとに、設定ダイアログで指定したウェイトをかけます。\r\nメニューのチェックのオンオフで再開中断を切り替えます。";
-            this.MenuPastList.CheckedChanged += new System.EventHandler(this.MenuBackground_CheckedChanged);
+            this.MenuPastList.Click += new System.EventHandler(this.MenuCheckBackground_Click);
             // 
             // MenuDownload
             // 
@@ -195,7 +201,7 @@
             this.MenuDownload.Size = new System.Drawing.Size(214, 22);
             this.MenuDownload.Text = "過去5年間の書類ダウンロード";
             this.MenuDownload.ToolTipText = "設定ダイアログでチェックされている書類を5年前から現在に向かってダウンロードします。\r\n実行中はチェックがオンになり、オフオンで中断再開可能です。";
-            this.MenuDownload.CheckedChanged += new System.EventHandler(this.MenuBackground_CheckedChanged);
+            this.MenuDownload.Click += new System.EventHandler(this.MenuCheckBackground_Click);
             // 
             // MenuImportTaxonomy
             // 
@@ -205,12 +211,21 @@
             this.MenuImportTaxonomy.ToolTipText = "最新タクソノミで更新したい場合に実行してください。";
             this.MenuImportTaxonomy.Click += new System.EventHandler(this.MenuBackground_Click);
             // 
+            // MenuIEdinetCodeImport
+            // 
+            this.MenuIEdinetCodeImport.Name = "MenuIEdinetCodeImport";
+            this.MenuIEdinetCodeImport.Size = new System.Drawing.Size(214, 22);
+            this.MenuIEdinetCodeImport.Text = "Edinetコードリストのインポート";
+            this.MenuIEdinetCodeImport.ToolTipText = "ダウンロード済みのEdinetコードリストまたはファンドコードリストをデータベースにインポートします。";
+            this.MenuIEdinetCodeImport.Click += new System.EventHandler(this.MenuBackground_Click);
+            // 
             // statusStrip1
             // 
             this.statusStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.ProgressBar1,
-            this.ProgressLabel1,
-            this.StatusLabel1});
+            this.StatusLabel1,
+            this.ProgressLabel1});
+            this.statusStrip1.LayoutStyle = System.Windows.Forms.ToolStripLayoutStyle.HorizontalStackWithOverflow;
             this.statusStrip1.Location = new System.Drawing.Point(0, 579);
             this.statusStrip1.Name = "statusStrip1";
             this.statusStrip1.Size = new System.Drawing.Size(784, 22);
@@ -219,22 +234,28 @@
             // 
             // ProgressBar1
             // 
+            this.ProgressBar1.Alignment = System.Windows.Forms.ToolStripItemAlignment.Right;
             this.ProgressBar1.AutoSize = false;
             this.ProgressBar1.Name = "ProgressBar1";
             this.ProgressBar1.Size = new System.Drawing.Size(100, 16);
             // 
             // ProgressLabel1
             // 
+            this.ProgressLabel1.AutoSize = false;
+            this.ProgressLabel1.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
             this.ProgressLabel1.Name = "ProgressLabel1";
-            this.ProgressLabel1.Size = new System.Drawing.Size(13, 17);
-            this.ProgressLabel1.Text = "  ";
+            this.ProgressLabel1.Size = new System.Drawing.Size(150, 17);
+            this.ProgressLabel1.Spring = true;
+            this.ProgressLabel1.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
             // StatusLabel1
             // 
-            this.StatusLabel1.Margin = new System.Windows.Forms.Padding(10, 3, 0, 2);
+            this.StatusLabel1.AutoSize = false;
             this.StatusLabel1.Name = "StatusLabel1";
-            this.StatusLabel1.Size = new System.Drawing.Size(19, 17);
+            this.StatusLabel1.Size = new System.Drawing.Size(400, 17);
+            this.StatusLabel1.Spring = true;
             this.StatusLabel1.Text = "    ";
+            this.StatusLabel1.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
             // splitMain
             // 
@@ -299,6 +320,7 @@
             // panel1
             // 
             this.panel1.ContextMenuStrip = this.MenuToolbar;
+            this.panel1.Controls.Add(this.checkTimer);
             this.panel1.Controls.Add(this.comboFilter);
             this.panel1.Controls.Add(this.TbCode);
             this.panel1.Controls.Add(this.LabelVersion);
@@ -388,13 +410,31 @@
             // 
             this.timer1.Tick += new System.EventHandler(this.Timer_Tick);
             // 
-            // MenuIEdinetCodeImport
+            // checkTimer
             // 
-            this.MenuIEdinetCodeImport.Name = "MenuIEdinetCodeImport";
-            this.MenuIEdinetCodeImport.Size = new System.Drawing.Size(214, 22);
-            this.MenuIEdinetCodeImport.Text = "Edinetコードリストのインポート";
-            this.MenuIEdinetCodeImport.ToolTipText = "ダウンロード済みのEdinetコードリストまたはファンドコードリストをデータベースにインポートします。";
-            this.MenuIEdinetCodeImport.Click += new System.EventHandler(this.MenuBackground_Click);
+            this.checkTimer.Appearance = System.Windows.Forms.Appearance.Button;
+            this.checkTimer.AutoSize = true;
+            this.checkTimer.Location = new System.Drawing.Point(605, 2);
+            this.checkTimer.Name = "checkTimer";
+            this.checkTimer.Size = new System.Drawing.Size(44, 22);
+            this.checkTimer.TabIndex = 10;
+            this.checkTimer.Text = "Timer";
+            this.checkTimer.UseVisualStyleBackColor = true;
+            this.checkTimer.Click += new System.EventHandler(this.CheckTimer_Click);
+            // 
+            // MenuXbrl
+            // 
+            this.MenuXbrl.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.MenuShowBrowser});
+            this.MenuXbrl.Name = "MenuXbrl";
+            this.MenuXbrl.Size = new System.Drawing.Size(169, 26);
+            // 
+            // MenuShowBrowser
+            // 
+            this.MenuShowBrowser.Name = "MenuShowBrowser";
+            this.MenuShowBrowser.Size = new System.Drawing.Size(180, 22);
+            this.MenuShowBrowser.Text = "ブラウザで内容表示";
+            this.MenuShowBrowser.Click += new System.EventHandler(this.MenuShowBrowser_Click);
             // 
             // Form1
             // 
@@ -433,6 +473,7 @@
             this.splitForm.Panel2.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.splitForm)).EndInit();
             this.splitForm.ResumeLayout(false);
+            this.MenuXbrl.ResumeLayout(false);
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -468,6 +509,9 @@
         private System.Windows.Forms.ToolStripStatusLabel ProgressLabel1;
         private System.Windows.Forms.ToolStripProgressBar ProgressBar1;
         private System.Windows.Forms.ToolStripMenuItem MenuIEdinetCodeImport;
+        private System.Windows.Forms.CheckBox checkTimer;
+        private System.Windows.Forms.ContextMenuStrip MenuXbrl;
+        private System.Windows.Forms.ToolStripMenuItem MenuShowBrowser;
     }
 }
 

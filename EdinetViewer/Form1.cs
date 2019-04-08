@@ -35,8 +35,7 @@ namespace EdinetViewer {
         }
 
         private async void Form1_Shown(object sender, EventArgs e) {
-            ProgressBar1.Visible = false;
-            ProgressLabel1.Visible = false;
+          
             this.Form1_Resize(null, null);
             DatePicker.MinDate = DateTime.Now.Date.AddYears(-5);
             DatePicker.MaxDate = DateTime.Now.AddDays(1);
@@ -63,11 +62,11 @@ namespace EdinetViewer {
             DatePicker.CloseUp += DatePicker_CloseUp;
             timer1.Interval = (int)(setting.Interval * 60 * 1000);
             timer1.Enabled = true;
+            //checkTimer.Checked = setting.Timer;
+            TimerCheck();
             if (setting.VersionUp) {
                 await BackGroundStart(TaskType.VersionUp, Application.ProductVersion);
             }
-            //test
-            //await BackGroundStart(TaskType.test);
         }
 
 
@@ -111,7 +110,7 @@ namespace EdinetViewer {
 
 
         private void DgvXbrl_CurrentCellChanged(object sender, EventArgs e) {
-
+            
         }
 
 
@@ -166,8 +165,10 @@ namespace EdinetViewer {
                 splitLower.Panel2Collapsed = false;
                 DateTime target = DatePicker.Value.Date;
                 IsReading = true;
-                object[] meta = edinet.Database.GetMetadata(DateTime.Now.Date);
-                int prevcount = (int)meta[1];
+                object[] meta = edinet.Database.GetMetadata(target);
+                int prevcount = 0;
+                if(meta !=null)
+                    prevcount = (int)meta[1];
                 ApiListResult result = await edinet.GetDisclosureList(target);
                 StatusLabel1.ForeColor = Color.Black;
                 if (result != null) {
@@ -189,6 +190,7 @@ namespace EdinetViewer {
                             result.Json.Root.metadata.resultset.count - prevcount,
                             result.Json.Root.metadata.resultset.count);
                         StatusLabel1.Text = statustext + (sender == null ? " on timer" : "");
+                        dgvList.Rows[0].Cells[0].Selected = true;
                     }
                 } else {
                     StatusLabel1.Text = DateTime.Now.ToString("HH:mm:ss") + " 書類一覧キャッシュ ";
@@ -199,6 +201,10 @@ namespace EdinetViewer {
                 comboFilter.DataSource = edinet.Types;
                 currentRow1 = -1;
                 IsReading = false;
+                //timerの場合続いて書類のダウンロード
+                if (sender == null && setting.Download && (setting.Xbrl|setting.Pdf|setting.Attach|setting.English) & setting.DocumentTypes.Length>0) {
+                    await BackGroundStart(TaskType.TodayArchive);
+                }
             }
         }
 
@@ -262,6 +268,14 @@ namespace EdinetViewer {
             }
         }
 
+
+
+        private void DgvXbrl_CellDoubleClick(object sender, DataGridViewCellEventArgs e) {
+            if (dgvXbrl.Columns[e.ColumnIndex].Name == "value") {
+                string source = dgvXbrl.Rows[e.RowIndex].Cells["value"].Value.ToString();
+                browser.DocumentText = source;
+            }
+        }
         private void DataGridView_DataError(object sender, DataGridViewDataErrorEventArgs e) {
             DataGridView dgv = sender as DataGridView;
             Console.WriteLine("{0} row:{1} col:{2}", dgv.Name, e.RowIndex, e.ColumnIndex);
@@ -274,7 +288,8 @@ namespace EdinetViewer {
             splitForm.SplitterDistance = 25;
             TbVersion.Left = panel1.Right - TbVersion.Width - offset;
             LabelVersion.Left = TbVersion.Left - LabelVersion.Width;
-            StatusLabel1.Width = statusStrip1.Width - ProgressBar1.Width - ProgressLabel1.Width;
+            checkTimer.Left = LabelVersion.Left - checkTimer.Width - 30;
+            StatusLabel1.Width = this.Width - ProgressBar1.Width - ProgressLabel1.Width - 60;
         }
 
         private enum Page { Default, First, Top, EdinetCode, FundCode, Taxonomy };
@@ -337,6 +352,12 @@ namespace EdinetViewer {
             }
         }
 
+        private void MenuShowBrowser_Click(object sender, EventArgs e) {
+            string source = dgvXbrl.Rows[dgvXbrl.CurrentRow.Index].Cells["value"].Value.ToString();
+            browser.DocumentText = source;
+
+        }
+
         #region Task
         private async void MenuBackground_Click(object sender, EventArgs e) {
             switch ((sender as ToolStripMenuItem).Name) {
@@ -366,6 +387,34 @@ namespace EdinetViewer {
         }
 
         //バックグラウンドメニュー
+
+        private async void MenuCheckBackground_Click(object sender, EventArgs e) {
+            ToolStripMenuItem menu = sender as ToolStripMenuItem;
+            if (menu == MenuPastList) {
+                if ((sender as ToolStripMenuItem).Checked) {
+                    if (backgroundTask == null || backgroundTask[0] == null) {
+                        await BackGroundStart(TaskType.List);
+                    }
+                } else {
+                    backgroundCancel[0].Cancel();
+                }
+
+            } else if (menu == MenuDownload) {
+                if ((sender as ToolStripMenuItem).Checked) {
+                    if (backgroundTask == null || backgroundTask[1] == null) {
+                        ProgressBar1.Visible = true;
+                        ProgressLabel1.Visible = true;
+                        ProgressLabel1.Text = "バックグラウンドダウンロード準備中";
+                        this.Refresh();
+                        await BackGroundStart(TaskType.Archive);
+                    }
+                } else {
+                    backgroundCancel[1].Cancel();
+                }
+
+            }
+        }
+
         private async void MenuBackground_CheckedChanged(object sender, EventArgs e) {
             ToolStripMenuItem menu = sender as ToolStripMenuItem;
             if (menu == MenuPastList) {
@@ -476,34 +525,6 @@ namespace EdinetViewer {
                 filter = string.Format("タイプ='{0}'", combo.SelectedItem);
             edinet.DvDocuments.RowFilter = filter;
         }
-        private int timercount = 0;
-        private void Timer_Tick(object sender, EventArgs e) {
-            if (DateTime.Now.AddMinutes(30).Hour < 9)
-                return;
-            if (DateTime.Now.AddMinutes(45).Hour > 18)
-                return;
-            bool holiday = false;
-            if (DateTime.Now.DayOfWeek == DayOfWeek.Sunday | DateTime.Now.DayOfWeek == DayOfWeek.Saturday)
-                holiday = true;
-            if (DateTime.Now.Month == 12 & DateTime.Now.Day > 29)
-                holiday = true;
-            if (DateTime.Now.Month == 1 & DateTime.Now.Day < 4)
-                holiday = true;
-            if (setting.Holiday.ContainsKey(DateTime.Now.Date))
-                holiday = true;
-            //タイマーによる書類一覧取得はフォアグラウンドで実行する
-            if(!holiday & setting.Timer){
-                timercount++;
-                StatusLabel1.Text = string.Format("timer tick {0} {1:HH:mm:ss}", timercount, DateTime.Now);
-                Console.WriteLine("timer {0} {1:HH:mm:ss}", timercount, DateTime.Now);
-                //taskBackground = StartTask(TaskType.List);
-                //await taskBackground;
-                DatePicker.Value = DateTime.Now.Date;
-                this.Refresh();
-                DatePicker_CloseUp(null, null);
-
-            }
-        }
 
         private void Form1_FormClosed(object sender, FormClosedEventArgs e) {
 
@@ -514,6 +535,53 @@ namespace EdinetViewer {
         private void LabelMetadata_DoubleClick(object sender, EventArgs e) {
             Console.WriteLine("sic {0}", edinet.DicEdinetCode.Count);
             FormatDatagridview();
+        }
+
+
+        private int timercount = 0;
+        private void Timer_Tick(object sender, EventArgs e) {
+            //タイマーによる書類一覧取得はフォアグラウンドで実行する
+            if (TimerCheck()) {
+                timercount++;
+                StatusLabel1.Text = string.Format("timer tick {0} {1:HH:mm:ss}", timercount, DateTime.Now);
+                Console.WriteLine("timer {0} {1:HH:mm:ss}", timercount, DateTime.Now);
+                DatePicker.Value = DateTime.Now.Date;
+                this.Refresh();
+                //この中で終了後にバックグラウンドで書類アーカイブのダウンロード
+                DatePicker_CloseUp(null, null);
+            }
+        }
+
+        private void CheckTimer_Click(object sender, EventArgs e) {
+            setting.Values["Timer"] = checkTimer.Checked.ToString();
+            TimerCheck();
+        }
+        private bool TimerCheck() {
+            bool enable = setting.Timer;
+            if (setting.Timer) {
+                checkTimer.BackColor = Color.Yellow;
+                checkTimer.Text = "Timer  On";
+                enable = true;
+            } else {
+                checkTimer.BackColor = Control.DefaultBackColor;
+                checkTimer.Text = "Timer Off";
+                enable = false;
+            }
+            if (DateTime.Now.AddMinutes(30).Hour < 9 | DateTime.Now.AddMinutes(-15).Hour > 17) {
+                enable = false;
+                toolTip1.SetToolTip(checkTimer, "時間外です");
+            }
+            if ((DateTime.Now.DayOfWeek == DayOfWeek.Sunday | DateTime.Now.DayOfWeek == DayOfWeek.Saturday) |
+                    (DateTime.Now.Month == 12 & DateTime.Now.Day > 29) |
+                    (DateTime.Now.Month == 1 & DateTime.Now.Day < 4) |
+                    (setting.Holiday.ContainsKey(DateTime.Now.Date))) {
+                enable = false;
+                toolTip1.SetToolTip(checkTimer, "市場は休みです");
+            }
+            if (!enable)
+                checkTimer.BackColor = Control.DefaultBackColor;
+            return enable;
+
         }
     }
 }
