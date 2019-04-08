@@ -226,84 +226,84 @@ namespace Disclosures.Database {
         public void UpdateInsertDisclosures(ref DataTable table, Disclosures.JsonList json) {
             //try {
                 DataView dv = new DataView(table, "", "id", DataViewRowState.CurrentRows);
-                using (var conn = new SQLiteConnection(string.Format("Data Source={0}", DbPath))) {
-                    using (SQLiteCommand command = new SQLiteCommand()) {
-                        command.Connection = conn;
-                        DateTime target = DateTime.Parse(json.Root.metadata.parameter.date);
-                        StringBuilder sb = new StringBuilder();
-                        string[] fieldsMetadata = "title,date,type,count,processDateTime,status,message,access".Split(',');
-                        sb.Append("replace into Metadata(");
-                        for (int j = 0; j < fieldsMetadata.Length; j++) {
-                            if (j > 0)
-                                sb.Append(", ");
-                            sb.AppendFormat("`{0}`", fieldsMetadata[j]);
-                        }
-                        sb.Append(") values (");
-                        for (int j = 0; j < fieldsMetadata.Length; j++) {
-                            if (j > 0)
-                                sb.Append(", ");
-                            sb.AppendFormat("@{0}", fieldsMetadata[j]);
-                        }
-                        sb.Append(");");
-                        command.CommandText = sb.ToString();
-                        command.Parameters.AddWithValue("@title", json.Root.metadata.title);
-                        command.Parameters.AddWithValue("@date", json.Root.metadata.parameter.date);
-                        command.Parameters.AddWithValue("@type", json.Root.metadata.parameter.type);
-                        command.Parameters.AddWithValue("@count", json.Root.metadata.resultset.count);
-                        command.Parameters.AddWithValue("@processDateTime", json.Root.metadata.processDateTime);
-                        command.Parameters.AddWithValue("@status", json.Root.metadata.status);
-                        command.Parameters.AddWithValue("@message", json.Root.metadata.message);
-                        command.Parameters.AddWithValue("@access", DateTime.Now.ToString());
+            using (var conn = new SQLiteConnection(string.Format("Data Source={0}", DbPath))) {
+                using (SQLiteCommand command = new SQLiteCommand()) {
+                    command.Connection = conn;
+                    DateTime target = DateTime.Parse(json.Root.metadata.parameter.date);
+                    StringBuilder sb = new StringBuilder();
+                    string[] fieldsMetadata = "title,date,type,count,processDateTime,status,message,access".Split(',');
+                    sb.Append("replace into Metadata(");
+                    for (int j = 0; j < fieldsMetadata.Length; j++) {
+                        if (j > 0)
+                            sb.Append(", ");
+                        sb.AppendFormat("`{0}`", fieldsMetadata[j]);
+                    }
+                    sb.Append(") values (");
+                    for (int j = 0; j < fieldsMetadata.Length; j++) {
+                        if (j > 0)
+                            sb.Append(", ");
+                        sb.AppendFormat("@{0}", fieldsMetadata[j]);
+                    }
+                    sb.Append(");");
+                    command.CommandText = sb.ToString();
+                    command.Parameters.AddWithValue("@title", json.Root.metadata.title);
+                    command.Parameters.AddWithValue("@date", json.Root.metadata.parameter.date);
+                    command.Parameters.AddWithValue("@type", json.Root.metadata.parameter.type);
+                    command.Parameters.AddWithValue("@count", json.Root.metadata.resultset.count);
+                    command.Parameters.AddWithValue("@processDateTime", json.Root.metadata.processDateTime);
+                    command.Parameters.AddWithValue("@status", json.Root.metadata.status);
+                    command.Parameters.AddWithValue("@message", json.Root.metadata.message);
+                    command.Parameters.AddWithValue("@access", DateTime.Now.ToString());
 
-                        command.Connection.Open();
-                        command.ExecuteNonQuery();
-                        command.Connection.Close();
+                    command.Connection.Open();
+                    command.ExecuteNonQuery();
+                    command.Connection.Close();
+                    if (json.Root.metadata.resultset.count == 0)
+                        return;
+                    string[] fields = new string[] { "id", "xbrl", "pdf", "attach", "english", "date", "status", "code" };
+                    dv.RowFilter = "new ='new'";
+                    if (dv.Count > 0) {
+                        sb.Clear();
                         command.Parameters.Clear();
-                        if (json.Root.metadata.resultset.count == 0)
-                            return;
-                        string[] fields = new string[] { "id", "xbrl", "pdf", "attach", "english", "date", "status", "code" };
-                        dv.RowFilter = "new ='new'";
-                        if (dv.Count > 0) {
-                            sb.Clear();
-                            sb.Append("insert into Disclosures(");
-                            for (int i = 0; i < Disclosures.Const.FieldName.Count; i++) {
-                                if (i > 0)
-                                    sb.Append(", ");
-                                sb.AppendFormat("`{0}`", Disclosures.Const.FieldName.ElementAt(i).Key);
-                            }
-                            //sb.Append(", id, `date`, `status`");
-                            for (int i = 0; i < fields.Length; i++)
-                                sb.AppendFormat(", {0}", fields[i]);
-                            sb.Append(") values (");
-                            for (int i = 0; i < Disclosures.Const.FieldName.Count; i++) {
-                                if (i > 0)
-                                    sb.Append(", ");
-                                sb.AppendFormat("@{0}", Disclosures.Const.FieldName.ElementAt(i).Key);
-                            }
-                            //sb.Append(", @id, @date, @status");
-                            for (int i = 0; i < fields.Length; i++)
-                                sb.AppendFormat(", @{0}", fields[i]);
-                            sb.Append(");");
-                            //SQLiteTransaction ts = null;
-                            command.CommandText = sb.ToString();
-                            for (int i = 0; i < Disclosures.Const.FieldName.Count; i++)
-                                command.Parameters.AddWithValue("@" + Disclosures.Const.FieldName.ElementAt(i).Key, null);
-                            command.Parameters.Add("@id", DbType.Int64);
-                            for (int i = 1; i < fields.Length; i++)
-                                command.Parameters.AddWithValue("@" + fields[i], null);
-                            command.Connection.Open();
-                            using (SQLiteTransaction ts = command.Connection.BeginTransaction()) {
+                        sb.Append("insert into Disclosures(");
+                        for (int i = 0; i < Disclosures.Const.FieldName.Count; i++) {
+                            if (i > 0)
+                                sb.Append(", ");
+                            sb.AppendFormat("`{0}`", Disclosures.Const.FieldName.ElementAt(i).Key);
+                        }
+                        //sb.Append(", id, `date`, `status`");
+                        for (int i = 0; i < fields.Length; i++)
+                            sb.AppendFormat(", {0}", fields[i]);
+                        sb.Append(") values (");
+                        for (int i = 0; i < Disclosures.Const.FieldName.Count; i++) {
+                            if (i > 0)
+                                sb.Append(", ");
+                            sb.AppendFormat("@{0}", Disclosures.Const.FieldName.ElementAt(i).Key);
+                        }
+                        //sb.Append(", @id, @date, @status");
+                        for (int i = 0; i < fields.Length; i++)
+                            sb.AppendFormat(", @{0}", fields[i]);
+                        sb.Append(");");
+                        //SQLiteTransaction ts = null;
+                        command.CommandText = sb.ToString();
+                        for (int i = 0; i < Disclosures.Const.FieldName.Count; i++)
+                            command.Parameters.AddWithValue("@" + Disclosures.Const.FieldName.ElementAt(i).Key, null);
+                        command.Parameters.Add("@id", DbType.Int64);
+                        for (int i = 1; i < fields.Length; i++)
+                            command.Parameters.AddWithValue("@" + fields[i], null);
+                        command.Connection.Open();
+                        using (SQLiteTransaction ts = command.Connection.BeginTransaction()) {
 
-                                foreach (DataRowView r in dv) {
-                                    for (int i = 0; i < Disclosures.Const.FieldName.Count; i++)
-                                        command.Parameters["@" + Disclosures.Const.FieldName.ElementAt(i).Key].Value = r[Disclosures.Const.FieldName.ElementAt(i).Key];
-                                    for(int i = 0; i < fields.Length; i++) {
-                                        if (fields[i] == "date") {
-                                            DateTime dt = DateTime.Parse(r["date"].ToString());
-                                            command.Parameters["@date"].Value = dt.ToString("yyyy-MM-dd");
-                                        }else
-                                            command.Parameters["@" + fields[i]].Value = r[fields[i]];
-                                    }
+                            foreach (DataRowView r in dv) {
+                                for (int i = 0; i < Disclosures.Const.FieldName.Count; i++)
+                                    command.Parameters["@" + Disclosures.Const.FieldName.ElementAt(i).Key].Value = r[Disclosures.Const.FieldName.ElementAt(i).Key];
+                                for (int i = 0; i < fields.Length; i++) {
+                                    if (fields[i] == "date") {
+                                        DateTime dt = DateTime.Parse(r["date"].ToString());
+                                        command.Parameters["@date"].Value = dt.ToString("yyyy-MM-dd");
+                                    } else
+                                        command.Parameters["@" + fields[i]].Value = r[fields[i]];
+                                }
                                 //command.Parameters["@id"].Value = r["id"];
                                 //DateTime dt = DateTime.Parse(r["date"].ToString());
                                 //command.Parameters["@date"].Value = dt.ToString("yyyy-MM-dd");
@@ -316,43 +316,46 @@ namespace Disclosures.Database {
                                     Console.WriteLine(ex.Message);
                                     throw;
                                 }
-                                }
-                                ts.Commit();
                             }
-                            command.Connection.Close();
-                            command.Parameters.Clear();
+                            ts.Commit();
                         }
-                        dv.RowFilter = "new='change'";
-                        if (dv.Count > 0) {
-                            sb.Clear();
-
-                            string[] fields1 = new string[] { "edinetCode", "withdrawalStatus", "docInfoEditStatus", "disclosureStatus", "submitDateTime", "opeDateTime", "status" };
-                            sb.Append("update Disclosures set ");
-                            for (int i = 0; i < fields1.Length; i++) {
-                                if (i > 0)
-                                    sb.Append(",");
-                                sb.AppendFormat(" {0} = @{0}", fields1[i]);
-                            }
-                            sb.Append(" where id = @id;");
-                            command.CommandText = sb.ToString();
-                            for (int i = 0; i < fields1.Length; i++)
-                                command.Parameters.AddWithValue("@" + fields1[i], null);
-                            command.Parameters.Add("@id", DbType.Int32);
-                            command.Connection.Open();
-                            using (SQLiteTransaction ts = command.Connection.BeginTransaction()) {
-                                foreach (DataRowView r in dv) {
-                                    for (int i = 0; i < fields1.Length; i++)
-                                        command.Parameters[fields1[i]].Value = r[fields1[i]];
-                                    command.ExecuteNonQuery();
-                                }
-                                ts.Commit();
-                            }
-                            command.Connection.Close();
-                            command.Parameters.Clear();
-                        }
-                        dv.RowFilter = null;
+                        command.Connection.Close();
                     }
+                    dv.RowFilter = "new='change'";
+                    if (dv.Count > 0) {
+                        sb.Clear();
+                        command.Parameters.Clear();
+
+                        string[] fields1 = new string[] { "edinetCode", "withdrawalStatus", "docInfoEditStatus", "disclosureStatus", "submitDateTime", "opeDateTime", "status" };
+                        sb.Append("update Disclosures set ");
+                        for (int i = 0; i < fields1.Length; i++) {
+                            if (i > 0)
+                                sb.Append(",");
+                            sb.AppendFormat(" {0} = @{0}", fields1[i]);
+                        }
+                        sb.Append(" where id = @id;");
+                        command.CommandText = sb.ToString();
+                        for (int i = 0; i < fields1.Length; i++)
+                            command.Parameters.AddWithValue("@" + fields1[i], null);
+                        command.Parameters.Add("@id", DbType.Int64);
+                        command.Connection.Open();
+                        using (SQLiteTransaction ts = command.Connection.BeginTransaction()) {
+                            foreach (DataRowView r in dv) {
+                                for (int i = 0; i < fields1.Length; i++) {
+                                    string field = fields1[i];
+                                    command.Parameters["@" + field].Value = r[field];
+                                }
+                                command.Parameters["@id"].Value = r["id"];
+                                command.ExecuteNonQuery();
+                            }
+                            ts.Commit();
+                        }
+                        command.Connection.Close();
+                        command.Parameters.Clear();
+                    }
+                    dv.RowFilter = null;
                 }
+            }
             //} catch (Exception ex) {
             //    Console.WriteLine(ex.ToString());
             //    Debug.ProgramCodeInfo info = new Debug.ProgramCodeInfo();

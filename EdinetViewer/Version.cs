@@ -152,11 +152,13 @@ namespace EdinetViewer {
                         ts.Commit();
                     }
                     command.Connection.Close();
-                    InvokeProgressLabel(0, 0, "バージョンアップ　データベースVACUUM");
-                    command.CommandText = "VACUUM;";
-                    command.Connection.Open();
-                    command.ExecuteNonQuery();
-                    command.Connection.Close();
+                    //InvokeProgressLabel(0, 0, "バージョンアップ　データベースVACUUM");
+                    //command.CommandText = "VACUUM;";
+                    //command.Connection.Open();
+                    //command.ExecuteNonQuery();
+                    //command.Connection.Close();
+                    //FormClosingでVacuumするように予約
+                    setting.Values["Vacuum"] = DateTime.Now.AddDays(-10).ToString();
                 }
             }
             Console.WriteLine("v201 db update {0:ss':'fff}", sw.Elapsed);

@@ -157,7 +157,7 @@ namespace EdinetViewer {
         }
         #endregion
 
-#region DataGridView_Events_CurrentRowChanged
+        #region DataGridView_Events_CurrentRowChanged
         private async void DatePicker_CloseUp(object sender, EventArgs e) {
             if (!IsReading) {
                 StatusLabel1.Text = "";
@@ -166,6 +166,8 @@ namespace EdinetViewer {
                 splitLower.Panel2Collapsed = false;
                 DateTime target = DatePicker.Value.Date;
                 IsReading = true;
+                object[] meta = edinet.Database.GetMetadata(DateTime.Now.Date);
+                int prevcount = (int)meta[1];
                 ApiListResult result = await edinet.GetDisclosureList(target);
                 StatusLabel1.ForeColor = Color.Black;
                 if (result != null) {
@@ -174,9 +176,19 @@ namespace EdinetViewer {
                         StatusLabel1.ForeColor = Color.Red;
                         StatusLabel1.Text = string.Format("{3:HH:mm:ss} 書類一覧APIエラー {0} {1} {2}", edinet.ListResult.Json.Root.metadata.title, edinet.ListResult.Json.Root.metadata.status, edinet.ListResult.Json.Root.metadata.message, DateTime.Now);
                     } else {
-                        LabelMetadata.Text = string.Format("status:{0} {1} count:{2} {3} type:{4}", edinet.ListResult.Json.Root.metadata.message, edinet.ListResult.Json.Root.metadata.processDateTime,
-                                edinet.ListResult.Json.Root.metadata.resultset.count, edinet.ListResult.Json.Root.metadata.title, edinet.ListResult.Json.Root.metadata.parameter.type);
-                        StatusLabel1.Text = string.Format("{2:HH:mm:ss} 書類一覧API status:{0}[{1}]", edinet.ListResult.StatusCode , edinet.ListResult.StatusText, DateTime.Now);
+                        string labeltext = string.Format("status:{0} {1} count:{2}(new:{3})",
+                            result.Json.Root.metadata.message, result.Json.Root.metadata.processDateTime,
+                                result.Json.Root.metadata.resultset.count, result.Json.Root.metadata.resultset.count - prevcount);
+
+                        LabelMetadata.Text = labeltext + (sender == null ? " on timer" : "");
+
+                        string statustext = string.Format("{2:HH:mm:ss} 書類一覧API status:{0}[{1}] {3}/{4}",
+                            result.StatusCode,
+                            result.StatusText,
+                            DateTime.Now,
+                            result.Json.Root.metadata.resultset.count - prevcount,
+                            result.Json.Root.metadata.resultset.count);
+                        StatusLabel1.Text = statustext + (sender == null ? " on timer" : "");
                     }
                 } else {
                     StatusLabel1.Text = DateTime.Now.ToString("HH:mm:ss") + " 書類一覧キャッシュ ";
@@ -318,6 +330,8 @@ namespace EdinetViewer {
                             timer1.Interval = (int)(dialog.Setting.Interval * 60 * 1000);
                         setting = dialog.Setting;
                         setting.Save();
+                        timer1.Enabled = setting.Timer;
+                        timer1.Interval = (int)(setting.Interval * 1000 * 60);
                     }
                     break;
             }
@@ -480,13 +494,13 @@ namespace EdinetViewer {
             //タイマーによる書類一覧取得はフォアグラウンドで実行する
             if(!holiday & setting.Timer){
                 timercount++;
-                StatusLabel1.Text = string.Format("timer {0} {1:HH:mm:ss}", timercount , DateTime.Now);
+                StatusLabel1.Text = string.Format("timer tick {0} {1:HH:mm:ss}", timercount, DateTime.Now);
+                Console.WriteLine("timer {0} {1:HH:mm:ss}", timercount, DateTime.Now);
                 //taskBackground = StartTask(TaskType.List);
                 //await taskBackground;
                 DatePicker.Value = DateTime.Now.Date;
                 this.Refresh();
                 DatePicker_CloseUp(null, null);
-                StatusLabel1.Text += string.Format(" timer {0} {1:HH:mm:ss}", timercount, DateTime.Now);
 
             }
         }
