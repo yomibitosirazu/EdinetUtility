@@ -21,6 +21,8 @@ namespace EdinetViewer {
             InvokeVisible(true);
             switch (version) {
                 case "0.2.101.0":
+                case "0.2.101.1":
+                case "0.2.101.2":
                     await Task.Run(() => Update02101());
                     break;
                 default:
