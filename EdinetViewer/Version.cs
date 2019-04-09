@@ -19,29 +19,36 @@ namespace EdinetViewer {
 
         private async Task VersionUp(string version) {
             InvokeVisible(true);
-            switch (version) {
-                case "0.2.101.0":
-                case "0.2.101.1":
-                case "0.2.101.2":
+            string[] versions = version.Split('\t');
+            if (versions[0].Substring(0, 4) == "0.2.") {
+                if (versions.Length == 1 || versions[1] == "" | versions[1].Length<4 || versions[1].Substring(0, 4) == versions[0].Substring(0, 4))
                     await Task.Run(() => Update02101());
-                    break;
-                default:
-                    await Task.Run(() => test());
-                    break;
             }
+            else
+            {
+                await Task.Run(() => test());
+            }
+            //switch (version) {
+            //    case "0.2.101.0":
+            //    case "0.2.101.1":
+            //    case "0.2.101.2":
+            //        break;
+            //    default:
+            //        break;
+            //}
 
         }
 
         private void test() {
             List<DateTime> list = edinet.Database.MetadataList();
-            InvokeProgressLabel(list.Count, 0, null);
+            InvokeVisible(true);
             int i = 0;
             foreach (DateTime dt in list) {
-                InvokeProgressLabel(0, i, dt.ToString("yyyy-MM-dd"));
+                InvokeProgressLabel((int)(i/list.Count*100), dt.ToString("yyyy-MM-dd"));
                 i++;
             }
             //Task.Delay(3000);
-            InvokeProgressLabel(0, 0, "");
+            //InvokeProgressLabel(0, 0, "");
             //Task.Delay(2000);
             System.Threading.Thread.Sleep(1000);
             InvokeVisible(false);
@@ -49,7 +56,7 @@ namespace EdinetViewer {
         }
 
         private void Update02101() {
-            InvokeProgressLabel(0, 0, "バージョンアップ　データベース更新中");
+            InvokeLabel("バージョンアップ　データベース更新中");
             string[] queries = new string[] {
                                 "alter table `Disclosures` add column `date` text DEFAULT NULL;",
                                 "update `Disclosures` set `date` = '20'||substr(id,1,2)||'-'||substr(id,3,2)||'-'||substr(id,5,2);",
@@ -71,7 +78,7 @@ namespace EdinetViewer {
 
                             };
             int n = Disclosures.Const.DocTypeCode.Count + queries.Length;
-            InvokeProgressLabel(n, 0, null);
+            //InvokeProgressLabel(n, 0, null);
 
             //Setting setting = new Setting();
             //string dbpath = Path.Combine(setting.Values["DocumentDirectory"], "edinet.db");
@@ -108,7 +115,7 @@ namespace EdinetViewer {
                             command.Connection.Open();
                             command.ExecuteNonQuery();
                             command.Connection.Close();
-                            InvokeProgressLabel(0, i, null);
+                            InvokeProgressLabel((int)(i/n*100), null);
                         }
                         //j = 2;
                     }
@@ -117,7 +124,7 @@ namespace EdinetViewer {
                             command.Connection.Open();
                             command.ExecuteNonQuery();
                             command.Connection.Close();
-                            InvokeProgressLabel(0, 2, null);
+                            InvokeProgressLabel((int)(2/n*100), null);
                             //j++;
                     }
                     for (int i = 3; i < 7; i++) {
@@ -125,7 +132,7 @@ namespace EdinetViewer {
                         command.Connection.Open();
                         command.ExecuteNonQuery();
                         command.Connection.Close();
-                        InvokeProgressLabel(0, i, null);
+                        InvokeProgressLabel((int)(i / n * 100), null);
                         //j = i;
                     }
                     if (!existStatus) {
@@ -134,7 +141,7 @@ namespace EdinetViewer {
                             command.Connection.Open();
                             command.ExecuteNonQuery();
                             command.Connection.Close();
-                            InvokeProgressLabel(0, i, null);
+                            InvokeProgressLabel((int)(i / n * 100), null);
                             //j = i;
                         }
                     }
@@ -148,7 +155,7 @@ namespace EdinetViewer {
                             command.CommandText = sb.ToString();
                             int count = command.ExecuteNonQuery();
                             //File.AppendAllText("v0201.log", string.Format("update doctype[{0}]:{1}\r\n", kv.Key, count));
-                            InvokeProgressLabel(0, i, kv.Value);
+                            InvokeProgressLabel((int)(i / n * 100), kv.Value);
                             i++;
                         }
                         ts.Commit();
@@ -164,7 +171,7 @@ namespace EdinetViewer {
                 }
             }
             Console.WriteLine("v201 db update {0:ss':'fff}", sw.Elapsed);
-            InvokeProgressLabel(0, 0, "");
+            //InvokeProgressLabel(0, 0, "");
             InvokeVisible(false);
         }
 
@@ -172,10 +179,12 @@ namespace EdinetViewer {
 
 
         #region FirstTimeExecute
-        private void SetTaxonomyDownloadEvent() {
+        private async Task SetTaxonomyDownloadEvent() {
             string[] files = Directory.GetFiles(setting.Directory, "ALL_*.zip");
             if (files.Length > 0) {
-                Menu_Click(MenuImportTaxonomy, null);
+                //MenuBackground_Click(MenuImportTaxonomy, null);
+                Array.Reverse(files);
+                await BackGroundStart(TaskType.Taxonomy, files[0]);
             } else {
                 browser.DocumentText = "<body><h1>EDINET Disclosure Viewer  <span style=\"font - size:small\">alpha version</span></h1>" +
                     "EDINETのダウンロードページから" +
@@ -195,7 +204,8 @@ namespace EdinetViewer {
 
                 MessageBox.Show(message, "はじめに");
                 page = Page.First;
-                browser.Navigate(toppage);
+                if (!browser.GoBack())
+                    browser.Navigate(toppage);
                 fileSystemWatcher = new FileSystemWatcher(setting.Directory) {
                     NotifyFilter = NotifyFilters.FileName,
                     EnableRaisingEvents = true

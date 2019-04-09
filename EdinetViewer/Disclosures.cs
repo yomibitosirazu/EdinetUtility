@@ -362,11 +362,15 @@ namespace Disclosures {
                 Xbrl.IntializeTaxonomy(dic, list);
             }
         }
-        public void ChangeCacheDirectory(string dir) {
+        public bool ChangeCacheDirectory(string dir) {
+            bool exists = false;
             if (dir != cachedirectory) {
                 cachedirectory = dir;
-                Database.ChangeDirectory(dir);
+                string dbpath = Path.Combine(dir, "edinet.db");
+                exists = File.Exists(dbpath);
+                Database.ChangeDirectory(dbpath);
             }
+            return exists;
         }
         /*閲覧終了した書類は全てnullになるので、
         ①過去データをデータベースから読み込み
@@ -570,6 +574,7 @@ namespace Disclosures {
         //    return equal;
         //}
         private void ListToTable(ref DataTable table, JsonList json) {
+            DataView dv = new DataView(table, "", "id", DataViewRowState.CurrentRows);
             DateTime target = DateTime.Parse(json.Root.metadata.parameter.date);
             //EdinetCode=null withdrawalStatus='0' 縦覧期間終了
             List<string> list = new List<string>();
@@ -577,18 +582,17 @@ namespace Disclosures {
                 //for (int i = json.Root.results.Length - 1; i >= 0; i--) {
                 int id = int.Parse(target.ToString("yyMMdd")) * 10000 + json.Root.results[i].seqNumber;
                 string status = GetStatus(json.Root.results[i]);
-                int index = DvDocuments.Find(id);
+                int index = dv.Find(id);
                 if (index > -1) {
-                    //string status0 = GetStatus(json.Root.results[i]);
                     if (status != null) {
-                        DvDocuments[index].BeginEdit();
-                        DvDocuments[index]["status"] = status;
-                        DvDocuments[index]["new"] = "change";
-                        DvDocuments[index].EndEdit();
+                        dv[index].BeginEdit();
+                        dv[index]["status"] = status;
+                        dv[index]["new"] = "change";
+                        dv[index].EndEdit();
                     }
                     continue;
                 }
-                DataRowView r = DvDocuments.AddNew();
+                DataRowView r = dv.AddNew();  
                 r[0] = json.Root.results[i].seqNumber;
                 r[1] = json.Root.results[i].docID;
                 r[2] = json.Root.results[i].edinetCode;

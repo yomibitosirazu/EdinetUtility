@@ -1,11 +1,12 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Data;
+//using System.Collections.Generic;
+//using System.Data;
 using System.Drawing;
 using System.Windows.Forms;
 using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
+using System.Text;
+//using System.Threading;
+//using System.Threading.Tasks;
 
 using Disclosures;
 
@@ -15,7 +16,7 @@ namespace EdinetViewer {
             InitializeComponent();
         }
 
-        private string toppage = "http://disclosure.edinet-fsa.go.jp/";
+        private readonly string toppage = "http://disclosure.edinet-fsa.go.jp/";
         private Edinet edinet;
         private FileSystemWatcher fileSystemWatcher;
         private Setting setting;
@@ -44,16 +45,18 @@ namespace EdinetViewer {
             splitMain.Panel1Collapsed = true;
             splitUpper.Panel2Collapsed = true;
             splitLower.Panel2Collapsed = true;
+            ProgressBar1.Visible = false;
+            ProgressLabel1.Visible = false;
             SettingLoad();
-            edinet = new Edinet(setting.Directory, TbVersion.Text);
-            if (edinet.Xbrl.Taxonomy.DicTaxonomy.Count == 0) {
-                SetTaxonomyDownloadEvent();
-            }
             StatusLabel1.Text = "";
-            if (browser.Url == null)
-                browser.Navigate(toppage);
             this.Text = Application.ProductName + " " + Application.ProductVersion;
             this.Refresh();
+            if (browser.Url == null)
+                browser.Navigate(toppage);
+            edinet = new Edinet(setting.Directory, TbVersion.Text);
+            if (edinet.Xbrl.Taxonomy.DicTaxonomy.Count == 0) {
+                await SetTaxonomyDownloadEvent();
+            }
             dgvList.DataSource = edinet.DvDocuments;
             dgvContents.DataSource = edinet.DvContents;
             dgvXbrl.DataSource = edinet.TableElements;
@@ -65,7 +68,7 @@ namespace EdinetViewer {
             //checkTimer.Checked = setting.Timer;
             TimerCheck();
             if (setting.VersionUp) {
-                await BackGroundStart(TaskType.VersionUp, Application.ProductVersion);
+                await BackGroundStart(TaskType.VersionUp, Application.ProductVersion + "\t" + setting.VersionPrev);
             }
         }
 
@@ -177,7 +180,7 @@ namespace EdinetViewer {
                         StatusLabel1.ForeColor = Color.Red;
                         StatusLabel1.Text = string.Format("{3:HH:mm:ss} 書類一覧APIエラー {0} {1} {2}", edinet.ListResult.Json.Root.metadata.title, edinet.ListResult.Json.Root.metadata.status, edinet.ListResult.Json.Root.metadata.message, DateTime.Now);
                     } else {
-                        string labeltext = string.Format("status:{0} {1} count:{2}(new:{3})",
+                        string labeltext = string.Format("status:{0} {1} 新規[{3}]/計[{2}]",
                             result.Json.Root.metadata.message, result.Json.Root.metadata.processDateTime,
                                 result.Json.Root.metadata.resultset.count, result.Json.Root.metadata.resultset.count - prevcount);
 
@@ -204,13 +207,15 @@ namespace EdinetViewer {
                 //timerの場合続いて書類のダウンロード
                 if (sender == null && setting.Download && (setting.Xbrl|setting.Pdf|setting.Attach|setting.English) & setting.DocumentTypes.Length>0) {
                     await BackGroundStart(TaskType.TodayArchive);
+                }else if(sender == null) {
+                    StatusLabel1.Text = "書類の自動ダウンロードはオフです";
                 }
             }
         }
 
         private int currentRow1;
         private async void DgvList_CurrentCellChanged(object sender, EventArgs e) {
-            if (IsReading)
+            if (IsReading | edinet.DvDocuments.Count == 0 || edinet.DvDocuments[dgvList.CurrentCell.RowIndex]["id"].ToString() == "")
                 return;
             StatusLabel1.Text = "";
             edinet.TableContents.Clear();
@@ -231,9 +236,7 @@ namespace EdinetViewer {
                     return;
                 int year = 20 * 100 + id / 100000000;
                 string filepath = null;
-                //string name = dgvList.Rows[dgvList.CurrentCell.RowIndex].Cells[type == 2 ? "pdf" : "xbrl"].Value.ToString().Trim();
                 bool isApi = await edinet.ChangeDocument(id, docid, type);
-                //bool isCache = dgvList.Rows[dgvList.CurrentCell.RowIndex].Cells[type == 2 ? "pdf" : "xbrl"].Value.ToString().Trim() != "";
                 if (isApi) {
                     StatusLabel1.Text = string.Format("{1:HH:mm:ss} 書類取得API status[{0}] {2}ダウンロード {3}", edinet.ArchiveResult.StatusCode, DateTime.Now, type == 2 ? "pdf" : "xbrl", edinet.ArchiveResult.Name);
                     filepath = string.Format(@"{0}\Documents\{1}\{2}", setting.Directory, year, edinet.ArchiveResult.Name);
@@ -288,8 +291,10 @@ namespace EdinetViewer {
             splitForm.SplitterDistance = 25;
             TbVersion.Left = panel1.Right - TbVersion.Width - offset;
             LabelVersion.Left = TbVersion.Left - LabelVersion.Width;
-            checkTimer.Left = LabelVersion.Left - checkTimer.Width - 30;
-            StatusLabel1.Width = this.Width - ProgressBar1.Width - ProgressLabel1.Width - 60;
+            checkTimer.Left = LabelVersion.Left - checkTimer.Width - 5;
+            ProgressLabel1.Width = 300;
+            //ProgressLabel1
+            StatusLabel1.Width = this.Width - ProgressBar1.Width - ProgressLabel1.Width - 36;
         }
 
         private enum Page { Default, First, Top, EdinetCode, FundCode, Taxonomy };
@@ -316,7 +321,7 @@ namespace EdinetViewer {
 
 
         //フォアグラウンドメニュー
-        private void Menu_Click(object sender, EventArgs e) {
+        private async void Menu_Click(object sender, EventArgs e) {
             switch ((sender as ToolStripMenuItem).Name) {
                 case "MenuEdinet":
                     if (MenuEdinet.Text == "Edinetトップページを表示") {
@@ -337,17 +342,47 @@ namespace EdinetViewer {
                     SettingDialog dialog = new SettingDialog(setting) {
                         Owner = this,
                     };
+                    string dir = setting.Directory;
                     DialogResult result = dialog.ShowDialog();
                     if (result == DialogResult.OK) {
-                        if(dialog.Setting.Directory != setting.Directory)
-                            edinet.ChangeCacheDirectory(dialog.Setting.Directory);
-                        if (dialog.Setting.Interval != setting.Interval)
-                            timer1.Interval = (int)(dialog.Setting.Interval * 60 * 1000);
-                        setting = dialog.Setting;
-                        setting.Save();
                         timer1.Enabled = setting.Timer;
                         timer1.Interval = (int)(setting.Interval * 1000 * 60);
+                        TimerCheck();
+                        if (dir != setting.Directory) {
+                            bool exists = edinet.ChangeCacheDirectory(dialog.Setting.Directory);
+                            //MenuBackground_Click(menu)
+                            if (!exists) {
+                                string[] files = Directory.GetFiles(dir, "ALL_*.zip");
+                                if (files.Length > 0) {
+                                    Array.Reverse(files);
+                                    File.Copy(files[0], Path.Combine(setting.Directory, Path.GetFileName(files[0])));
+                                }
+                                await SetTaxonomyDownloadEvent();
+                            }
+                        }
+                        setting = dialog.Setting;
+                        setting.Save();
                     }
+                    break;
+                case "MenuApiHistory":
+                    string logfile = Path.Combine(setting.Directory, "EdinetApi.log");
+                    if (!File.Exists(logfile)) {
+                        StatusLabel1.Text = "ログファイルがありません " + logfile;
+                        return;
+                    }
+                    string[] lines = File.ReadAllLines(logfile); 
+                    StringBuilder sb = new StringBuilder();
+                    sb.Append("<body><table>");
+                    for(int i=lines.Length - 1; i >= 0; i--) {
+                        string[] cols = lines[i].Replace("DocumentListAPI:", "DocumentListAPI status:").Split();
+                        sb.AppendFormat("<tr><td nowrap>{0} {1}</td>", cols[0], cols[1]);
+                        sb.AppendFormat("<td>{0}</td><td>{1}</td><td>{2}</td></tr>", cols[2].Replace("Document", ""), cols[3], string.Join(" ", cols, 4, cols.Length - 4));
+                    }
+                    sb.Append("</table></body>");
+                    splitMain.Panel1Collapsed = true;
+                    splitUpper.Panel2Collapsed = true;
+                    splitLower.Panel2Collapsed = true;
+                    browser.DocumentText = sb.ToString();
                     break;
             }
         }
@@ -401,6 +436,11 @@ namespace EdinetViewer {
 
             } else if (menu == MenuDownload) {
                 if ((sender as ToolStripMenuItem).Checked) {
+                    if (!(setting.Xbrl | setting.Pdf | setting.Attach | setting.English) | setting.DocumentTypes.Length == 0) {
+                        MessageBox.Show("設定ダイアログを表示して、「書類形式」と「自動でダウンロードする書類様式」を選択して再度メニューをチェックしてください");
+                        menu.Checked = false;
+                        return;
+                    }
                     if (backgroundTask == null || backgroundTask[1] == null) {
                         ProgressBar1.Visible = true;
                         ProgressLabel1.Visible = true;
@@ -447,15 +487,15 @@ namespace EdinetViewer {
         //refer to http://bbs.wankuma.com/index.cgi?mode=al2&namber=85389&KLOG=146
         private async void Form1_FormClosing(object sender, FormClosingEventArgs e) {
             if (backgroundTask != null) {
-                if (backgroundTask[1] != null)
-                    backgroundCancel[1].Cancel();
-                while (backgroundTask[0] != null| backgroundTask[1] != null| backgroundTask[2] != null) {
-                    StatusLabel1.Text = "バックグラウンドタスクが終了後にウィンドウが閉じます";
-                    statusStrip1.ForeColor = Color.Red;
-                    e.Cancel = true;
-                    for (int i = 0; i < 3; i++) {
-                        if (backgroundTask[i] != null)
+                bool[] flag = new bool[] { false, false, true };
+                for (int i = 0; i < flag.Length; i++) {
+                    if (flag[i]) {
+                        while (backgroundTask[i] != null) {
+                            StatusLabel1.Text = "バックグラウンドタスクが終了後にウィンドウが閉じます";
+                            statusStrip1.ForeColor = Color.Red;
+                            e.Cancel = true;
                             await backgroundTask[i];
+                        }
                     }
                 }
                 if (e.Cancel) Close();
@@ -560,11 +600,11 @@ namespace EdinetViewer {
             bool enable = setting.Timer;
             if (setting.Timer) {
                 checkTimer.BackColor = Color.Yellow;
-                checkTimer.Text = "Timer  On";
+                checkTimer.Text = string.Format("{0} min", setting.Interval);
                 enable = true;
             } else {
                 checkTimer.BackColor = Control.DefaultBackColor;
-                checkTimer.Text = "Timer Off";
+                checkTimer.Text = "Off";
                 enable = false;
             }
             if (DateTime.Now.AddMinutes(30).Hour < 9 | DateTime.Now.AddMinutes(-15).Hour > 17) {

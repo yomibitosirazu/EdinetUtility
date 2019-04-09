@@ -30,6 +30,17 @@ namespace EdinetViewer {
         private void Button_Click(object sender, EventArgs e) {
             switch ((sender as Button).Name) {
                 case "buttonOK":
+                    if (File.Exists(Path.Combine(Setting.Directory, "edinet.db")) & !Directory.Exists(tbDocumentDirectory.Text) || !File.Exists(Path.Combine(tbDocumentDirectory.Text, "edinet.db"))) {
+                        DialogResult result = MessageBox.Show("データーベースは引き継がれませんがいいですか?", "データベースが存在しないフォルダ", MessageBoxButtons.YesNo);
+                        if (result == DialogResult.Yes) {
+                            if (!Directory.Exists(tbDocumentDirectory.Text)) {
+                                Directory.CreateDirectory(tbDocumentDirectory.Text);
+                            }
+                        } else {
+                            tbDocumentDirectory.Text = Setting.Directory;
+                        }
+                    }
+
                     foreach (Control control in this.Controls) {
                         Type type = control.GetType();
                         if (control is TextBox ) {
@@ -174,6 +185,20 @@ namespace EdinetViewer {
             else
                 MenuTbHoliday.Enabled = false;
         }
+
+        private void MenuCheck_Click(object sender, EventArgs e) {
+            if((sender as ToolStripMenuItem).Name == "MenuCheckAll") {
+                for (int i=0;i<listDocType.Items.Count;i++)
+                    listDocType.SetItemChecked(i, true);
+            } else {
+                for (int i = 0; i < listDocType.Items.Count; i++)
+                    listDocType.SetItemChecked(i, false);
+            }
+        }
+
+        //private void TbDocumentDirectory_Leave(object sender, EventArgs e) {
+
+        //}
     }
 
 
@@ -232,6 +257,7 @@ namespace EdinetViewer {
             }
         }
         public string Version { get { return Values["Version"]; } }
+        public string VersionPrev { get; private set; }
         public bool VersionUp { get; private set; }
 
         public string ApiVersion { get { return Values["ApiVersion"]; } }
@@ -286,9 +312,9 @@ namespace EdinetViewer {
                     dir = dlg.SelectedPath;
                 Update(key, dir);
             }
-            if (!System.IO.Directory.Exists(Values["DocumentDirectory"])) {
-                System.IO.Directory.CreateDirectory(Values["DocumentDirectory"]);
-            }
+            //if (!System.IO.Directory.Exists(Values["DocumentDirectory"])) {
+            //    System.IO.Directory.CreateDirectory(Values["DocumentDirectory"]);
+            //}
 
             key = "ApiVersion";
             if (!Values.ContainsKey(key)) {
@@ -300,11 +326,11 @@ namespace EdinetViewer {
             }
             if (Values.ContainsKey("version")) 
                 Values.Remove("version");
-            string prevVersion = null;
+            //string prevVersion = null;
             if (Values.ContainsKey("Version")) {
-                prevVersion = Values["Version"];
+                VersionPrev = Values["Version"];
             }
-            if (Application.ProductVersion != prevVersion)
+            if (Application.ProductVersion != VersionPrev)
                 VersionUp = true;
 
             Values["Version"] = Application.ProductVersion;

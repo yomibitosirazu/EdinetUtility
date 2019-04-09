@@ -24,9 +24,12 @@
         /// </summary>
         private void InitializeComponent() {
             this.components = new System.ComponentModel.Container();
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Form1));
             this.dgvList = new System.Windows.Forms.DataGridView();
             this.dgvContents = new System.Windows.Forms.DataGridView();
             this.dgvXbrl = new System.Windows.Forms.DataGridView();
+            this.MenuXbrl = new System.Windows.Forms.ContextMenuStrip(this.components);
+            this.MenuShowBrowser = new System.Windows.Forms.ToolStripMenuItem();
             this.browser = new System.Windows.Forms.WebBrowser();
             this.MenuToolbar = new System.Windows.Forms.ContextMenuStrip(this.components);
             this.MenuSetting = new System.Windows.Forms.ToolStripMenuItem();
@@ -38,13 +41,14 @@
             this.MenuIEdinetCodeImport = new System.Windows.Forms.ToolStripMenuItem();
             this.statusStrip1 = new System.Windows.Forms.StatusStrip();
             this.ProgressBar1 = new System.Windows.Forms.ToolStripProgressBar();
-            this.ProgressLabel1 = new System.Windows.Forms.ToolStripStatusLabel();
             this.StatusLabel1 = new System.Windows.Forms.ToolStripStatusLabel();
+            this.ProgressLabel1 = new System.Windows.Forms.ToolStripStatusLabel();
             this.splitMain = new System.Windows.Forms.SplitContainer();
             this.splitUpper = new System.Windows.Forms.SplitContainer();
             this.splitLower = new System.Windows.Forms.SplitContainer();
             this.DatePicker = new System.Windows.Forms.DateTimePicker();
             this.panel1 = new System.Windows.Forms.Panel();
+            this.checkTimer = new System.Windows.Forms.CheckBox();
             this.comboFilter = new System.Windows.Forms.ComboBox();
             this.TbCode = new System.Windows.Forms.TextBox();
             this.LabelVersion = new System.Windows.Forms.Label();
@@ -53,12 +57,11 @@
             this.splitForm = new System.Windows.Forms.SplitContainer();
             this.toolTip1 = new System.Windows.Forms.ToolTip(this.components);
             this.timer1 = new System.Windows.Forms.Timer(this.components);
-            this.checkTimer = new System.Windows.Forms.CheckBox();
-            this.MenuXbrl = new System.Windows.Forms.ContextMenuStrip(this.components);
-            this.MenuShowBrowser = new System.Windows.Forms.ToolStripMenuItem();
+            this.MenuApiHistory = new System.Windows.Forms.ToolStripMenuItem();
             ((System.ComponentModel.ISupportInitialize)(this.dgvList)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.dgvContents)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.dgvXbrl)).BeginInit();
+            this.MenuXbrl.SuspendLayout();
             this.MenuToolbar.SuspendLayout();
             this.statusStrip1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.splitMain)).BeginInit();
@@ -78,7 +81,6 @@
             this.splitForm.Panel1.SuspendLayout();
             this.splitForm.Panel2.SuspendLayout();
             this.splitForm.SuspendLayout();
-            this.MenuXbrl.SuspendLayout();
             this.SuspendLayout();
             // 
             // dgvList
@@ -138,6 +140,20 @@
             this.dgvXbrl.CurrentCellChanged += new System.EventHandler(this.DgvXbrl_CurrentCellChanged);
             this.dgvXbrl.DataError += new System.Windows.Forms.DataGridViewDataErrorEventHandler(this.DataGridView_DataError);
             // 
+            // MenuXbrl
+            // 
+            this.MenuXbrl.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.MenuShowBrowser});
+            this.MenuXbrl.Name = "MenuXbrl";
+            this.MenuXbrl.Size = new System.Drawing.Size(169, 26);
+            // 
+            // MenuShowBrowser
+            // 
+            this.MenuShowBrowser.Name = "MenuShowBrowser";
+            this.MenuShowBrowser.Size = new System.Drawing.Size(168, 22);
+            this.MenuShowBrowser.Text = "ブラウザで内容表示";
+            this.MenuShowBrowser.Click += new System.EventHandler(this.MenuShowBrowser_Click);
+            // 
             // browser
             // 
             this.browser.ContextMenuStrip = this.MenuToolbar;
@@ -155,9 +171,10 @@
             this.MenuToolbar.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.MenuSetting,
             this.MenuEdinet,
-            this.MenuBackground});
+            this.MenuBackground,
+            this.MenuApiHistory});
             this.MenuToolbar.Name = "contextMenuStrip1";
-            this.MenuToolbar.Size = new System.Drawing.Size(194, 70);
+            this.MenuToolbar.Size = new System.Drawing.Size(194, 114);
             // 
             // MenuSetting
             // 
@@ -239,15 +256,6 @@
             this.ProgressBar1.Name = "ProgressBar1";
             this.ProgressBar1.Size = new System.Drawing.Size(100, 16);
             // 
-            // ProgressLabel1
-            // 
-            this.ProgressLabel1.AutoSize = false;
-            this.ProgressLabel1.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
-            this.ProgressLabel1.Name = "ProgressLabel1";
-            this.ProgressLabel1.Size = new System.Drawing.Size(150, 17);
-            this.ProgressLabel1.Spring = true;
-            this.ProgressLabel1.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
-            // 
             // StatusLabel1
             // 
             this.StatusLabel1.AutoSize = false;
@@ -256,6 +264,15 @@
             this.StatusLabel1.Spring = true;
             this.StatusLabel1.Text = "    ";
             this.StatusLabel1.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            // 
+            // ProgressLabel1
+            // 
+            this.ProgressLabel1.AutoSize = false;
+            this.ProgressLabel1.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
+            this.ProgressLabel1.Name = "ProgressLabel1";
+            this.ProgressLabel1.Size = new System.Drawing.Size(150, 17);
+            this.ProgressLabel1.Spring = true;
+            this.ProgressLabel1.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
             // splitMain
             // 
@@ -312,7 +329,7 @@
             // DatePicker
             // 
             this.DatePicker.Format = System.Windows.Forms.DateTimePickerFormat.Short;
-            this.DatePicker.Location = new System.Drawing.Point(3, 3);
+            this.DatePicker.Location = new System.Drawing.Point(3, 2);
             this.DatePicker.Name = "DatePicker";
             this.DatePicker.Size = new System.Drawing.Size(154, 19);
             this.DatePicker.TabIndex = 4;
@@ -333,10 +350,26 @@
             this.panel1.Size = new System.Drawing.Size(784, 25);
             this.panel1.TabIndex = 5;
             // 
+            // checkTimer
+            // 
+            this.checkTimer.Appearance = System.Windows.Forms.Appearance.Button;
+            this.checkTimer.AutoSize = true;
+            this.checkTimer.Image = ((System.Drawing.Image)(resources.GetObject("checkTimer.Image")));
+            this.checkTimer.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            this.checkTimer.Location = new System.Drawing.Point(605, 2);
+            this.checkTimer.Name = "checkTimer";
+            this.checkTimer.Size = new System.Drawing.Size(60, 22);
+            this.checkTimer.TabIndex = 10;
+            this.checkTimer.Text = "Timer";
+            this.checkTimer.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            this.checkTimer.TextImageRelation = System.Windows.Forms.TextImageRelation.ImageBeforeText;
+            this.checkTimer.UseVisualStyleBackColor = true;
+            this.checkTimer.Click += new System.EventHandler(this.CheckTimer_Click);
+            // 
             // comboFilter
             // 
             this.comboFilter.FormattingEnabled = true;
-            this.comboFilter.Location = new System.Drawing.Point(162, 3);
+            this.comboFilter.Location = new System.Drawing.Point(162, 2);
             this.comboFilter.Name = "comboFilter";
             this.comboFilter.Size = new System.Drawing.Size(121, 20);
             this.comboFilter.TabIndex = 1;
@@ -344,7 +377,7 @@
             // 
             // TbCode
             // 
-            this.TbCode.Location = new System.Drawing.Point(292, 4);
+            this.TbCode.Location = new System.Drawing.Point(292, 3);
             this.TbCode.Name = "TbCode";
             this.TbCode.Size = new System.Drawing.Size(34, 19);
             this.TbCode.TabIndex = 8;
@@ -366,7 +399,7 @@
             // TbVersion
             // 
             this.TbVersion.Enabled = false;
-            this.TbVersion.Location = new System.Drawing.Point(760, 4);
+            this.TbVersion.Location = new System.Drawing.Point(760, 3);
             this.TbVersion.Name = "TbVersion";
             this.TbVersion.Size = new System.Drawing.Size(25, 19);
             this.TbVersion.TabIndex = 2;
@@ -410,31 +443,12 @@
             // 
             this.timer1.Tick += new System.EventHandler(this.Timer_Tick);
             // 
-            // checkTimer
+            // MenuApiHistory
             // 
-            this.checkTimer.Appearance = System.Windows.Forms.Appearance.Button;
-            this.checkTimer.AutoSize = true;
-            this.checkTimer.Location = new System.Drawing.Point(605, 2);
-            this.checkTimer.Name = "checkTimer";
-            this.checkTimer.Size = new System.Drawing.Size(44, 22);
-            this.checkTimer.TabIndex = 10;
-            this.checkTimer.Text = "Timer";
-            this.checkTimer.UseVisualStyleBackColor = true;
-            this.checkTimer.Click += new System.EventHandler(this.CheckTimer_Click);
-            // 
-            // MenuXbrl
-            // 
-            this.MenuXbrl.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.MenuShowBrowser});
-            this.MenuXbrl.Name = "MenuXbrl";
-            this.MenuXbrl.Size = new System.Drawing.Size(169, 26);
-            // 
-            // MenuShowBrowser
-            // 
-            this.MenuShowBrowser.Name = "MenuShowBrowser";
-            this.MenuShowBrowser.Size = new System.Drawing.Size(180, 22);
-            this.MenuShowBrowser.Text = "ブラウザで内容表示";
-            this.MenuShowBrowser.Click += new System.EventHandler(this.MenuShowBrowser_Click);
+            this.MenuApiHistory.Name = "MenuApiHistory";
+            this.MenuApiHistory.Size = new System.Drawing.Size(193, 22);
+            this.MenuApiHistory.Text = "APIリクエスト履歴を確認";
+            this.MenuApiHistory.Click += new System.EventHandler(this.Menu_Click);
             // 
             // Form1
             // 
@@ -452,6 +466,7 @@
             ((System.ComponentModel.ISupportInitialize)(this.dgvList)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.dgvContents)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.dgvXbrl)).EndInit();
+            this.MenuXbrl.ResumeLayout(false);
             this.MenuToolbar.ResumeLayout(false);
             this.statusStrip1.ResumeLayout(false);
             this.statusStrip1.PerformLayout();
@@ -473,7 +488,6 @@
             this.splitForm.Panel2.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.splitForm)).EndInit();
             this.splitForm.ResumeLayout(false);
-            this.MenuXbrl.ResumeLayout(false);
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -512,6 +526,7 @@
         private System.Windows.Forms.CheckBox checkTimer;
         private System.Windows.Forms.ContextMenuStrip MenuXbrl;
         private System.Windows.Forms.ToolStripMenuItem MenuShowBrowser;
+        private System.Windows.Forms.ToolStripMenuItem MenuApiHistory;
     }
 }
 

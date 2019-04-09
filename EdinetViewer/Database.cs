@@ -24,11 +24,13 @@ namespace Disclosures.Database {
 
         public Sqlite(string dbpath) {
             DbPath = dbpath;
-            bool exist = Initialize();
+            Initialize();
             //bool change = ChangeTable();
         }
-        public void ChangeDirectory(string dir) {
-            DbPath = dir;
+        public void ChangeDirectory(string dbpath) {
+            DbPath = dbpath;
+            if(!File.Exists(dbpath))
+                Initialize();
         }
         private bool Initialize() {
             bool exist = File.Exists(DbPath);
@@ -58,7 +60,7 @@ namespace Disclosures.Database {
                             command.ExecuteNonQuery();
 
                         } catch (Exception ex) {
-                            Console.WriteLine(ex.InnerException.Message);
+                            Console.WriteLine(ex.Message);
                         } finally {
                             command.Connection.Close();
                         }
@@ -695,7 +697,7 @@ namespace Disclosures.Database {
         public void UpdateAPIresult(Disclosures.Edinet apiresult) {
 
             string[] fields = "title,date,type,count,processDateTime,status,message,access".Split(',');
-            StringBuilder sb = new StringBuilder();
+            //StringBuilder sb = new StringBuilder();
             List<string[]> list = new List<string[]>() {
                 new string[]{
                     apiresult.ListResult.Json.Root.metadata.title,
@@ -708,9 +710,9 @@ namespace Disclosures.Database {
                     DateTime.Now.ToString()} };
             InsertToTable("Metadata", fields, list);
 
-            Dictionary<string, string[]> dic = new Dictionary<string, string[]>();
+            //Dictionary<string, string[]> dic = new Dictionary<string, string[]>();
             for (int i = 0; i < Disclosures.Const.FieldName.Keys.Count; i++) {
-                string key = Disclosures.Const.FieldName.Keys.ElementAt(i);
+                //string key = Disclosures.Const.FieldName.Keys.ElementAt(i);
                 List<string> values = new List<string>();
                 for (int j = 0; j < apiresult.ListResult.Json.Root.results.Length; j++) {
                     values.Add(apiresult.ListResult.Json.Root.results[j].seqNumber.ToString());
@@ -1063,7 +1065,7 @@ namespace Disclosures.Database {
         EDINETコードとファンドコードをデータベースにインポートする場合
         Microsoft.VisualBasic参照追加が必要（文字列をダブルクォーテーションで包むCSVを読み込むため）
         */
-        public delegate void Delegate(int value, int max = 0);
+        public delegate void Delegate(int value);
         public bool UpdateEdinetCodelist(string zip, Delegate delegateMethod, out Dictionary<string, int> dic) {
             dic = null;
             using (SQLiteConnection conn = new SQLiteConnection(string.Format("Data Source={0}", DbPath))) {
@@ -1142,7 +1144,7 @@ namespace Disclosures.Database {
                                 command.Connection.Open();
                                 ts = command.Connection.BeginTransaction();
 
-                                delegateMethod(0, list.Count);
+                                delegateMethod(0);
                                 i = 0;
                                 foreach (string[] cols in list) {
                                     string edinet = null;
@@ -1158,7 +1160,7 @@ namespace Disclosures.Database {
                                     }
                                     command.ExecuteNonQuery();
                                     i++;
-                                    delegateMethod(i);
+                                    delegateMethod((int)(i / list.Count * 100));
                                 }
                                 ts.Commit();
                                 ts.Dispose();

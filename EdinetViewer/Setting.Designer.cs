@@ -55,11 +55,15 @@
             this.date = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.name = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.label7 = new System.Windows.Forms.Label();
+            this.MenuDocType = new System.Windows.Forms.ContextMenuStrip(this.components);
+            this.MenuCheckAll = new System.Windows.Forms.ToolStripMenuItem();
+            this.MenuCheckOffAll = new System.Windows.Forms.ToolStripMenuItem();
             this.groupBox1.SuspendLayout();
             this.MenuTbHoliday.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.numericInterval)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.numericWait1)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.numericWait2)).BeginInit();
+            this.MenuDocType.SuspendLayout();
             this.SuspendLayout();
             // 
             // tbDocumentDirectory
@@ -132,6 +136,7 @@
             // 
             // listDocType
             // 
+            this.listDocType.ContextMenuStrip = this.MenuDocType;
             this.listDocType.FormattingEnabled = true;
             this.listDocType.Location = new System.Drawing.Point(135, 112);
             this.listDocType.Name = "listDocType";
@@ -395,6 +400,28 @@
             this.label7.TabIndex = 29;
             this.label7.Text = "監視銘柄";
             // 
+            // MenuDocType
+            // 
+            this.MenuDocType.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.MenuCheckAll,
+            this.MenuCheckOffAll});
+            this.MenuDocType.Name = "MenuDocType";
+            this.MenuDocType.Size = new System.Drawing.Size(181, 70);
+            // 
+            // MenuCheckAll
+            // 
+            this.MenuCheckAll.Name = "MenuCheckAll";
+            this.MenuCheckAll.Size = new System.Drawing.Size(180, 22);
+            this.MenuCheckAll.Text = "すべてチェック";
+            this.MenuCheckAll.Click += new System.EventHandler(this.MenuCheck_Click);
+            // 
+            // MenuCheckOffAll
+            // 
+            this.MenuCheckOffAll.Name = "MenuCheckOffAll";
+            this.MenuCheckOffAll.Size = new System.Drawing.Size(180, 22);
+            this.MenuCheckOffAll.Text = "すべてオフ";
+            this.MenuCheckOffAll.Click += new System.EventHandler(this.MenuCheck_Click);
+            // 
             // SettingDialog
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
@@ -431,6 +458,7 @@
             ((System.ComponentModel.ISupportInitialize)(this.numericInterval)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.numericWait1)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.numericWait2)).EndInit();
+            this.MenuDocType.ResumeLayout(false);
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -468,5 +496,8 @@
         private System.Windows.Forms.ColumnHeader date;
         private System.Windows.Forms.ColumnHeader name;
         private System.Windows.Forms.Label label7;
+        private System.Windows.Forms.ContextMenuStrip MenuDocType;
+        private System.Windows.Forms.ToolStripMenuItem MenuCheckAll;
+        private System.Windows.Forms.ToolStripMenuItem MenuCheckOffAll;
     }
 }
