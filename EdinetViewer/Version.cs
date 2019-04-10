@@ -20,22 +20,62 @@ namespace EdinetViewer {
         private async Task VersionUp(string version) {
             InvokeVisible(true);
             string[] versions = version.Split('\t');
-            if (versions[0].Substring(0, 4) == "0.2.") {
-                if (versions.Length == 1 || versions[1] == "" | versions[1].Length<4 || versions[1].Substring(0, 4) == versions[0].Substring(0, 4))
+            string[] v0 = versions[0].Split('.');
+            int current = 0;
+            if (v0.Length >= 1 && int.TryParse(v0[0], out int val0))
+                current = val0 * 10 * 1000 * 100;
+            if (v0.Length >= 2 && int.TryParse(v0[1], out int val1))
+                current += (val1 * 1000 * 100);
+            if (v0.Length >= 3 && int.TryParse(v0[2], out int val2))
+                current += (val2 * 100);
+            if (v0.Length == 4 && int.TryParse(v0[3], out int val3))
+                current += val3;
+            int prev = 0;
+            if (versions.Length > 1) {
+                string[] v1 = versions[1].Split('.');
+                if (v1.Length >= 1 && int.TryParse(v1[0], out int val10))
+                    prev = val10 * 10 * 1000 * 100;
+                if (v1.Length >= 2 && int.TryParse(v1[1], out int val11))
+                    prev += (val11 * 1000 * 100);
+                if (v1.Length >= 3 && int.TryParse(v1[2], out int val12))
+                    prev += (val12 * 100);
+                if (v1.Length == 4 && int.TryParse(v1[3], out int val13))
+                    prev += val13;
+            }
+            if (current > prev) {
+                if(current > 210100 & prev < 210100)
                     await Task.Run(() => Update02101());
             }
-            else
-            {
-                await Task.Run(() => test());
-            }
-            //switch (version) {
-            //    case "0.2.101.0":
-            //    case "0.2.101.1":
-            //    case "0.2.101.2":
-            //        break;
-            //    default:
-            //        break;
+            if (current < 210108)
+                await Task.Run(() => DisclosureColumnDateCheck());
+            //if (versions[0].Substring(0, 4) == "0.2.") {
+            //    if (versions.Length == 1 || versions[1] == "" | versions[1].Length < 4 || versions[1].Substring(0, 4) != versions[0].Substring(0, 4))
+            //        await Task.Run(() => Update02101());
+            //} else {
+            //    await Task.Run(() => test());
             //}
+            //if (versions.Length > 1) {
+            //    //string[] prev = versions[1].Split('.');
+
+            //}
+        }
+
+        private void DisclosureColumnDateCheck() {
+            InvokeVisible(true);
+            InvokeLabel("データベース更新中");
+            string query = "update `Disclosures` set `date` = '20'||substr(id,1,2)||'-'||substr(id,3,2)||'-'||substr(id,5,2) where length(date) != 10;";
+            //string dbpath = Path.Combine(setting.Values["DocumentDirectory"], "edinet.db");
+            string dbpath = Path.Combine(setting.Directory, "edinet.db");
+            using (SQLiteConnection conn = new SQLiteConnection(string.Format("Data Source={0}", dbpath))) {
+                using (SQLiteCommand command = new SQLiteCommand(conn)) {
+                    command.CommandText = query;
+                    command.Connection.Open();
+                    command.ExecuteNonQuery();
+                    command.Connection.Close();
+                }
+            }
+            InvokeProgress(100);
+            InvokeVisible(false);
 
         }
 

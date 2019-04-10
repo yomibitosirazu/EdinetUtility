@@ -326,8 +326,9 @@ namespace EdinetViewer {
                 sb.Append(")");
             }
             DateTime start = today ? DateTime.Now.Date : DateTime.Now.AddYears(-5).Date;
-            string query = string.Format("select id, secCode, filerName, docDescription, docid, docTypeCode, edinetCode, withdrawalStatus, xbrlFlag, pdfFlag, attachDocFlag, englishDocFlag, xbrl, pdf, attach, english from disclosures where date(`date`) >= '{0:yyyy-MM-dd}' {2} order by id{1};", start, today ? " desc" : "", sb.ToString());
-            edinet.Database.ReadQuery(query, out DataTable table);
+            //string query = string.Format("select id, `date`, secCode, filerName, docDescription, docid, docTypeCode, edinetCode, withdrawalStatus, xbrlFlag, pdfFlag, attachDocFlag, englishDocFlag, xbrl, pdf, attach, english from disclosures where date(`date`) >= '{0:yyyy-MM-dd}' {2} order by id{1};", start, today ? " desc" : "", sb.ToString());
+            string query = string.Format("select id, `date`, secCode, docid, docTypeCode, withdrawalStatus, edinetCode, xbrlFlag, pdfFlag, attachDocFlag, englishDocFlag from disclosures where date(`date`) >= '{0:yyyy-MM-dd}' {2} order by id{1};", start, today ? " desc" : "", sb.ToString());
+            DataTable table = edinet.Database.ReadQuery(query);
             int i = 0;
             InvokeVisible(true);
             if (table.Rows.Count == 0) {
@@ -338,86 +339,163 @@ namespace EdinetViewer {
                 Console.WriteLine("canceled background download archive");
                 return;
             }
-            List<object[]> list = new List<object[]>();
+            //List<object[]> list = new List<object[]>();
             string[] fields = new string[] { "xbrl", "pdf", "attach", "english" };
             bool[] auto = new bool[] { setting.Xbrl, setting.Pdf, setting.Attach, setting.English };
 
-            foreach (DataRow r in table.Rows) {
+            DataTable table2 = new DataTable();
+            table2.Columns.Add("id", typeof(int));
+            table2.Columns.Add("date", typeof(string));
+            table2.Columns.Add("docID", typeof(string));
+            table2.Columns.Add("type", typeof(int));
+            table2.Columns.Add("no", typeof(int));
+            //table.Columns.Add("dt", typeof(DateTime));
+            List<DateTime> list = new List<DateTime>();
+            int no = 0;
 
-                int id = int.Parse(r["id"].ToString());//dbはlong
-                string docid = r["docID"].ToString();
-                string withdrawalStatus = r["withdrawalStatus"].ToString();
-                bool isnullEdinetCode = r.IsNull("edinetCode");
-                if (isnullEdinetCode && withdrawalStatus == "0") {
-                    //縦覧終了
-                    Console.WriteLine("{0} {1} 縦覧終了", id, docid);
-                    continue;
-                }
+            await Task.Run(() => {
 
-                DateTime date = DateTime.ParseExact(id.ToString().Substring(0, 6), "yyMMdd", null);
-                string docTypeCode = r["docTypeCode"].ToString();
-                string secCode = r["secCode"] == DBNull.Value ? "0" : r["secCode"].ToString();
-                int code = secCode.Length > 3 ? int.Parse(secCode.Substring(0, 4)) : 0;
-                //監視銘柄はすべてダウンロード
-                bool all = code > 1300 && setting.Watching != null && setting.Watching.Length > 0 && Array.IndexOf(setting.Watching, code) > -1;
-                if (!all & Array.IndexOf(setting.DocumentTypes, docTypeCode) < 0) {
-                    //Console.WriteLine(" skip type[{0}]", docTypeCode);
-                    continue;
-                }
 
-                string xbrl = r["xbrl"] == DBNull.Value ? null : r["xbrl"].ToString();
-                string pdf = r["pdf"] == DBNull.Value ? null : r["pdf"].ToString();
-                string attach = r["attach"] == DBNull.Value ? null : r["attach"].ToString();
-                string english = r["english"] == DBNull.Value ? null : r["english"].ToString();
-                bool[] flag = new bool[] { r["xbrlFlag"].ToString() == "1", r["pdfFlag"].ToString() == "1",
+
+                foreach (DataRow r in table.Rows) {
+                    if (token.IsCancellationRequested) {
+                        InvokeProgressLabel(0, "Canceled");
+                        InvokeVisible(false);
+                        return;
+                    }
+
+                    int id = int.Parse(r["id"].ToString());//dbはlong
+                    string docid = r["docID"].ToString();
+                    string withdrawalStatus = r["withdrawalStatus"].ToString();
+                    bool isnullEdinetCode = r.IsNull("edinetCode");
+                    if (isnullEdinetCode && withdrawalStatus == "0") {
+                        //縦覧終了
+                        Console.WriteLine("{0} {1} 縦覧終了", id, docid);
+                        continue;
+                    }
+
+                    DateTime date = DateTime.ParseExact(id.ToString().Substring(0, 6), "yyMMdd", null);
+                    string docTypeCode = r["docTypeCode"].ToString();
+                    string secCode = r["secCode"] == DBNull.Value ? "0" : r["secCode"].ToString();
+                    int code = secCode.Length > 3 ? int.Parse(secCode.Substring(0, 4)) : 0;
+                    //監視銘柄はすべてダウンロード
+                    bool all = code > 1300 && setting.Watching != null && setting.Watching.Length > 0 && Array.IndexOf(setting.Watching, code) > -1;
+                    if (!all & Array.IndexOf(setting.DocumentTypes, docTypeCode) < 0) {
+                        //Console.WriteLine(" skip type[{0}]", docTypeCode);
+                        continue;
+                    }
+
+                    //string xbrl = r["xbrl"] == DBNull.Value ? null : r["xbrl"].ToString();
+                    //string pdf = r["pdf"] == DBNull.Value ? null : r["pdf"].ToString();
+                    //string attach = r["attach"] == DBNull.Value ? null : r["attach"].ToString();
+                    //string english = r["english"] == DBNull.Value ? null : r["english"].ToString();
+                    bool[] flag = new bool[] { r["xbrlFlag"].ToString() == "1", r["pdfFlag"].ToString() == "1",
                         r["attachDocFlag"].ToString() == "1", r["englishDocFlag"].ToString() == "1" };
-                bool[] check = new bool[] { setting.Xbrl, setting.Pdf, setting.Attach, setting.English };
-                for (int j = 0; j < fields.Length; j++) {
-                    if (flag[j]) {
-                        if (all | check[j]) {
-                            int year = 20 * 100 + id / 100000000;
-                            string filepath = string.Format(@"{0}\Documents\{1}\{2}_{3}.{4}", setting.Directory, year, docid, j + 1, j == 1 ? "pdf" : "zip");
-                            bool exists = File.Exists(filepath);
-                            if (!exists) {
-                                list.Add(new object[] { id, docid, j + 1 });
-                            } 
+                    bool[] check = new bool[] { setting.Xbrl, setting.Pdf, setting.Attach, setting.English };
+                    for (int j = 0; j < fields.Length; j++) {
+                        if (flag[j]) {
+                            if (all | check[j]) {
+                                int year = 20 * 100 + id / 100000000;
+                                string filepath = string.Format(@"{0}\Documents\{1}\{2}_{3}.{4}", setting.Directory, year, docid, j + 1, j == 1 ? "pdf" : "zip");
+                                bool exists = File.Exists(filepath);
+                                if (!exists) {
+                                    //list.Add(new object[] { id, docid, j + 1 });
+                                    DataRow r2 = table2.NewRow();
+                                    r2.BeginEdit();
+                                    r2["id"] = id;
+                                    r2["date"] = date.ToString("yyyy-MM-dd");
+                                    r2["docID"] = docid;
+                                    r2["type"] = j + 1;
+                                    r2["no"] = no;
+                                    r2.EndEdit();
+                                    table2.Rows.Add(r2);
+                                    no++;
+                                    //Console.WriteLine(r["flag"].ToString());
+                                    if (!list.Contains(date))
+                                        list.Add(date);
+                                }
+                            }
                         }
                     }
+                    i++;
+                    if (!today) {
+                        //InvokeProgress(i * 100 / table.Rows.Count);
+                        //InvokeLabel(date.ToString("yyyy-MM-dd"));
+                        InvokeProgressLabel(i * 100 / table.Rows.Count, string.Format("\t\tダウンロード済みファイルをチェックしています  {0:yyyy-MM-dd}", date));
+                        //Console.WriteLine("\tダウンロード済みファイルをチェックしています  {0:yyyy-MM-dd}", date.ToString("yyyy-MM-dd"));
+                    }
                 }
-                i++;
             }
-            i = 0;
-            int previd = 0;
-            foreach (object[] item in list) {
-                if (token.IsCancellationRequested) {
-                    InvokeProgressLabel(0, "Canceled");
-                    await Task.Delay(1000);
-                    InvokeVisible(false);
-                    return;
-                }
-                int type = (int)item[2];
-                int id = (int)item[0];
-                int no = int.Parse(item[0].ToString().Substring(6, 4));
-                string docid = item[1].ToString();
-                string date = item[0].ToString().Substring(0, 6).Insert(4, "-").Insert(2, "-").Insert(0, "20");
-                if (id != previd) {
-                    Console.WriteLine();
-                    Console.Write("{0} {1}", id, docid);
-                }
-                Disclosures.ApiArchiveResult result = await edinet.DownloadArchive(id, docid, type);
-                i++;
-                string output = string.Format("ダウンロード {0:#,##0}/{1:#,##0} no:{2}{3}[{4}] status[{5}] ", i, list.Count, no, today?"":string.Format("({0})",date), fields[type - 1], result.StatusText);
-                if (!today)
-                    output += string.Format("{0:m':'ss}経過", sw.Elapsed);
+                        );
 
-                InvokeProgressLabel((int)(i * 100 / list.Count), output);
-                Console.Write(" {0:m':'ss'.'f} {1}[{2}]", sw.Elapsed, fields[type - 1], result.Name);
 
-                int wait = random.Next((int)(setting.Wait[0] * 1000), (int)(setting.Wait[1] * 1000));
-                await Task.Delay(wait);
-                Console.Write(" wait[{0}]", wait);
-                previd = id;
+            DataView dv = new DataView(table2, "", "id", DataViewRowState.CurrentRows);
+            list.Sort();
+            foreach (DateTime target in list) {
+                dv.RowFilter = string.Format("date = '{0:yyyy-MM-dd}'", target);
+                i = 0;
+                int previd = 0;
+                for (int j = 0; j < dv.Count; j++) {
+                    if (token.IsCancellationRequested) {
+                        InvokeProgressLabel(0, "Canceled");
+                        await Task.Delay(1000);
+                        InvokeVisible(false);
+                        return;
+                    }
+                    int id = int.Parse(dv[j]["id"].ToString());//dbはlong
+                    string docid = dv[j]["docID"].ToString();
+                    int type = (int)dv[j]["type"];
+                    int no2 = int.Parse(id.ToString().Substring(6, 4));
+                    if (id != previd) {
+                        Console.WriteLine();
+                        Console.Write("{0} {1}", id, docid);
+                    }
+                    Disclosures.ApiArchiveResult result = await edinet.DownloadArchive(id, docid, type);
+                    i++;
+                    string output = string.Format("ダウンロード {0:#,##0}/{1:#,##0} no:{2}{3}[{4}] status[{5}] ", i, dv.Count, no2, today ? "" : string.Format("({0:yyyy-MM-dd})", target), fields[type - 1], result.StatusText);
+                    if (!today)
+                        output += string.Format("{0:m':'ss}経過", sw.Elapsed);
+
+                    InvokeProgressLabel((int)(i * 100 / dv.Count), output);
+                    Console.Write(" {0:m':'ss'.'f} {1}[{2}]", sw.Elapsed, fields[type - 1], result.Name);
+
+                    int wait = random.Next((int)(setting.Wait[0] * 1000), (int)(setting.Wait[1] * 1000));
+                    await Task.Delay(wait);
+                    Console.Write(" wait[{0}]", wait);
+                    previd = id;
+                }
             }
+
+            //foreach (object[] item in list) {
+            //    if (token.IsCancellationRequested) {
+            //        InvokeProgressLabel(0, "Canceled");
+            //        await Task.Delay(1000);
+            //        InvokeVisible(false);
+            //        return;
+            //    }
+            //    int type = (int)item[2];
+            //    int id = (int)item[0];
+            //    int no = int.Parse(item[0].ToString().Substring(6, 4));
+            //    string docid = item[1].ToString();
+            //    string date = item[0].ToString().Substring(0, 6).Insert(4, "-").Insert(2, "-").Insert(0, "20");
+            //    if (id != previd) {
+            //        Console.WriteLine();
+            //        Console.Write("{0} {1}", id, docid);
+            //    }
+            //    Disclosures.ApiArchiveResult result = await edinet.DownloadArchive(id, docid, type);
+            //    i++;
+            //    string output = string.Format("ダウンロード {0:#,##0}/{1:#,##0} no:{2}{3}[{4}] status[{5}] ", i, list.Count, no, today?"":string.Format("({0})",date), fields[type - 1], result.StatusText);
+            //    if (!today)
+            //        output += string.Format("{0:m':'ss}経過", sw.Elapsed);
+
+            //    InvokeProgressLabel((int)(i * 100 / list.Count), output);
+            //    Console.Write(" {0:m':'ss'.'f} {1}[{2}]", sw.Elapsed, fields[type - 1], result.Name);
+
+            //    int wait = random.Next((int)(setting.Wait[0] * 1000), (int)(setting.Wait[1] * 1000));
+            //    await Task.Delay(wait);
+            //    Console.Write(" wait[{0}]", wait);
+            //    previd = id;
+            //}
             sw.Stop();
             Console.WriteLine("finish background download archive");
             await Task.Delay(1000);
@@ -425,6 +503,142 @@ namespace EdinetViewer {
             InvokeMenuCheck("MenuDownload");
 
         }
+
+
+        //private async Task DownloadArchives(CancellationToken token, DateTime target) {
+        //    token.ThrowIfCancellationRequested();
+        //    if (token.IsCancellationRequested) {
+        //        InvokeProgressLabel(0, "Canceled");
+        //        await Task.Delay(1000);
+        //        InvokeVisible(false);
+        //        return;
+        //    }
+        //    InvokeMenuCheck("MenuDownload", true);
+        //    System.Diagnostics.Stopwatch sw = new System.Diagnostics.Stopwatch();
+        //    sw.Start();
+        //    Random random = new Random();
+        //    StringBuilder sb = new StringBuilder();
+        //    if (setting.Xbrl)
+        //        sb.Append("xbrlFlag = '1'");
+        //    if (setting.Pdf)
+        //        sb.Append((sb.Length > 0 ? " or  " : "") + "pdfFlag = '1'");
+        //    if (setting.Attach)
+        //        sb.Append((sb.Length > 0 ? " or  " : "") + "attachDocFlag = '1'");
+        //    if (setting.English)
+        //        sb.Append((sb.Length > 0 ? " or  " : "") + "englishDocFlag = '1'");
+        //    if (sb.Length > 0) {
+        //        sb.Insert(0, "and (");
+        //        sb.Append(")");
+        //    }
+        //    if (setting.DocumentTypes.Length > 0) {
+        //        sb.Append(" and docTypeCode in (");
+        //        for (int j = 0; j < setting.DocumentTypes.Length; j++) {
+        //            if (j > 0)
+        //                sb.Append(",");
+        //            sb.AppendFormat(" '{0}'", setting.DocumentTypes[j]);
+        //        }
+        //        sb.Append(")");
+        //    }
+        //    string query = string.Format("select id, secCode, filerName, docDescription, docid, docTypeCode, edinetCode, withdrawalStatus, xbrlFlag, pdfFlag, attachDocFlag, englishDocFlag, xbrl, pdf, attach, english from disclosures where date(`date`) = '{0:yyyy-MM-dd}' {2} order by id{1};", target, target == DateTime.Now.Date ? " desc" : "", sb.ToString());
+        //    DataTable table = edinet.Database.ReadQuery(query);
+        //    int i = 0;
+        //    InvokeVisible(true);
+        //    if (table.Rows.Count == 0) {
+        //        InvokeProgressLabel(0, "ダウンロードする書類はありません");
+        //        await Task.Delay(1000);
+        //        InvokeMenuCheck("MenuDownload");
+        //        InvokeVisible(false);
+        //        Console.WriteLine("canceled background download archive");
+        //        return;
+        //    }
+        //    List<object[]> list = new List<object[]>();
+        //    string[] fields = new string[] { "xbrl", "pdf", "attach", "english" };
+        //    bool[] auto = new bool[] { setting.Xbrl, setting.Pdf, setting.Attach, setting.English };
+
+        //    foreach (DataRow r in table.Rows) {
+
+        //        int id = int.Parse(r["id"].ToString());//dbはlong
+        //        string docid = r["docID"].ToString();
+        //        string withdrawalStatus = r["withdrawalStatus"].ToString();
+        //        bool isnullEdinetCode = r.IsNull("edinetCode");
+        //        if (isnullEdinetCode && withdrawalStatus == "0") {
+        //            //縦覧終了
+        //            Console.WriteLine("{0} {1} 縦覧終了", id, docid);
+        //            continue;
+        //        }
+
+        //        DateTime date = DateTime.ParseExact(id.ToString().Substring(0, 6), "yyMMdd", null);
+        //        string docTypeCode = r["docTypeCode"].ToString();
+        //        string secCode = r["secCode"] == DBNull.Value ? "0" : r["secCode"].ToString();
+        //        int code = secCode.Length > 3 ? int.Parse(secCode.Substring(0, 4)) : 0;
+        //        //監視銘柄はすべてダウンロード
+        //        bool all = code > 1300 && setting.Watching != null && setting.Watching.Length > 0 && Array.IndexOf(setting.Watching, code) > -1;
+        //        if (!all & Array.IndexOf(setting.DocumentTypes, docTypeCode) < 0) {
+        //            //Console.WriteLine(" skip type[{0}]", docTypeCode);
+        //            continue;
+        //        }
+
+        //        string xbrl = r["xbrl"] == DBNull.Value ? null : r["xbrl"].ToString();
+        //        string pdf = r["pdf"] == DBNull.Value ? null : r["pdf"].ToString();
+        //        string attach = r["attach"] == DBNull.Value ? null : r["attach"].ToString();
+        //        string english = r["english"] == DBNull.Value ? null : r["english"].ToString();
+        //        bool[] flag = new bool[] { r["xbrlFlag"].ToString() == "1", r["pdfFlag"].ToString() == "1",
+        //                r["attachDocFlag"].ToString() == "1", r["englishDocFlag"].ToString() == "1" };
+        //        bool[] check = new bool[] { setting.Xbrl, setting.Pdf, setting.Attach, setting.English };
+        //        for (int j = 0; j < fields.Length; j++) {
+        //            if (flag[j]) {
+        //                if (all | check[j]) {
+        //                    int year = 20 * 100 + id / 100000000;
+        //                    string filepath = string.Format(@"{0}\Documents\{1}\{2}_{3}.{4}", setting.Directory, year, docid, j + 1, j == 1 ? "pdf" : "zip");
+        //                    bool exists = File.Exists(filepath);
+        //                    if (!exists) {
+        //                        list.Add(new object[] { id, docid, j + 1 });
+        //                    }
+        //                }
+        //            }
+        //        }
+        //        i++;
+        //    }
+        //    i = 0;
+        //    int previd = 0;
+        //    foreach (object[] item in list) {
+        //        if (token.IsCancellationRequested) {
+        //            InvokeProgressLabel(0, "Canceled");
+        //            await Task.Delay(1000);
+        //            InvokeVisible(false);
+        //            return;
+        //        }
+        //        int type = (int)item[2];
+        //        int id = (int)item[0];
+        //        int no = int.Parse(item[0].ToString().Substring(6, 4));
+        //        string docid = item[1].ToString();
+        //        string date = item[0].ToString().Substring(0, 6).Insert(4, "-").Insert(2, "-").Insert(0, "20");
+        //        if (id != previd) {
+        //            Console.WriteLine();
+        //            Console.Write("{0} {1}", id, docid);
+        //        }
+        //        Disclosures.ApiArchiveResult result = await edinet.DownloadArchive(id, docid, type);
+        //        i++;
+        //        string output = string.Format("ダウンロード {0:#,##0}/{1:#,##0} no:{2}{3}[{4}] status[{5}] ", i, list.Count, no, target==DateTime.Now.Date ? "":target.ToString("(yyyy-MM-dd)"), fields[type - 1], result.StatusText);
+        //        if (target!=DateTime.Now.Date)
+        //            output += string.Format("{0:m':'ss}経過", sw.Elapsed);
+
+        //        InvokeProgressLabel((int)(i * 100 / list.Count), output);
+        //        Console.Write(" {0:m':'ss'.'f} {1}[{2}]", sw.Elapsed, fields[type - 1], result.Name);
+
+        //        int wait = random.Next((int)(setting.Wait[0] * 1000), (int)(setting.Wait[1] * 1000));
+        //        await Task.Delay(wait);
+        //        Console.Write(" wait[{0}]", wait);
+        //        previd = id;
+        //    }
+        //    sw.Stop();
+        //    Console.WriteLine("finish background download archive");
+        //    await Task.Delay(1000);
+        //    InvokeVisible(false);
+        //    InvokeMenuCheck("MenuDownload");
+
+        //}
+
 
     }
 

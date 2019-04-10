@@ -119,6 +119,11 @@ namespace Disclosures {
             public string attachDocFlag { get; set; }
             [DataMember]
             public string englishDocFlag { get; set; }
+
+            public int Id { get; set; }
+            public DateTime Date { get; set; }
+            public int Code { get; set; }
+            public string Status { get; set; }
         }
 
         public Rootobject Root { get; private set; }
@@ -132,10 +137,60 @@ namespace Disclosures {
             using (var stream = new MemoryStream(Encoding.UTF8.GetBytes(source), false)) {
                 Root = serializer.ReadObject(stream) as JsonList.Rootobject;
             }
+            for(int i = 0; i < Root.results.Length; i++) {
+                Root.results[i].Date = DateTime.Parse(Root.metadata.parameter.date);
+                Root.results[i].Id = int.Parse(Root.results[i].Date.ToString("yyMMdd")) * 10000 + Root.results[i].seqNumber;
+                Root.results[i].Status = GetStatus(Root.results[i]);
+                //if (DicEdinetCode != null & json.Root.results[i].edinetCode != null && DicEdinetCode.ContainsKey(json.Root.results[i].edinetCode))
+                //    r["code"] = DicEdinetCode[json.Root.results[i].edinetCode];
+            }
         }
         public void Clear() {
             this.Root = null;
         }
+
+        public string GetStatus(JsonList.Result result) {
+            /*
+             * 縦覧の終了　　　"edinetCode": null,"withdrawalStatus": "0",
+             * 
+             * 書類の取下げ
+             * 取り下げ提出日　　"withdrawalStatus": "1",　"submitDateTime": "2019-05-01 09:30",　submitは取り下げた日時
+             * 元書類　　　　　　"withdrawalStatus": "2","edinetCode": null,　　　　他もnull
+             * 途中に訂正があった場合　　訂正も"withdrawalStatus": "2","edinetCode": null,　ただし　"parentDocID": "S1000001",
+             * 
+             * 財務局職員による書類情報修正
+             * 修正発生日　　　"docInfoEditStatus": "1",　"opeDateTime": "2019-06-11 09:30",
+             * 元書類　　　　　"docInfoEditStatus": "2",
+             * 提出書類は修正されない　修正はフィールドのみ
+             * 
+             * disclosureStatus 財務局職員による書類の不開示
+             * 不開示開始日　　"disclosureStatus": "1","opeDateTime": "2019-05-01 19:30",
+             * 不開示期間は元書類の日付は　　"disclosureStatus": "1",となる
+             * 解除日　　　"disclosureStatus": "3","opeDateTime": "2019-06-01 17:30",
+             * 
+             */
+            if (result.edinetCode == null & result.withdrawalStatus == "0")
+                return "縦覧終了";
+            else if (result.withdrawalStatus == "1")
+                return "取下日";
+            else if (result.withdrawalStatus == "2" & result.edinetCode == null) {
+                if (result.parentDocID != null)
+                    return "取下子";
+                else
+                    return "取下";
+            } else if (result.docInfoEditStatus == "1")
+                return "修正発生日";
+            else if (result.docInfoEditStatus == "2")
+                return "修正";
+            else if (result.disclosureStatus == "1")
+                return "不開示開始日";
+            else if (result.disclosureStatus == "2")
+                return "不開示";
+            else if (result.disclosureStatus == "3")
+                return "不開示解除日";
+            return null;
+        }
+
     }
 
     public class JsonDocumentError {
@@ -247,7 +302,6 @@ namespace Disclosures {
             string url = string.Format("/api/{0}/documents.json?date={1:yyyy-MM-dd}{2}", Version, date, type == 2 ? "&type=2" : "");
             using (var response = await client.GetAsync(url)) {
                 System.Net.Http.Headers.MediaTypeHeaderValue contenttype = response.Content.Headers.ContentType;
-                //ContentType content = (ContentType)Enum.ToObject(typeof(ContentType), Array.IndexOf(types, contenttype.ToString()));
                 string source = await response.Content.ReadAsStringAsync();
                 ApiListResult result = new ApiListResult(source, contenttype.ToString(), response.StatusCode);
                 return result;
@@ -264,9 +318,6 @@ namespace Disclosures {
                         stream.Flush();
                         System.Net.Http.Headers.MediaTypeHeaderValue contenttype = res.Content.Headers.ContentType;
                         ContentType content = (ContentType)Enum.ToObject(typeof(ContentType), Array.IndexOf(ContentTypes, contenttype.ToString()));
-                        //string source = null;
-                        //if (content == ContentType.Fail)
-                        //    source = Encoding.ASCII.GetString(buffer);
                         ApiArchiveResult result = new ApiArchiveResult(contenttype.ToString(), res.StatusCode, buffer, filename);
                         return result;
                     }
@@ -305,8 +356,6 @@ namespace Disclosures {
             cachedirectory = directory;
             ApiVersion = apiversion;
             Database = new Database.Sqlite(Path.Combine(directory, "edinet.db"));
-            //Json = new JsonList();
-            //JsonOld = new JsonList();
             Database.LoadTaxonomy(out Dictionary<string, string> dic, out List<string> list);
             Xbrl = new Xbrl();
             Xbrl.IntializeTaxonomy(dic, list);
@@ -329,7 +378,7 @@ namespace Disclosures {
             TableDocuments.Columns.Add("date", typeof(DateTime));
             TableDocuments.Columns.Add("status", typeof(string));
             TableDocuments.Columns.Add("タイプ", typeof(string));
-            TableDocuments.Columns.Add("new", typeof(string));
+            //TableDocuments.Columns.Add("new", typeof(string));
             TableDocuments.Columns.Add("code", typeof(int));
             TableDocuments.PrimaryKey = new DataColumn[] { colId };
             DvDocuments = new DataView(TableDocuments, "", "id desc", DataViewRowState.CurrentRows);
@@ -375,22 +424,30 @@ namespace Disclosures {
         /*閲覧終了した書類は全てnullになるので、
         ①過去データをデータベースから読み込み
         ②APIでJSONを取得
-        //APIを利用したらtrue cacheを読み込んだらfalse
         */
         public async Task<ApiListResult> GetDisclosureList(DateTime target, bool background = false) {
-            object[] meta = Database.GetMetadata(target);
-            if (background && meta != null && ((DateTime)meta[0]).Date > target.Date)
-                return null;
-
-            bool request = meta == null || ((DateTime)meta[0]).Date == target.Date ? true : false;
-            if(!background) {
+            ApiListResult result = null;
+            int count = 0;
+            bool request = false;
+            if (background) {
+                result = await GetDovumentsList(target);
+                JsonList json = new JsonList();
+                json.Deserialize(result.Source);
+                count = json.Root.metadata.resultset.count;
+                //DataTable table = TableDocuments.Clone();
+                //ListToTable(ref table, json);
+                Database.UpdateDisclosures(target, json, out DataTable table);
+                request = true;
+            } else {
+                object[] meta = Database.GetMetadata(target);
+                request = meta == null || ((DateTime)meta[0]).Date == target.Date ? true : false;
                 TableContents.Rows.Clear();
                 TableElements.Rows.Clear();
                 if (ListResult != null)
                     ListResult.Clear();
-                if(meta != null) {
+                if (!request) {
                     string query = string.Format("select * from Disclosures where date(`date`) = '{0:yyyy-MM-dd}';", target);
-                    Database.ReadQuery(query, out DataTable table);
+                    DataTable table = Database.ReadQuery(query);
                     TableDocuments.Rows.Clear();
                     for (int i = 0; i < table.Rows.Count; i++) {
                         DataRow r = TableDocuments.NewRow();
@@ -407,44 +464,62 @@ namespace Disclosures {
                         TableDocuments.Rows.Add(r);
                     }
                 }
-            }
 
-            //if (!request) {
-            //}
-            //if (meta != null && ((DateTime)meta[0]).Date == target.Date )
-            //    request = true;
-            if (meta != null && (int)meta[1] != TableDocuments.Rows.Count)
-                request = true;
-            IsCacheList = !request;
-            if (request) {
-                //int max = DvDocuments.Count == 0 ? 0 : (int)DvDocuments[0]["seqNumber"];
-                ApiListResult result = await GetDovumentsList(target);
-                int count = 0;
-                if (background) {
-                    JsonList json = new JsonList();
-                    json.Deserialize(result.Source);
-                    count = json.Root.metadata.resultset.count;
-                    DataTable table = TableDocuments.Clone();
-                    ListToTable(ref table, json);
-                    Database.UpdateInsertDisclosures(ref table, json);
-                } else {
+                if (request) {
+                    result = await GetDovumentsList(target);
+                    result.Json.Deserialize(result.Source);
+                    if (DicEdinetCode != null) {
+                        for (int i = 0; i < result.Json.Root.results.Length; i++) {
+                            if (result.Json.Root.results[i].edinetCode != null &&
+                            DicEdinetCode.ContainsKey(result.Json.Root.results[i].edinetCode))
+                                result.Json.Root.results[i].Code = DicEdinetCode[result.Json.Root.results[i].edinetCode];
+                        }
+                    }
+                    count = result.Json.Root.metadata.resultset.count;
                     ListResult = result;
-                    ListResult.Json.Deserialize(ListResult.Source);
-                    count = ListResult.Json.Root.metadata.resultset.count;
-                    ListToTable(ref TableDocuments, ListResult.Json);
-                    //Database.UpdateInsertDisclosures(ListResult.Json);
-                    Database.UpdateInsertDisclosures(ref TableDocuments, ListResult.Json);
+                    Database.UpdateDisclosures(target, ListResult.Json, out DataTable table);
+                    TableDocuments.Rows.Clear();
+                    for (int i = 0; i < table.Rows.Count; i++) {
+                        DataRow r = TableDocuments.NewRow();
+                        for (int j = 0; j < TableDocuments.Columns.Count; j++) {
+                            if (table.Columns.Contains(TableDocuments.Columns[j].ColumnName)) {
+                                r[TableDocuments.Columns[j].ColumnName] = table.Rows[i][TableDocuments.Columns[j].ColumnName];
+                                if (TableDocuments.Columns[j].ColumnName == "docTypeCode") {
+                                    string docTypeCode = table.Rows[i][TableDocuments.Columns[j].ColumnName].ToString();
+                                    if (Const.DocTypeCode.ContainsKey(docTypeCode))
+                                        r["タイプ"] = Const.DocTypeCode[docTypeCode];
+                                }
+                            }
+                        }
+                        TableDocuments.Rows.Add(r);
+                    }
                 }
+                List<string> list = new List<string>();
+                foreach (DataRow r in TableDocuments.Rows) {
+                    string doctype = r["docTypeCode"].ToString();
+                    if (doctype != "") {
+                        if (!list.Contains(Disclosures.Const.DocTypeCode[doctype]))
+                            list.Add(Disclosures.Const.DocTypeCode[doctype]);
+                    }
+                }
+                List<string> list2 = new List<string>() { "" };
+                foreach (string s in Disclosures.Const.DocTypeCode.Values)
+                    if (list.Contains(s))
+                        list2.Add(s);
+                Types = list2.ToArray();
+            }
+            if (request) {
                 string log = string.Format("{0:yyyy-MM-dd HH:mm:ss.f} DocumentListAPI:{1} {2}\tcount:{3}\r\n", DateTime.Now,
                     result.StatusCode, target.ToString("yyyy-MM-dd"), count);
                 SaveLog(log);
                 SaveCache(target, ref result);
-                return result;
-            } else
-                return null;
+            }
 
-            //return request;
+            return result;
+
+
         }
+
         //書類一覧APIレスポンスのJSONはファイルに上書き保存
         private void SaveCache(DateTime target, ref ApiListResult result) {
             if (result.Json.Root.metadata.status == "200") {
@@ -573,120 +648,104 @@ namespace Disclosures {
         //    equal = equal & result1.xbrlFlag == result2.xbrlFlag;
         //    return equal;
         //}
-        private void ListToTable(ref DataTable table, JsonList json) {
-            DataView dv = new DataView(table, "", "id", DataViewRowState.CurrentRows);
-            DateTime target = DateTime.Parse(json.Root.metadata.parameter.date);
-            //EdinetCode=null withdrawalStatus='0' 縦覧期間終了
-            List<string> list = new List<string>();
-            for (int i = 0; i < json.Root.results.Length; i++) {
-                //for (int i = json.Root.results.Length - 1; i >= 0; i--) {
-                int id = int.Parse(target.ToString("yyMMdd")) * 10000 + json.Root.results[i].seqNumber;
-                string status = GetStatus(json.Root.results[i]);
-                int index = dv.Find(id);
-                if (index > -1) {
-                    if (status != null) {
-                        dv[index].BeginEdit();
-                        dv[index]["status"] = status;
-                        dv[index]["new"] = "change";
-                        dv[index].EndEdit();
-                    }
-                    continue;
-                }
-                DataRowView r = dv.AddNew();  
-                r[0] = json.Root.results[i].seqNumber;
-                r[1] = json.Root.results[i].docID;
-                r[2] = json.Root.results[i].edinetCode;
-                r[3] = json.Root.results[i].secCode;
-                r[4] = json.Root.results[i].JCN;
-                r[5] = json.Root.results[i].filerName;
-                r[6] = json.Root.results[i].fundCode;
-                r[7] = json.Root.results[i].ordinanceCode;
-                r[8] = json.Root.results[i].formCode;
-                r[9] = json.Root.results[i].docTypeCode;
-                if (json.Root.results[i].docTypeCode != null && !list.Contains(Disclosures.Const.DocTypeCode[json.Root.results[i].docTypeCode]))  
-                    list.Add(Disclosures.Const.DocTypeCode[json.Root.results[i].docTypeCode]);
-                r[10] = json.Root.results[i].periodStart;
-                r[11] = json.Root.results[i].periodEnd;
-                r[12] = json.Root.results[i].submitDateTime;
-                r[13] = json.Root.results[i].docDescription;
-                r[14] = json.Root.results[i].issuerEdinetCode;
-                r[15] = json.Root.results[i].subjectEdinetCode;
-                r[16] = json.Root.results[i].subsidiaryEdinetCode;
-                r[17] = json.Root.results[i].currentReportReason;
-                r[18] = json.Root.results[i].parentDocID;
-                r[19] = json.Root.results[i].opeDateTime;
-                r[20] = json.Root.results[i].withdrawalStatus;
-                r[21] = json.Root.results[i].docInfoEditStatus;
-                r[22] = json.Root.results[i].disclosureStatus;
-                if(json.Root.results[i].xbrlFlag=="1")
-                r[23] = json.Root.results[i].xbrlFlag;
-                if (json.Root.results[i].pdfFlag == "1")
-                    r[24] = json.Root.results[i].pdfFlag;
-                if (json.Root.results[i].attachDocFlag == "1")
-                    r[25] = json.Root.results[i].attachDocFlag;
-                if (json.Root.results[i].edinetCode == "1")
-                    r[26] = json.Root.results[i].englishDocFlag;
-                if (json.Root.results[i].docTypeCode != null)
-                    r["タイプ"] = Disclosures.Const.DocTypeCode[json.Root.results[i].docTypeCode];
-                else
-                    r["タイプ"] = null;
-                r["date"] = DateTime.Parse(json.Root.metadata.parameter.date);
-                r["id"] = id;
-                if (status != null)
-                    r["status"] = status;
-                r["new"] = "new";
-                if (DicEdinetCode!=null & json.Root.results[i].edinetCode != null && DicEdinetCode.ContainsKey(json.Root.results[i].edinetCode))
-                    r["code"] = DicEdinetCode[json.Root.results[i].edinetCode];
-                r.EndEdit();
-                //table.Rows.Add(r);
-            }
-            List<string> list2 = new List<string>() { "" };
-            foreach (string s in Disclosures.Const.DocTypeCode.Values)
-                if (list.Contains(s))
-                    list2.Add(s);
-            Types = list2.ToArray();
-        }
-        private string GetStatus(JsonList.Result result) {
-            /*
-             * 縦覧の終了　　　"edinetCode": null,"withdrawalStatus": "0",
-             * 
-             * 書類の取下げ
-             * 取り下げ提出日　　"withdrawalStatus": "1",　"submitDateTime": "2019-05-01 09:30",　submitは取り下げた日時
-             * 元書類　　　　　　"withdrawalStatus": "2","edinetCode": null,　　　　他もnull
-             * 途中に訂正があった場合　　訂正も"withdrawalStatus": "2","edinetCode": null,　ただし　"parentDocID": "S1000001",
-             * 
-             * 財務局職員による書類情報修正
-             * 修正発生日　　　"docInfoEditStatus": "1",　"opeDateTime": "2019-06-11 09:30",
-             * 元書類　　　　　"docInfoEditStatus": "2",
-             * 提出書類は修正されない　修正はフィールドのみ
-             * 
-             * disclosureStatus 財務局職員による書類の不開示
-             * 不開示開始日　　"disclosureStatus": "1","opeDateTime": "2019-05-01 19:30",
-             * 不開示期間は元書類の日付は　　"disclosureStatus": "1",となる
-             * 解除日　　　"disclosureStatus": "3","opeDateTime": "2019-06-01 17:30",
-             * 
-             */
-            if (result.edinetCode == null & result.withdrawalStatus == "0")
-                return "縦覧終了";
-            else if (result.withdrawalStatus == "1")
-                return "取下日";
-            else if (result.withdrawalStatus == "2" & result.edinetCode == null) {
-                if (result.parentDocID != null)
-                    return "取下子";
-                else
-                    return "取下";
-            } else if (result.docInfoEditStatus == "1")
-                return "修正発生日";
-            else if (result.docInfoEditStatus == "2")
-                return "修正";
-            else if (result.disclosureStatus == "1")
-                return "不開示開始日";
-            else if (result.disclosureStatus == "2")
-                return "不開示";
-            else if (result.disclosureStatus == "3")
-                return "不開示解除日";
-            return null;
-        }
+
+
+
+        //private void ListToTable(ref DataTable table, JsonList json) {
+        //    DataView dv = new DataView(table, "", "id", DataViewRowState.CurrentRows);
+        //    DateTime target = DateTime.Parse(json.Root.metadata.parameter.date);
+        //    //EdinetCode=null withdrawalStatus='0' 縦覧期間終了
+        //    List<string> list = new List<string>();
+        //    for (int i = 0; i < json.Root.results.Length; i++) {
+        //        //for (int i = json.Root.results.Length - 1; i >= 0; i--) {
+        //        int id = int.Parse(target.ToString("yyMMdd")) * 10000 + json.Root.results[i].seqNumber;
+        //        string status = GetStatus(json.Root.results[i]);
+        //        int index = dv.Find(id);
+        //        if (index > -1) {
+        //            if (status != null) {
+        //                dv[index].BeginEdit();
+        //                dv[index]["status"] = status;
+        //                dv[index]["new"] = "change";
+        //                dv[index].EndEdit();
+        //            }
+        //            continue;
+        //        }
+        //        DataRowView r = dv.AddNew();  
+        //        r[0] = json.Root.results[i].seqNumber;
+        //        r[1] = json.Root.results[i].docID;
+        //        r[2] = json.Root.results[i].edinetCode;
+        //        r[3] = json.Root.results[i].secCode;
+        //        r[4] = json.Root.results[i].JCN;
+        //        r[5] = json.Root.results[i].filerName;
+        //        r[6] = json.Root.results[i].fundCode;
+        //        r[7] = json.Root.results[i].ordinanceCode;
+        //        r[8] = json.Root.results[i].formCode;
+        //        r[9] = json.Root.results[i].docTypeCode;
+        //        if (json.Root.results[i].docTypeCode != null && !list.Contains(Disclosures.Const.DocTypeCode[json.Root.results[i].docTypeCode]))  
+        //            list.Add(Disclosures.Const.DocTypeCode[json.Root.results[i].docTypeCode]);
+        //        r[10] = json.Root.results[i].periodStart;
+        //        r[11] = json.Root.results[i].periodEnd;
+        //        r[12] = json.Root.results[i].submitDateTime;
+        //        r[13] = json.Root.results[i].docDescription;
+        //        r[14] = json.Root.results[i].issuerEdinetCode;
+        //        r[15] = json.Root.results[i].subjectEdinetCode;
+        //        r[16] = json.Root.results[i].subsidiaryEdinetCode;
+        //        r[17] = json.Root.results[i].currentReportReason;
+        //        r[18] = json.Root.results[i].parentDocID;
+        //        r[19] = json.Root.results[i].opeDateTime;
+        //        r[20] = json.Root.results[i].withdrawalStatus;
+        //        r[21] = json.Root.results[i].docInfoEditStatus;
+        //        r[22] = json.Root.results[i].disclosureStatus;
+        //        if(json.Root.results[i].xbrlFlag=="1")
+        //        r[23] = json.Root.results[i].xbrlFlag;
+        //        if (json.Root.results[i].pdfFlag == "1")
+        //            r[24] = json.Root.results[i].pdfFlag;
+        //        if (json.Root.results[i].attachDocFlag == "1")
+        //            r[25] = json.Root.results[i].attachDocFlag;
+        //        if (json.Root.results[i].edinetCode == "1")
+        //            r[26] = json.Root.results[i].englishDocFlag;
+        //        if (json.Root.results[i].docTypeCode != null)
+        //            r["タイプ"] = Disclosures.Const.DocTypeCode[json.Root.results[i].docTypeCode];
+        //        else
+        //            r["タイプ"] = null;
+        //        r["date"] = DateTime.Parse(json.Root.metadata.parameter.date);
+        //        r["id"] = id;
+        //        if (status != null)
+        //            r["status"] = status;
+        //        r["new"] = "new";
+        //        if (DicEdinetCode!=null & json.Root.results[i].edinetCode != null && DicEdinetCode.ContainsKey(json.Root.results[i].edinetCode))
+        //            r["code"] = DicEdinetCode[json.Root.results[i].edinetCode];
+        //        r.EndEdit();
+        //        //table.Rows.Add(r);
+        //    }
+        //    List<string> list2 = new List<string>() { "" };
+        //    foreach (string s in Disclosures.Const.DocTypeCode.Values)
+        //        if (list.Contains(s))
+        //            list2.Add(s);
+        //    Types = list2.ToArray();
+        //}
+        //private string GetStatus(JsonList.Result result) {
+        //    if (result.edinetCode == null & result.withdrawalStatus == "0")
+        //        return "縦覧終了";
+        //    else if (result.withdrawalStatus == "1")
+        //        return "取下日";
+        //    else if (result.withdrawalStatus == "2" & result.edinetCode == null) {
+        //        if (result.parentDocID != null)
+        //            return "取下子";
+        //        else
+        //            return "取下";
+        //    } else if (result.docInfoEditStatus == "1")
+        //        return "修正発生日";
+        //    else if (result.docInfoEditStatus == "2")
+        //        return "修正";
+        //    else if (result.disclosureStatus == "1")
+        //        return "不開示開始日";
+        //    else if (result.disclosureStatus == "2")
+        //        return "不開示";
+        //    else if (result.disclosureStatus == "3")
+        //        return "不開示解除日";
+        //    return null;
+        //}
 
         public int SearchBrand(int code) {
             int count = Database.GetDocumentsCount(code);

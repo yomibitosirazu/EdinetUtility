@@ -67,8 +67,9 @@ namespace EdinetViewer {
             timer1.Enabled = true;
             //checkTimer.Checked = setting.Timer;
             TimerCheck();
-            if (setting.VersionUp) {
-                await BackGroundStart(TaskType.VersionUp, Application.ProductVersion + "\t" + setting.VersionPrev);
+            //if (setting.VersionUp | Application.ProductVersion.Substring(0,8)== "0.2.101.") {
+            if (setting.VersionUp | Application.ProductVersion.Substring(0, 8) == "0.2.101.") {
+                    await BackGroundStart(TaskType.VersionUp, Application.ProductVersion + "\t" + setting.VersionPrev);
             }
         }
 
@@ -298,7 +299,7 @@ namespace EdinetViewer {
             TbVersion.Left = panel1.Right - TbVersion.Width - offset;
             LabelVersion.Left = TbVersion.Left - LabelVersion.Width;
             checkTimer.Left = LabelVersion.Left - checkTimer.Width - 5;
-            ProgressLabel1.Width = 300;
+            ProgressLabel1.Width = 350;
             //ProgressLabel1
             StatusLabel1.Width = this.Width - ProgressBar1.Width - ProgressLabel1.Width - 36;
         }
