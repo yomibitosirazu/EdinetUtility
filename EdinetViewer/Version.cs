@@ -63,7 +63,7 @@ namespace EdinetViewer {
         private void DisclosureColumnDateCheck() {
             InvokeVisible(true);
             InvokeLabel("データベース更新中");
-            string query = "update `Disclosures` set `date` = '20'||substr(id,1,2)||'-'||substr(id,3,2)||'-'||substr(id,5,2) where length(date) != 10;";
+            string query = "update `Disclosures` set `date` = '20'||substr(id,1,2)||'-'||substr(id,3,2)||'-'||substr(id,5,2) where `date` is null or length(`date`) != 10;";
             //string dbpath = Path.Combine(setting.Values["DocumentDirectory"], "edinet.db");
             string dbpath = Path.Combine(setting.Directory, "edinet.db");
             using (SQLiteConnection conn = new SQLiteConnection(string.Format("Data Source={0}", dbpath))) {
