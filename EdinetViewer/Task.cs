@@ -66,15 +66,21 @@ namespace EdinetViewer {
             }
         }
    
-        private void InvokeVisible(bool show) {
+        private void InvokeVisible(bool show, bool initialize = true) {
             if (this.InvokeRequired) {
                 this.Invoke((MethodInvoker)(() => {
-                    ProgressBar1.Value = 0;
-                    ProgressLabel1.Text = "";
+                    if (initialize) {
+                        ProgressBar1.Value = 0;
+                        ProgressLabel1.Text = "";
+                    }
                     ProgressBar1.Visible = show;
                     ProgressLabel1.Visible = show;
                 }));
             } else {
+                if (initialize) {
+                    ProgressBar1.Value = 0;
+                    ProgressLabel1.Text = "";
+                }
                 ProgressBar1.Visible = show;
                 ProgressLabel1.Visible = show;
             }
@@ -82,16 +88,12 @@ namespace EdinetViewer {
         private void InvokeProgressLabel(int value, string text) {
             if (this.InvokeRequired) {
                 this.Invoke((MethodInvoker)(() => {
-                    //if (max > 0)
-                    //    ProgressBar1.Maximum = max;
                     if (value >= 0)
                         ProgressBar1.Value = value;
                     if (text != null)
                         ProgressLabel1.Text = text;
                 }));
             } else {
-                //if (max > 0)
-                //    ProgressBar1.Maximum = max;
                 if (value >= 0)
                     ProgressBar1.Value = value;
                 if (text != null)
@@ -158,7 +160,7 @@ namespace EdinetViewer {
                     return;
                 }
                 i++;
-                InvokeProgressLabel((int)(i / list.Count * 100), dt.ToString("yyyy-MM-dd"));
+                InvokeProgressLabel((int)(i * 100 / list.Count), dt.ToString("yyyy-MM-dd"));
                 await Task.Delay(1);
             }
             await Task.Delay(500);
@@ -408,7 +410,7 @@ namespace EdinetViewer {
                 if (!today)
                     output += string.Format("{0:m':'ss}経過", sw.Elapsed);
 
-                InvokeProgressLabel((int)(i / list.Count * 100), output);
+                InvokeProgressLabel((int)(i * 100 / list.Count), output);
                 Console.Write(" {0:m':'ss'.'f} {1}[{2}]", sw.Elapsed, fields[type - 1], result.Name);
 
                 int wait = random.Next((int)(setting.Wait[0] * 1000), (int)(setting.Wait[1] * 1000));

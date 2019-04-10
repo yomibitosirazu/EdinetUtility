@@ -348,7 +348,13 @@ namespace Disclosures.Database {
                                     command.Parameters["@" + field].Value = r[field];
                                 }
                                 command.Parameters["@id"].Value = r["id"];
-                                command.ExecuteNonQuery();
+                                try {
+                                    command.ExecuteNonQuery();
+
+                                } catch (Exception ex) {
+                                    Console.WriteLine(ex.Message);
+                                    throw;
+                                }
                             }
                             ts.Commit();
                         }

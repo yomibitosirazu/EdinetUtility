@@ -193,6 +193,7 @@ namespace EdinetViewer {
                             result.Json.Root.metadata.resultset.count - prevcount,
                             result.Json.Root.metadata.resultset.count);
                         StatusLabel1.Text = statustext + (sender == null ? " on timer" : "");
+                        if (dgvList.Rows.Count > 0)
                         dgvList.Rows[0].Cells[0].Selected = true;
                     }
                 } else {
@@ -204,11 +205,16 @@ namespace EdinetViewer {
                 comboFilter.DataSource = edinet.Types;
                 currentRow1 = -1;
                 IsReading = false;
+                if (result == null || result.Json.Root == null || result.Json.Root.results.Length == 0)
+                    return;
                 //timerの場合続いて書類のダウンロード
                 if (sender == null && setting.Download && (setting.Xbrl|setting.Pdf|setting.Attach|setting.English) & setting.DocumentTypes.Length>0) {
                     await BackGroundStart(TaskType.TodayArchive);
                 }else if(sender == null) {
                     StatusLabel1.Text = "書類の自動ダウンロードはオフです";
+                }else if (setting.Watching != null && setting.Watching.Length > 0) {
+                    //自動ダウンロードオフであっても監視銘柄はタイマーオンオフにかかわらずすべてダウンロードする 
+
                 }
             }
         }
@@ -501,6 +507,7 @@ namespace EdinetViewer {
                 if (e.Cancel) Close();
             }
             bool vacuum = false;
+            Console.WriteLine("last vacuum {0}", setting.LastVacuum);
             if (DateTime.Now > setting.LastVacuum.AddDays(7)) {
                 StatusLabel1.Text = "データーベースVACUUM実行中";
                 this.Refresh();
