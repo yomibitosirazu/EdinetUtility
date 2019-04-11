@@ -37,7 +37,7 @@ namespace EdinetViewer {
 
         private async void Form1_Shown(object sender, EventArgs e) {
 
-            //<--refer to https://dobon.net/vb/dotnet/control/doublebuffered.html (Copyright(C) DOBON! MIT)
+            //<--refer to https://dobon.net/vb/dotnet/control/doublebuffered.html (Copyright(C) DOBON! MIT) から引用しています
             (typeof(DataGridView)).InvokeMember("DoubleBuffered", BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.SetProperty,
                null, dgvList, new object[] { true });
             //-->
@@ -155,11 +155,11 @@ namespace EdinetViewer {
         }
 
 
-        private async void DataGridView_CellFormatting(object sender, DataGridViewCellFormattingEventArgs e) {
+        private void DataGridView_CellFormatting(object sender, DataGridViewCellFormattingEventArgs e) {
             DataGridView dgv = (DataGridView)sender;
             switch (dgv.Name) {
                 case "dgvList":
-                    await System.Threading.Tasks.Task.Run(() => {
+                    //await System.Threading.Tasks.Task.Run(() => {
 
                         int row = e.RowIndex;
                         int col = e.ColumnIndex;
@@ -195,7 +195,7 @@ namespace EdinetViewer {
                             }
                         }
 
-                    });
+                    //});
                     break;
                 case "dgvContents":
                     switch (e.ColumnIndex) {
@@ -263,8 +263,6 @@ namespace EdinetViewer {
                             result.Json.Root.metadata.resultset.count - prevcount,
                             result.Json.Root.metadata.resultset.count);
                         StatusLabel1.Text = statustext + (sender == null ? " on timer" : "");
-                        if (dgvList.Rows.Count > 0)
-                        dgvList.Rows[0].Cells[0].Selected = true;
                     }
                     //dgvList.Refresh();
                 } else {
@@ -274,6 +272,8 @@ namespace EdinetViewer {
                             edinet.TableDocuments.Rows.Count);
                 }
                 comboFilter.DataSource = edinet.Types;
+                if (dgvList.Rows.Count > 0)
+                    dgvList.Rows[0].Cells[0].Selected = true;
                 currentRow1 = -1;
                 IsReading = false;
                 if (result == null || result.Json.Root == null || result.Json.Root.results.Length == 0)
