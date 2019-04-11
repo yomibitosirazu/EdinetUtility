@@ -223,14 +223,18 @@ namespace Disclosures {
         }
     }
 
-
+    //public class ApiException {
+    //    public Exception Exception { get; set; }
+    //}
     public class ApiListResult {
         public string Source { get; set; }
         public string Content { get; set; }
         public int StatusCode { get; set; }
         public string StatusText { get; set; }
         public JsonList Json { get; set; }
+        public Exception Exception { get; set; }
         public ApiListResult(string source, string content, HttpStatusCode statuscode) {
+            Exception = null;
             Source = source;
             Content = content;
             StatusCode = (int)statuscode;
@@ -239,7 +243,11 @@ namespace Disclosures {
                 Json = new JsonList();
             Json.Deserialize(source);
         }
+        public ApiListResult(Exception ex) {
+            Exception = ex;
+        }
         public void Clear() {
+            Exception = null;
             Source = null;
             Content = null;
             StatusCode = 0;
@@ -255,6 +263,7 @@ namespace Disclosures {
         public string StatusText { get; set; }
         public Api.ContentType ContentType { get; set; }
         public JsonDocumentError Error { get; private set; }
+        public Exception Exception { get; set; }
         public ApiArchiveResult(string content, HttpStatusCode? statuscode, byte[] buffer, string filename) {
             Clear();
             Content = content;
@@ -271,6 +280,9 @@ namespace Disclosures {
                     Error = new JsonDocumentError();
                 Error.Deserialize(source);
             }
+        }
+        public ApiArchiveResult(Exception ex) {
+            Exception = ex;
         }
         public void Clear() {
             Content = null;
@@ -300,30 +312,47 @@ namespace Disclosures {
         }
         protected async Task<ApiListResult> GetDovumentsList(DateTime date, int type = 2) {
             string url = string.Format("/api/{0}/documents.json?date={1:yyyy-MM-dd}{2}", Version, date, type == 2 ? "&type=2" : "");
-            using (var response = await client.GetAsync(url)) {
-                System.Net.Http.Headers.MediaTypeHeaderValue contenttype = response.Content.Headers.ContentType;
-                string source = await response.Content.ReadAsStringAsync();
-                ApiListResult result = new ApiListResult(source, contenttype.ToString(), response.StatusCode);
+            try {
+                using (var response = await client.GetAsync(url)) {
+                    System.Net.Http.Headers.MediaTypeHeaderValue contenttype = response.Content.Headers.ContentType;
+                    string source = await response.Content.ReadAsStringAsync();
+                    ApiListResult result = new ApiListResult(source, contenttype.ToString(), response.StatusCode);
+                    return result;
+                }
+            //} catch (HttpRequestException ex) {
+            //    Console.WriteLine(ex.Message);
+            //    if (ex.Message.Contains("リモート名を解決できませんでした") | ex.InnerException != null && ex.InnerException.Message.Contains("リモート名を解決できませんでした"))
+            //        return null;
+            //    else
+            //        throw;
+            } catch (Exception ex) {
+                ApiListResult result = new ApiListResult(ex);
                 return result;
+                //Console.WriteLine(ex.Message);
+                //throw;
             }
+
         }
         protected async Task<ApiArchiveResult> DownloadArchive(string docid, int type) {
             string url = string.Format("/api/{0}/documents/{1}?type={2}", Version, docid, type);
-            using (HttpResponseMessage res = await client.GetAsync(url)) {
-                using (Stream stream = await res.Content.ReadAsStreamAsync()) {
-                    using (MemoryStream ms = new MemoryStream()) {
-                        string filename = res.Content.Headers.ContentDisposition.FileName.Replace("\"", "");
-                        stream.CopyTo(ms);
-                        byte[] buffer = ms.ToArray();
-                        stream.Flush();
-                        System.Net.Http.Headers.MediaTypeHeaderValue contenttype = res.Content.Headers.ContentType;
-                        ContentType content = (ContentType)Enum.ToObject(typeof(ContentType), Array.IndexOf(ContentTypes, contenttype.ToString()));
-                        ApiArchiveResult result = new ApiArchiveResult(contenttype.ToString(), res.StatusCode, buffer, filename);
-                        return result;
+            try {
+                using (HttpResponseMessage res = await client.GetAsync(url)) {
+                    using (Stream stream = await res.Content.ReadAsStreamAsync()) {
+                        using (MemoryStream ms = new MemoryStream()) {
+                            string filename = res.Content.Headers.ContentDisposition.FileName.Replace("\"", "");
+                            stream.CopyTo(ms);
+                            byte[] buffer = ms.ToArray();
+                            stream.Flush();
+                            System.Net.Http.Headers.MediaTypeHeaderValue contenttype = res.Content.Headers.ContentType;
+                            ContentType content = (ContentType)Enum.ToObject(typeof(ContentType), Array.IndexOf(ContentTypes, contenttype.ToString()));
+                            ApiArchiveResult result = new ApiArchiveResult(contenttype.ToString(), res.StatusCode, buffer, filename);
+                            return result;
+                        }
                     }
                 }
+            } catch (Exception ex) {
+                return new ApiArchiveResult(ex);
             }
-
         }
         public void Dispose() {
             client.Dispose();
@@ -421,6 +450,70 @@ namespace Disclosures {
             }
             return exists;
         }
+
+        private void UpdateDocumentsTable(ref DataTable table) {
+            TableDocuments.Rows.Clear();
+            for (int i = 0; i < table.Rows.Count; i++) {
+                DataRow r = TableDocuments.NewRow();
+                for (int j = 0; j < TableDocuments.Columns.Count; j++) {
+                    if (table.Columns.Contains(TableDocuments.Columns[j].ColumnName)) {
+                        r[TableDocuments.Columns[j].ColumnName] = table.Rows[i][TableDocuments.Columns[j].ColumnName];
+                        if (TableDocuments.Columns[j].ColumnName == "docTypeCode") {
+                            string docTypeCode = table.Rows[i][TableDocuments.Columns[j].ColumnName].ToString();
+                            if (Const.DocTypeCode.ContainsKey(docTypeCode))
+                                r["タイプ"] = Const.DocTypeCode[docTypeCode];
+                        }
+                    }
+                }
+                TableDocuments.Rows.Add(r);
+            }
+        }
+        private void LoadDocuments(DateTime target) {
+            string query = string.Format("select * from Disclosures where date(`date`) = '{0:yyyy-MM-dd}';", target);
+            DataTable table = Database.ReadQuery(query);
+            UpdateDocumentsTable(ref table);
+            //TableDocuments.Rows.Clear();
+            //for (int i = 0; i < table.Rows.Count; i++) {
+            //    DataRow r = TableDocuments.NewRow();
+            //    for (int j = 0; j < TableDocuments.Columns.Count; j++) {
+            //        if (table.Columns.Contains(TableDocuments.Columns[j].ColumnName)) {
+            //            r[TableDocuments.Columns[j].ColumnName] = table.Rows[i][TableDocuments.Columns[j].ColumnName];
+            //            if (TableDocuments.Columns[j].ColumnName == "docTypeCode") {
+            //                string docTypeCode = table.Rows[i][TableDocuments.Columns[j].ColumnName].ToString();
+            //                if (Const.DocTypeCode.ContainsKey(docTypeCode))
+            //                    r["タイプ"] = Const.DocTypeCode[docTypeCode];
+            //            }
+            //        }
+            //    }
+            //    TableDocuments.Rows.Add(r);
+            //}
+        }
+
+        private bool CheckException(Exception ex) {
+            if (ex != null) {
+                string message = ex.Message;
+                if (ex.GetType() == typeof(HttpRequestException)) {
+                    if (ex.InnerException != null)
+                        message += " " + ex.InnerException.Message;
+                    //if (ex.Message.Contains("リモート名を解決できませんでした") |
+                    //    ex.InnerException != null &&
+                    //    ex.InnerException.Message.Contains("リモート名を解決できませんでした")) {
+                    //    //リモート名を解決できませんでした インターネット接続なし
+                    //    //throw new Exception("インターネット接続を確認してください");
+                    //    //LoadDocuments(target);
+                    //    //return result;
+                    //    message = "リモート名を解決できませんでした";
+                    //} else {
+
+                    //}
+                }
+                string log = string.Format("{0:yyyy-MM-dd HH:mm:ss.f} DocumentListAPI:{1} {2}\r\n", DateTime.Now,
+                    "", message);
+                SaveLog(log);
+                return true;
+            } else
+                return false;
+        }
         /*閲覧終了した書類は全てnullになるので、
         ①過去データをデータベースから読み込み
         ②APIでJSONを取得
@@ -431,6 +524,10 @@ namespace Disclosures {
             bool request = false;
             if (background) {
                 result = await GetDovumentsList(target);
+                bool error = CheckException(result.Exception);
+                if (error) {
+                    return result;
+                }
                 JsonList json = new JsonList();
                 json.Deserialize(result.Source);
                 count = json.Root.metadata.resultset.count;
@@ -446,27 +543,50 @@ namespace Disclosures {
                 if (ListResult != null)
                     ListResult.Clear();
                 if (!request) {
-                    string query = string.Format("select * from Disclosures where date(`date`) = '{0:yyyy-MM-dd}';", target);
-                    DataTable table = Database.ReadQuery(query);
-                    TableDocuments.Rows.Clear();
-                    for (int i = 0; i < table.Rows.Count; i++) {
-                        DataRow r = TableDocuments.NewRow();
-                        for (int j = 0; j < TableDocuments.Columns.Count; j++) {
-                            if (table.Columns.Contains(TableDocuments.Columns[j].ColumnName)) {
-                                r[TableDocuments.Columns[j].ColumnName] = table.Rows[i][TableDocuments.Columns[j].ColumnName];
-                                if (TableDocuments.Columns[j].ColumnName == "docTypeCode") {
-                                    string docTypeCode = table.Rows[i][TableDocuments.Columns[j].ColumnName].ToString();
-                                    if (Const.DocTypeCode.ContainsKey(docTypeCode))
-                                        r["タイプ"] = Const.DocTypeCode[docTypeCode];
-                                }
-                            }
-                        }
-                        TableDocuments.Rows.Add(r);
-                    }
+                    LoadDocuments(target);
+                    //string query = string.Format("select * from Disclosures where date(`date`) = '{0:yyyy-MM-dd}';", target);
+                    //DataTable table = Database.ReadQuery(query);
+                    //TableDocuments.Rows.Clear();
+                    //for (int i = 0; i < table.Rows.Count; i++) {
+                    //    DataRow r = TableDocuments.NewRow();
+                    //    for (int j = 0; j < TableDocuments.Columns.Count; j++) {
+                    //        if (table.Columns.Contains(TableDocuments.Columns[j].ColumnName)) {
+                    //            r[TableDocuments.Columns[j].ColumnName] = table.Rows[i][TableDocuments.Columns[j].ColumnName];
+                    //            if (TableDocuments.Columns[j].ColumnName == "docTypeCode") {
+                    //                string docTypeCode = table.Rows[i][TableDocuments.Columns[j].ColumnName].ToString();
+                    //                if (Const.DocTypeCode.ContainsKey(docTypeCode))
+                    //                    r["タイプ"] = Const.DocTypeCode[docTypeCode];
+                    //            }
+                    //        }
+                    //    }
+                    //    TableDocuments.Rows.Add(r);
+                    //}
                 }
 
                 if (request) {
                     result = await GetDovumentsList(target);
+                    //bool error = CheckException(result.Exception);
+                    if (CheckException(result.Exception)) {
+                        LoadDocuments(target);
+                        return result;
+                    }
+                    //if(result.Exception!=null) {
+                    //    if(result.Exception.GetType() == typeof(HttpRequestException)) {
+                    //        if (result.Exception.Message.Contains("リモート名を解決できませんでした") | 
+                    //            result.Exception.InnerException != null &&
+                    //            result.Exception.InnerException.Message.Contains("リモート名を解決できませんでした")) {
+                    //            //リモート名を解決できませんでした インターネット接続なし
+                    //            //throw new Exception("インターネット接続を確認してください");
+                    //            string log = string.Format("{0:yyyy-MM-dd HH:mm:ss.f} DocumentListAPI:{1}\r\n", DateTime.Now,
+                    //                result.Exception.Message);
+                    //            SaveLog(log);
+                    //            LoadDocuments(target);
+                    //            return result;
+                    //        } else {
+
+                    //        }
+                    //    }
+                    //}
                     result.Json.Deserialize(result.Source);
                     if (DicEdinetCode != null) {
                         for (int i = 0; i < result.Json.Root.results.Length; i++) {
@@ -478,21 +598,22 @@ namespace Disclosures {
                     count = result.Json.Root.metadata.resultset.count;
                     ListResult = result;
                     Database.UpdateDisclosures(target, ListResult.Json, out DataTable table);
-                    TableDocuments.Rows.Clear();
-                    for (int i = 0; i < table.Rows.Count; i++) {
-                        DataRow r = TableDocuments.NewRow();
-                        for (int j = 0; j < TableDocuments.Columns.Count; j++) {
-                            if (table.Columns.Contains(TableDocuments.Columns[j].ColumnName)) {
-                                r[TableDocuments.Columns[j].ColumnName] = table.Rows[i][TableDocuments.Columns[j].ColumnName];
-                                if (TableDocuments.Columns[j].ColumnName == "docTypeCode") {
-                                    string docTypeCode = table.Rows[i][TableDocuments.Columns[j].ColumnName].ToString();
-                                    if (Const.DocTypeCode.ContainsKey(docTypeCode))
-                                        r["タイプ"] = Const.DocTypeCode[docTypeCode];
-                                }
-                            }
-                        }
-                        TableDocuments.Rows.Add(r);
-                    }
+                    UpdateDocumentsTable(ref table);
+                    //TableDocuments.Rows.Clear();
+                    //for (int i = 0; i < table.Rows.Count; i++) {
+                    //    DataRow r = TableDocuments.NewRow();
+                    //    for (int j = 0; j < TableDocuments.Columns.Count; j++) {
+                    //        if (table.Columns.Contains(TableDocuments.Columns[j].ColumnName)) {
+                    //            r[TableDocuments.Columns[j].ColumnName] = table.Rows[i][TableDocuments.Columns[j].ColumnName];
+                    //            if (TableDocuments.Columns[j].ColumnName == "docTypeCode") {
+                    //                string docTypeCode = table.Rows[i][TableDocuments.Columns[j].ColumnName].ToString();
+                    //                if (Const.DocTypeCode.ContainsKey(docTypeCode))
+                    //                    r["タイプ"] = Const.DocTypeCode[docTypeCode];
+                    //            }
+                    //        }
+                    //    }
+                    //    TableDocuments.Rows.Add(r);
+                    //}
                 }
                 List<string> list = new List<string>();
                 foreach (DataRow r in TableDocuments.Rows) {
@@ -514,7 +635,7 @@ namespace Disclosures {
                 SaveLog(log);
                 SaveCache(target, ref result);
             }
-
+            
             return result;
 
 
@@ -536,6 +657,8 @@ namespace Disclosures {
 
         public async Task<ApiArchiveResult> DownloadArchive(int id, string docid, int type) {
             ApiArchiveResult result = await DownloadArchive(docid, type);
+            if (CheckException(result.Exception))
+                return result;
             int year = 20 * 100 + id / 100000000;
             string filepath = string.Format(@"{0}\Documents\{1}\{2}", cachedirectory, year, result.Name);
             ContentType content = (ContentType)Enum.ToObject(typeof(ContentType), Array.IndexOf(ContentTypes, result.Content));
@@ -552,17 +675,11 @@ namespace Disclosures {
             int year = 20 * 100 + id / 100000000;
             string filepath = string.Format(@"{0}\Documents\{1}\{2}_{3}.{4}", cachedirectory, year, docid, type, type == 2 ? "pdf" : "zip");
             bool exists = File.Exists(filepath);
-            //bool isApi = false;
-            //string field = type == 1 ? "xbrl" : "pdf";
-            //string name = Database.GetFilename(id, field);
-            //ApiArchiveResult result = await edinet.DownloadArchive(docid, out string filepath);
-            //string filepath = null; ;
             if (exists) {
                 //filepath = string.Format(@"{0}\Documents\{1}\{2}", cachedirectory, year, name);
                 LoadCache(filepath);
             } else {
                 ArchiveResult = await this.DownloadArchive(id, docid, type);
-                //isApi = true;
             }
 
             if (ArchiveResult.Buffer != null && type != 2) {
@@ -836,12 +953,41 @@ namespace Disclosures {
             }
         }
         //アーカイブ内の画像をWebBrowserで表示するためtempフォルダに一時保存
-        public string SaveImage(byte[] buffer, string entryFullName) {
-            using (Stream st = new MemoryStream(buffer)) {
+        //public string SaveImage(byte[] buffer, string entryFullName) {
+        //    using (Stream st = new MemoryStream(buffer)) {
+        //        using (var archive = new ZipArchive(st)) {
+        //            foreach (ZipArchiveEntry entry in archive.Entries) {
+        //                if (entry.FullName == entryFullName) {
+        //                    using (Stream stream = entry.Open()) {
+
+
+        //                        using (MemoryStream ms = new MemoryStream()) {
+        //                            stream.CopyTo(ms);
+        //                            using (System.Drawing.Image image = System.Drawing.Image.FromStream(ms)) {
+        //                                string extension = Path.GetExtension(entryFullName);
+        //                                string dir = Path.Combine(cachedirectory, "temp");
+        //                                if (!Directory.Exists(dir))
+        //                                    Directory.CreateDirectory(dir);
+        //                                string imagefile = Path.Combine(dir, "image" + extension);
+        //                                image.Save(imagefile);
+        //                                return imagefile;
+        //                            }
+        //                        }
+        //                    }
+        //                }
+        //            }
+        //        }
+        //    }
+        //    return null;
+        //}
+        public string ExtractImageInArchive(string entryFullName, string dest) {
+            using (Stream st = new MemoryStream(ArchiveResult.Buffer)) {
                 using (var archive = new ZipArchive(st)) {
                     foreach (ZipArchiveEntry entry in archive.Entries) {
                         if (entry.FullName == entryFullName) {
                             using (Stream stream = entry.Open()) {
+
+
                                 using (MemoryStream ms = new MemoryStream()) {
                                     stream.CopyTo(ms);
                                     using (System.Drawing.Image image = System.Drawing.Image.FromStream(ms)) {
@@ -862,7 +1008,20 @@ namespace Disclosures {
             return null;
         }
 
-
+        public string ExtractPdfInArchive(string entryFullName, string dest) {
+            using (Stream st = new MemoryStream(ArchiveResult.Buffer)) {
+                using (var archive = new ZipArchive(st)) {
+                    foreach (ZipArchiveEntry entry in archive.Entries) {
+                        if (entry.FullName == entryFullName) {
+                            string filepath = string.Format(@"{0}\{1}",dest, entry.Name);
+                            entry.ExtractToFile(filepath,true);
+                            return filepath;
+                        }
+                    }
+                }
+            }
+            return null;
+        }
     }
 
 

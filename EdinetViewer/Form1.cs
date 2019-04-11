@@ -7,7 +7,7 @@ using System.IO;
 using System.Text;
 //using System.Threading;
 //using System.Threading.Tasks;
-
+using System.Reflection;
 using Disclosures;
 
 namespace EdinetViewer {
@@ -36,7 +36,12 @@ namespace EdinetViewer {
         }
 
         private async void Form1_Shown(object sender, EventArgs e) {
-          
+
+            //<--refer to https://dobon.net/vb/dotnet/control/doublebuffered.html (Copyright(C) DOBON! MIT)
+            (typeof(DataGridView)).InvokeMember("DoubleBuffered", BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.SetProperty,
+               null, dgvList, new object[] { true });
+            //-->
+
             this.Form1_Resize(null, null);
             DatePicker.MinDate = DateTime.Now.Date.AddYears(-5);
             DatePicker.MaxDate = DateTime.Now.AddDays(1);
@@ -65,7 +70,6 @@ namespace EdinetViewer {
             DatePicker.CloseUp += DatePicker_CloseUp;
             timer1.Interval = (int)(setting.Interval * 60 * 1000);
             timer1.Enabled = true;
-            //checkTimer.Checked = setting.Timer;
             TimerCheck();
             //if (setting.VersionUp | Application.ProductVersion.Substring(0,8)== "0.2.101.") {
             if (setting.VersionUp | Application.ProductVersion.Substring(0, 8) == "0.2.101.") {
@@ -118,22 +122,80 @@ namespace EdinetViewer {
         }
 
 
-        private void DgvList_CellContentClick(object sender, DataGridViewCellEventArgs e) {
+        private async void DgvList_CellContentClick(object sender, DataGridViewCellEventArgs e) {
             if ("pdfFlag,attachDocFlag,englishDocFlag".Contains((sender as DataGridView).Columns[e.ColumnIndex].Name)) {
                 object value = (sender as DataGridView).Rows[e.RowIndex].Cells[e.ColumnIndex].Value;
                 if (value != null && value.ToString() == "1") {
+                    DateTime date = DateTime.Parse(dgvList.Rows[e.RowIndex].Cells["date"].Value.ToString());
+                    //string dir = Path.Combine(setting.Directory, "Documents", date.Year.ToString());
+                    int id = (int)edinet.DvDocuments[e.RowIndex]["id"];
 
-                    MessageBox.Show(e.RowIndex.ToString() +
-                        "行のボタンがクリックされました。");
+                    string docid = edinet.DvDocuments[e.RowIndex]["docID"].ToString();
+                    string[] fields = new string[] { "xbrlFlag", "pdfFlag", "attachDocFlag", "englishDocFlag" };
+                    int index = Array.IndexOf(fields, dgvList.Columns[e.ColumnIndex].Name);
+                    string filepath = string.Format(@"{0}\Documents\{1}\{2}_{3}.{4}", setting.Directory, date.Year, docid, index + 1, index == 1 ? "pdf" : "zip");
+                    bool api = await edinet.ChangeDocument(id, docid, index + 1);
+                    if (api) {
+                        StatusLabel1.Text = string.Format("{1:HH:mm:ss} 書類取得API status[{0}] {2}ダウンロード {3}", edinet.ArchiveResult.StatusCode, DateTime.Now, index == 1 ? "pdf" : "xbrl", edinet.ArchiveResult.Name);
+                        //filepath = string.Format(@"{0}\Documents\{1}\{2}", setting.Directory, year, edinet.ArchiveResult.Name);
+                    } else {
+                        StatusLabel1.Text = DateTime.Now.ToString("HH:mm:ss") + " ダウンロード済み書類 ";
+                        //filepath = edinet.ArchiveResult.Name;
+                    }
+                    //MessageBox.Show(e.RowIndex.ToString() + "行 " + e.ColumnIndex + "列 " + dgvList.Columns[e.ColumnIndex].Name);
+                    if (dgvList.Columns[e.ColumnIndex].Name == "pdfFlag") {
+                        string url = string.Format("file://{0}#toolbar=0&navpanes=0", filepath.Replace("\\", "/"));
+                        browser.Navigate(url);
+
+                    } else {
+
+                    }
                 }
             }
         }
 
 
-        private void DataGridView_CellFormatting(object sender, DataGridViewCellFormattingEventArgs e) {
+        private async void DataGridView_CellFormatting(object sender, DataGridViewCellFormattingEventArgs e) {
             DataGridView dgv = (DataGridView)sender;
             switch (dgv.Name) {
                 case "dgvList":
+                    await System.Threading.Tasks.Task.Run(() => {
+
+                        int row = e.RowIndex;
+                        int col = e.ColumnIndex;
+                        DateTime target = DateTime.Parse(edinet.DvDocuments[row]["date"].ToString());
+                        string dir = Path.Combine(setting.Directory, "Documents", target.Year.ToString());
+                        string docid = edinet.DvDocuments[row]["docID"].ToString();
+
+                        string[] fields = new string[] { "xbrlFlag", "pdfFlag", "attachDocFlag", "englishDocFlag" };
+                        int index = Array.IndexOf(fields, dgvList.Columns[col].Name);
+                        if (index > -1) {
+                            if (dgvList.Rows[row].Cells[col].Value.ToString() == "1")
+                                dgvList.Rows[row].Cells[col].Style.ForeColor = Color.Black;
+                            else
+                                dgvList.Rows[row].Cells[col].Style.ForeColor = Color.White;
+                            string filepath = string.Format(@"{0}\{1}_{2}.{3}", dir, docid, index + 1, index == 1 ? "pdf" : "zip");
+                            //check file ex
+                            
+                            if (File.Exists(filepath)) {
+                                dgvList.Rows[row].Cells[col].Style.BackColor = Color.LightCyan;
+                            }
+                        } else if (dgvList.Columns[col].Name == "docDescription") {
+                            if (dgvList.Rows[row].Cells["status"].Value.ToString().Contains("修正")) {
+                                dgvList.Rows[row].Cells[col].Style.BackColor = Color.LightYellow;
+                                dgvList.Rows[row].Cells["docID"].Style.BackColor = Color.LightYellow;
+                                dgvList.Rows[row].Cells["edinetCode"].Style.BackColor = Color.LightYellow;
+                                dgvList.Rows[row].Cells["タイプ"].Style.BackColor = Color.LightYellow;
+                            }
+                            else if (dgvList.Rows[row].Cells["status"].Value.ToString() != "") {
+                                dgvList.Rows[row].Cells[col].Style.BackColor = Color.LightGray;
+                                dgvList.Rows[row].Cells["docID"].Style.BackColor = Color.LightGray;
+                                dgvList.Rows[row].Cells["edinetCode"].Style.BackColor = Color.LightGray;
+                                dgvList.Rows[row].Cells["タイプ"].Style.BackColor = Color.LightGray;
+                            }
+                        }
+
+                    });
                     break;
                 case "dgvContents":
                     switch (e.ColumnIndex) {
@@ -152,9 +214,10 @@ namespace EdinetViewer {
                     }
                     break;
                 case "dgvXbrl":
-                    if(e.ColumnIndex == 7 && decimal.TryParse(e.Value.ToString(), out decimal value)) {
+                    if (e.ColumnIndex == 7 && decimal.TryParse(e.Value.ToString(), out decimal value)) {
                         e.CellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
                     }
+
                     break;
             }
         }
@@ -174,6 +237,12 @@ namespace EdinetViewer {
                 if(meta !=null)
                     prevcount = (int)meta[1];
                 ApiListResult result = await edinet.GetDisclosureList(target);
+                if(result != null && result.Exception != null) {
+                    StatusLabel1.Text = string.Format("{0:HH:mm:ss} {1}", DateTime.Now, result.Exception.Message + result.Exception.InnerException != null ? result.Exception.InnerException.Message : "");
+                    currentRow1 = -1;
+                    IsReading = false;
+                    return;
+                }
                 StatusLabel1.ForeColor = Color.Black;
                 if (result != null) {
                     browser.DocumentText = edinet.ListResult.Source.Replace("\n", "<br>").Replace(" ", "&nbsp;");
@@ -197,6 +266,7 @@ namespace EdinetViewer {
                         if (dgvList.Rows.Count > 0)
                         dgvList.Rows[0].Cells[0].Selected = true;
                     }
+                    //dgvList.Refresh();
                 } else {
                     StatusLabel1.Text = DateTime.Now.ToString("HH:mm:ss") + " 書類一覧キャッシュ ";
                     DateTime? process = edinet.Database.GetMetadataProcessDateTime(target);
@@ -244,6 +314,10 @@ namespace EdinetViewer {
                 int year = 20 * 100 + id / 100000000;
                 string filepath = null;
                 bool isApi = await edinet.ChangeDocument(id, docid, type);
+                if (edinet.ArchiveResult.Exception != null) {
+                    StatusLabel1.Text = string.Format("{0:HH:mm:ss} ダウンロードできません {1}", DateTime.Now, edinet.ArchiveResult.Exception.Message + edinet.ArchiveResult.Exception.InnerException != null ? edinet.ArchiveResult.Exception.InnerException.Message : "");
+                    return;
+                }
                 if (isApi) {
                     StatusLabel1.Text = string.Format("{1:HH:mm:ss} 書類取得API status[{0}] {2}ダウンロード {3}", edinet.ArchiveResult.StatusCode, DateTime.Now, type == 2 ? "pdf" : "xbrl", edinet.ArchiveResult.Name);
                     filepath = string.Format(@"{0}\Documents\{1}\{2}", setting.Directory, year, edinet.ArchiveResult.Name);
@@ -252,6 +326,7 @@ namespace EdinetViewer {
                     filepath = edinet.ArchiveResult.Name;
                 }
                 if (type == 2) {
+                    filepath = string.Format(@"{0}\Documents\{1}\{2}", setting.Directory, year, edinet.ArchiveResult.Name);
                     string url = string.Format("file://{0}#toolbar=0&navpanes=0", filepath.Replace("\\", "/"));
                     browser.Navigate(url);
                 }
@@ -267,14 +342,21 @@ namespace EdinetViewer {
                 currentRow2 = dgvContents.CurrentCell.RowIndex;
                 edinet.SelectContent(dgvContents.CurrentCell.RowIndex, out string source);
                 string fullpath = dgvContents.Rows[dgvContents.CurrentCell.RowIndex].Cells["fullpath"].Value.ToString();
+                string tempdir = Path.Combine(setting.Directory, "temp");
+                if (!Directory.Exists(tempdir))
+                    Directory.CreateDirectory(tempdir);
                 if (".png .jpg .jpeg .gif .svg .tif .tiff .esp .pict .bmp".Contains(Path.GetExtension(fullpath).ToLower())) {
-                    string filepath = edinet.SaveImage(edinet.ArchiveResult.Buffer, fullpath);
-                    browser.Navigate(string.Format("file://{0}", filepath.Replace("\\", "/")));
+                    string filepath = edinet.ExtractImageInArchive(fullpath, tempdir);
+                    if (filepath != null)
+                        browser.Navigate(string.Format("file://{0}", filepath.Replace("\\", "/")));
+                } else if (Path.GetExtension(fullpath) == ".pdf") {
+                    string pdf = edinet.ExtractPdfInArchive(fullpath, tempdir);
+                    if (pdf != null)
+                        browser.Navigate(string.Format("file://{0}#toolbar=0&navpanes=0", pdf.Replace("\\", "/")));
                 } else if (source != null) {
                     browser.DocumentText = source;
-                } else {
-                    browser.DocumentText = "";
                 }
+
             }
         }
 

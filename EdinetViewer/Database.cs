@@ -331,9 +331,9 @@ namespace Disclosures.Database {
                     }
                     command.Connection.Close();
 
-                    string[] fields = new string[] { "id", "xbrl", "pdf", "attach", "english", "date", "status", "code" };
                     DataView dv = new DataView(table, "", "id", DataViewRowState.CurrentRows);
 
+                    string[] fields = new string[] { "id", "xbrl", "pdf", "attach", "english", "date", "status", "code" };
 
                     sb.Clear();
                     command.Parameters.Clear();
@@ -366,7 +366,6 @@ namespace Disclosures.Database {
                     using (SQLiteTransaction ts = command.Connection.BeginTransaction()) {
 
                         for (int i = 0; i < json.Root.results.Length; i++) {
-                            Console.WriteLine(json.Root.results[i].Id);
                             int index = dv.Find(json.Root.results[i].Id);
                             if (index > -1) {
                                 string status = dv[index]["Status"].ToString();
@@ -379,7 +378,6 @@ namespace Disclosures.Database {
                                     listUpdate.Add(json.Root.results[i].Id);
                                 }
                             } else {
-                                Console.WriteLine(json.Root.results[i].Id);
                                 command.Parameters["@seqNumber"].Value = json.Root.results[i].seqNumber;
                                 command.Parameters["@docID"].Value = json.Root.results[i].docID;
                                 command.Parameters["@edinetCode"].Value = json.Root.results[i].edinetCode;
@@ -411,6 +409,14 @@ namespace Disclosures.Database {
                                 command.Parameters["@id"].Value = json.Root.results[i].Id;
                                 command.Parameters["@status"].Value = json.Root.results[i].Status;
                                 command.Parameters["@code"].Value = json.Root.results[i].Code;
+                                DataRowView r = dv.AddNew();
+                                for (int j = 0; j < dv.Table.Columns.Count; j++) {
+                                    string field = dv.Table.Columns[j].ColumnName;
+                                    if (command.Parameters.Contains("@" + field)) {
+                                        r[field] = command.Parameters["@" + field].Value;
+                                    }
+                                }
+                                r.EndEdit();
                                 try {
                                     command.ExecuteNonQuery();
                                     count++;
@@ -420,7 +426,6 @@ namespace Disclosures.Database {
                                     throw;
                                 }
                             }
-
                         }
 
                         if (count > 0)
@@ -459,6 +464,15 @@ namespace Disclosures.Database {
                                     command.Parameters["@opeDateTime"].Value = json.Root.results[i].opeDateTime;
                                     command.Parameters["@status"].Value = json.Root.results[i].Status;
                                     command.Parameters["@id"].Value = json.Root.results[i].Id;
+                                    int index = dv.Find(json.Root.results[i].Id);
+                                    dv[index].BeginEdit();
+                                    for(int j=0;j< command.Parameters.Count; j++) {
+                                        string field = command.Parameters[j].ParameterName.Replace("@", "");
+                                        if (field != "id") {
+                                            dv[index][field] = command.Parameters[j].Value;
+                                        }
+                                    }
+                                    dv[index].EndEdit();
                                     command.ExecuteNonQuery();
                                 }
                             }

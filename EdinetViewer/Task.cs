@@ -220,6 +220,16 @@ namespace EdinetViewer {
 
         }
 
+        private async Task<bool> CheckException(Exception ex, string menu = null) {
+            if (ex == null)
+                return false;
+            InvokeLabel(ex.Message + ex.InnerException != null ? (" " + ex.InnerException.Message) : "");
+            await Task.Delay(10000);
+            if(menu!=null)
+            InvokeMenuCheck(menu);
+            InvokeVisible(false);
+            return true;
+        }
         private async Task DownloadLists(CancellationToken token) {
             token.ThrowIfCancellationRequested();
             List<DateTime> saved = edinet.Database.MetadataList();
@@ -254,6 +264,15 @@ namespace EdinetViewer {
                     return;
                 }
                 Disclosures.ApiListResult result = await edinet.GetDisclosureList(target, true);
+                //if(result.Exception != null) {
+                //    InvokeLabel(result.Exception.Message + result.Exception.InnerException != null ? (" " + result.Exception.InnerException.Message) : "");
+                //    await Task.Delay(5000);
+                //    InvokeMenuCheck("MenuPastList");
+                //    InvokeVisible(false);
+                //    return;
+                //}
+                if (await CheckException(result.Exception, "MenuPastList"))
+                    return;
                 Console.Write("{0:mm':'ss\\.f} {1} {2} count:{3}", sw.Elapsed, result.Json.Root.metadata.parameter.date, result.Json.Root.metadata.message, result.Json.Root.metadata.resultset.count);
                 string output = string.Format("{1:#,##0}/{2:#,##0} ({3:yyyy-MM-dd}) status[{4}]  {0:m'min'ss\\.f'sec'}経過", sw.Elapsed, i + 1, list.Count, target, result.StatusCode.ToString());
                 string error = null;
@@ -429,19 +448,21 @@ namespace EdinetViewer {
                         );
 
 
-            DataView dv = new DataView(table2, "", "id", DataViewRowState.CurrentRows);
+            DataView dv = new DataView(table2, "", today?"id desc": "id", DataViewRowState.CurrentRows);
             list.Sort();
             foreach (DateTime target in list) {
                 dv.RowFilter = string.Format("date = '{0:yyyy-MM-dd}'", target);
                 i = 0;
                 int previd = 0;
                 for (int j = 0; j < dv.Count; j++) {
+                    
                     if (token.IsCancellationRequested) {
                         InvokeProgressLabel(0, "Canceled");
                         await Task.Delay(1000);
                         InvokeVisible(false);
                         return;
                     }
+                    dgvList.Refresh();
                     int id = int.Parse(dv[j]["id"].ToString());//dbはlong
                     string docid = dv[j]["docID"].ToString();
                     int type = (int)dv[j]["type"];
@@ -451,6 +472,8 @@ namespace EdinetViewer {
                         Console.Write("{0} {1}", id, docid);
                     }
                     Disclosures.ApiArchiveResult result = await edinet.DownloadArchive(id, docid, type);
+                    if (await CheckException(result.Exception, "MenuDownload"))
+                        return;
                     i++;
                     string output = string.Format("ダウンロード {0:#,##0}/{1:#,##0} no:{2}{3}[{4}] status[{5}] ", i, dv.Count, no2, today ? "" : string.Format("({0:yyyy-MM-dd})", target), fields[type - 1], result.StatusText);
                     if (!today)
