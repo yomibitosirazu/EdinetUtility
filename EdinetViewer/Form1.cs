@@ -144,9 +144,10 @@ namespace EdinetViewer {
                     }
                     //MessageBox.Show(e.RowIndex.ToString() + "行 " + e.ColumnIndex + "列 " + dgvList.Columns[e.ColumnIndex].Name);
                     if (dgvList.Columns[e.ColumnIndex].Name == "pdfFlag") {
-                        string url = string.Format("file://{0}#toolbar=0&navpanes=0", filepath.Replace("\\", "/"));
-                        browser.Navigate(url);
-
+                        if (File.Exists(filepath)) {
+                            string url = string.Format("file://{0}#toolbar=0&navpanes=0", filepath.Replace("\\", "/"));
+                            browser.Navigate(url);
+                        }
                     } else {
 
                     }
@@ -292,7 +293,7 @@ namespace EdinetViewer {
 
         private int currentRow1;
         private async void DgvList_CurrentCellChanged(object sender, EventArgs e) {
-            if (IsReading | edinet.DvDocuments.Count == 0 || edinet.DvDocuments[dgvList.CurrentCell.RowIndex]["id"].ToString() == "")
+            if (dgvList.CurrentCell == null || IsReading | edinet.DvDocuments.Count == 0 || edinet.DvDocuments[dgvList.CurrentCell.RowIndex]["id"].ToString() == "")
                 return;
             StatusLabel1.Text = "";
             edinet.TableContents.Clear();
@@ -327,8 +328,10 @@ namespace EdinetViewer {
                 }
                 if (type == 2) {
                     filepath = string.Format(@"{0}\Documents\{1}\{2}", setting.Directory, year, edinet.ArchiveResult.Name);
-                    string url = string.Format("file://{0}#toolbar=0&navpanes=0", filepath.Replace("\\", "/"));
-                    browser.Navigate(url);
+                    if (File.Exists(filepath)) {
+                        string url = string.Format("file://{0}#toolbar=0&navpanes=0", filepath.Replace("\\", "/"));
+                        browser.Navigate(url);
+                    }
                 }
             }
         }
@@ -347,11 +350,11 @@ namespace EdinetViewer {
                     Directory.CreateDirectory(tempdir);
                 if (".png .jpg .jpeg .gif .svg .tif .tiff .esp .pict .bmp".Contains(Path.GetExtension(fullpath).ToLower())) {
                     string filepath = edinet.ExtractImageInArchive(fullpath, tempdir);
-                    if (filepath != null)
+                    if (filepath != null && File.Exists(filepath))
                         browser.Navigate(string.Format("file://{0}", filepath.Replace("\\", "/")));
                 } else if (Path.GetExtension(fullpath) == ".pdf") {
                     string pdf = edinet.ExtractPdfInArchive(fullpath, tempdir);
-                    if (pdf != null)
+                    if (pdf != null && File.Exists(pdf))
                         browser.Navigate(string.Format("file://{0}#toolbar=0&navpanes=0", pdf.Replace("\\", "/")));
                 } else if (source != null) {
                     browser.DocumentText = source;
