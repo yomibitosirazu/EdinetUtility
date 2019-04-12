@@ -35,21 +35,21 @@ namespace Disclosures {
 
         public void ImportTaxonomy(string url, ref Database.Sqlite database) {
             string source = null;
-            string lastmodified = null;
+            //string lastmodified = null;
 
             using (System.Net.WebClient wc = new System.Net.WebClient()) {
                 using (Stream st = wc.OpenRead(url)) {
                     using (StreamReader sr = new StreamReader(st, Encoding.UTF8)) {
                         source = sr.ReadToEnd();
-                        if (wc.ResponseHeaders["Last-Modified"] != null) {
-                            lastmodified = wc.ResponseHeaders["Last-Modified"];
-                        }
+                        //if (wc.ResponseHeaders["Last-Modified"] != null) {
+                        //    lastmodified = wc.ResponseHeaders["Last-Modified"];
+                        //}
                     }
                 }
             }
 
             string[] path = url.Split('/');
-            string fn = path[path.Length - 1];
+            //string fn = path[path.Length - 1];
             Console.WriteLine("  reading Taxonomy..  {0}", path[2]);
             XmlDocument document = new XmlDocument();
             document.LoadXml(source.Replace("<gen:arc", "<link:labelArc")
@@ -68,7 +68,7 @@ namespace Disclosures {
             if (locs.Count == 0 | labels.Count == 0 | arcs.Count == 0) {
                 return;
             }
-            Dictionary<string, string> dicArc = new Dictionary<string, string>();
+            //Dictionary<string, string> dicArc = new Dictionary<string, string>();
             Dictionary<string, XmlNode> dicLoc = new Dictionary<string, XmlNode>();
             Dictionary<string, string[]> dicLabel = new Dictionary<string, string[]>();
 
@@ -80,7 +80,7 @@ namespace Disclosures {
                              , new string[] { labels[i].InnerText, labels[i].Attributes["xml:lang"].InnerText });
             }
 
-            database.SaveTaxonomy(DicTaxonomy, url, arcs, dicArc, dicLoc, dicLabel);
+            database.SaveTaxonomy(DicTaxonomy, url, arcs, dicLoc, dicLabel);
         }
     }
 }

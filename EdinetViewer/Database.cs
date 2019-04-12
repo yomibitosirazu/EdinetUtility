@@ -261,8 +261,9 @@ namespace Disclosures.Database {
                 }
             }
         }
-        public void UpdateDisclosures(DateTime target, Disclosures.JsonList json, out DataTable table) {
+        public DataTable UpdateDisclosures(DateTime target, Disclosures.Json.JsonList json) {
             //jsonがnullの場合は確定した日付の書類一覧
+            DataTable table = new DataTable();
             using (var conn = new SQLiteConnection(string.Format("Data Source={0}", DbPath))) {
                 using (SQLiteCommand command = new SQLiteCommand()) {
                     command.Connection = conn;
@@ -282,22 +283,20 @@ namespace Disclosures.Database {
                     }
                     sb.Append(");");
                     command.CommandText = sb.ToString();
-                    command.Parameters.AddWithValue("@title", json.Root.metadata.title);
-                    command.Parameters.AddWithValue("@date", json.Root.metadata.parameter.date);
-                    command.Parameters.AddWithValue("@type", json.Root.metadata.parameter.type);
-                    command.Parameters.AddWithValue("@count", json.Root.metadata.resultset.count);
-                    command.Parameters.AddWithValue("@processDateTime", json.Root.metadata.processDateTime);
-                    command.Parameters.AddWithValue("@status", json.Root.metadata.status);
-                    command.Parameters.AddWithValue("@message", json.Root.metadata.message);
+                    command.Parameters.AddWithValue("@title", json.Root.MetaData.Title);
+                    command.Parameters.AddWithValue("@date", json.Root.MetaData.Parameter.Date);
+                    command.Parameters.AddWithValue("@type", json.Root.MetaData.Parameter.Type);
+                    command.Parameters.AddWithValue("@count", json.Root.MetaData.Resultset.Count);
+                    command.Parameters.AddWithValue("@processDateTime", json.Root.MetaData.ProcessDateTime);
+                    command.Parameters.AddWithValue("@status", json.Root.MetaData.Status);
+                    command.Parameters.AddWithValue("@message", json.Root.MetaData.Message);
                     command.Parameters.AddWithValue("@access", DateTime.Now.ToString());
 
                     command.Connection.Open();
                     command.ExecuteNonQuery();
                     command.Connection.Close();
-                    table = null;
-                    if (json == null || json.Root.metadata.resultset.count == 0)
-                        return;
-                    table = new DataTable();
+                    if (json == null || json.Root.MetaData.Resultset.Count == 0)
+                        return null;
                     string query = string.Format("select * from Disclosures where date(`date`) = '{0:yyyy-MM-dd}';", target);
                     command.CommandText = query;
                     command.Connection.Open();
@@ -365,50 +364,53 @@ namespace Disclosures.Database {
                     int count = 0;
                     using (SQLiteTransaction ts = command.Connection.BeginTransaction()) {
 
-                        for (int i = 0; i < json.Root.results.Length; i++) {
-                            int index = dv.Find(json.Root.results[i].Id);
+                        for (int i = 0; i < json.Root.Results.Length; i++) {
+                            int index = dv.Find(json.Root.Results[i].Id);
                             if (index > -1) {
                                 string status = dv[index]["Status"].ToString();
                                 if (status == "")
                                     status = null;
-                                if (status != json.Root.results[i].Status) {
+                                if (status != json.Root.Results[i].Status) {
                                     dv[index].BeginEdit();
                                     dv[index]["status"] = status;
                                     dv[index].EndEdit();
-                                    listUpdate.Add(json.Root.results[i].Id);
+                                    listUpdate.Add(json.Root.Results[i].Id);
                                 }
                             } else {
-                                command.Parameters["@seqNumber"].Value = json.Root.results[i].seqNumber;
-                                command.Parameters["@docID"].Value = json.Root.results[i].docID;
-                                command.Parameters["@edinetCode"].Value = json.Root.results[i].edinetCode;
-                                command.Parameters["@secCode"].Value = json.Root.results[i].secCode;
-                                command.Parameters["@JCN"].Value = json.Root.results[i].JCN;
-                                command.Parameters["@filerName"].Value = json.Root.results[i].filerName;
-                                command.Parameters["@fundCode"].Value = json.Root.results[i].fundCode;
-                                command.Parameters["@ordinanceCode"].Value = json.Root.results[i].ordinanceCode;
-                                command.Parameters["@formCode"].Value = json.Root.results[i].formCode;
-                                command.Parameters["@docTypeCode"].Value = json.Root.results[i].docTypeCode;
-                                command.Parameters["@periodStart"].Value = json.Root.results[i].periodStart;
-                                command.Parameters["@periodEnd"].Value = json.Root.results[i].periodEnd;
-                                command.Parameters["@submitDateTime"].Value = json.Root.results[i].submitDateTime;
-                                command.Parameters["@docDescription"].Value = json.Root.results[i].docDescription;
-                                command.Parameters["@issuerEdinetCode"].Value = json.Root.results[i].issuerEdinetCode;
-                                command.Parameters["@subjectEdinetCode"].Value = json.Root.results[i].subjectEdinetCode;
-                                command.Parameters["@subsidiaryEdinetCode"].Value = json.Root.results[i].subsidiaryEdinetCode;
-                                command.Parameters["@currentReportReason"].Value = json.Root.results[i].currentReportReason;
-                                command.Parameters["@parentDocID"].Value = json.Root.results[i].parentDocID;
-                                command.Parameters["@opeDateTime"].Value = json.Root.results[i].opeDateTime;
-                                command.Parameters["@withdrawalStatus"].Value = json.Root.results[i].withdrawalStatus;
-                                command.Parameters["@docInfoEditStatus"].Value = json.Root.results[i].docInfoEditStatus;
-                                command.Parameters["@disclosureStatus"].Value = json.Root.results[i].disclosureStatus;
-                                command.Parameters["@xbrlFlag"].Value = json.Root.results[i].xbrlFlag;
-                                command.Parameters["@pdfFlag"].Value = json.Root.results[i].pdfFlag;
-                                command.Parameters["@attachDocFlag"].Value = json.Root.results[i].attachDocFlag;
-                                command.Parameters["@englishDocFlag"].Value = json.Root.results[i].englishDocFlag;
-                                command.Parameters["@date"].Value = json.Root.metadata.parameter.date;
-                                command.Parameters["@id"].Value = json.Root.results[i].Id;
-                                command.Parameters["@status"].Value = json.Root.results[i].Status;
-                                command.Parameters["@code"].Value = json.Root.results[i].Code;
+                                command.Parameters["@seqNumber"].Value = json.Root.Results[i].SeqNumber;
+                                command.Parameters["@docID"].Value = json.Root.Results[i].DocID;
+                                command.Parameters["@edinetCode"].Value = json.Root.Results[i].EdinetCode;
+                                command.Parameters["@secCode"].Value = json.Root.Results[i].SecCode;
+                                command.Parameters["@JCN"].Value = json.Root.Results[i].Jcn;
+                                command.Parameters["@filerName"].Value = json.Root.Results[i].FilerName;
+                                command.Parameters["@fundCode"].Value = json.Root.Results[i].FundCode;
+                                command.Parameters["@ordinanceCode"].Value = json.Root.Results[i].OrdinanceCode;
+                                command.Parameters["@formCode"].Value = json.Root.Results[i].FormCode;
+                                command.Parameters["@docTypeCode"].Value = json.Root.Results[i].DocTypeCode;
+                                command.Parameters["@periodStart"].Value = json.Root.Results[i].PeriodStart;
+                                command.Parameters["@periodEnd"].Value = json.Root.Results[i].PeriodEnd;
+                                command.Parameters["@submitDateTime"].Value = json.Root.Results[i].SubmitDateTime;
+                                command.Parameters["@docDescription"].Value = json.Root.Results[i].DocDescription;
+                                command.Parameters["@issuerEdinetCode"].Value = json.Root.Results[i].IssuerEdinetCode;
+                                command.Parameters["@subjectEdinetCode"].Value = json.Root.Results[i].SubjectEdinetCode;
+                                command.Parameters["@subsidiaryEdinetCode"].Value = json.Root.Results[i].SubsidiaryEdinetCode;
+                                command.Parameters["@currentReportReason"].Value = json.Root.Results[i].CurrentReportReason;
+                                command.Parameters["@parentDocID"].Value = json.Root.Results[i].ParentDocID;
+                                command.Parameters["@opeDateTime"].Value = json.Root.Results[i].OpeDateTime;
+                                command.Parameters["@withdrawalStatus"].Value = json.Root.Results[i].WithdrawalStatus;
+                                command.Parameters["@docInfoEditStatus"].Value = json.Root.Results[i].DocInfoEditStatus;
+                                command.Parameters["@disclosureStatus"].Value = json.Root.Results[i].DisclosureStatus;
+                                command.Parameters["@xbrlFlag"].Value = json.Root.Results[i].XbrlFlag;
+                                command.Parameters["@pdfFlag"].Value = json.Root.Results[i].PdfFlag;
+                                command.Parameters["@attachDocFlag"].Value = json.Root.Results[i].AttachDocFlag;
+                                command.Parameters["@englishDocFlag"].Value = json.Root.Results[i].EnglishDocFlag;
+                                command.Parameters["@date"].Value = json.Root.MetaData.Parameter.Date;
+                                command.Parameters["@id"].Value = json.Root.Results[i].Id;
+                                command.Parameters["@status"].Value = json.Root.Results[i].Status;
+                                if (json.Root.Results[i].Code > 0)
+                                    command.Parameters["@code"].Value = json.Root.Results[i].Code;
+                                else
+                                    command.Parameters["@code"].Value = DBNull.Value;
                                 DataRowView r = dv.AddNew();
                                 for (int j = 0; j < dv.Table.Columns.Count; j++) {
                                     string field = dv.Table.Columns[j].ColumnName;
@@ -454,17 +456,17 @@ namespace Disclosures.Database {
 
                         using (SQLiteTransaction ts = command.Connection.BeginTransaction()) {
 
-                            for (int i = 0; i < json.Root.results.Length; i++) {
-                                if (listUpdate.Contains(json.Root.results[i].Id)) {
-                                    command.Parameters["@edinetCode"].Value = json.Root.results[i].edinetCode;
-                                    command.Parameters["@withdrawalStatus"].Value = json.Root.results[i].withdrawalStatus;
-                                    command.Parameters["@docInfoEditStatus"].Value = json.Root.results[i].docInfoEditStatus;
-                                    command.Parameters["@disclosureStatus"].Value = json.Root.results[i].disclosureStatus;
-                                    command.Parameters["@submitDateTime"].Value = json.Root.results[i].submitDateTime;
-                                    command.Parameters["@opeDateTime"].Value = json.Root.results[i].opeDateTime;
-                                    command.Parameters["@status"].Value = json.Root.results[i].Status;
-                                    command.Parameters["@id"].Value = json.Root.results[i].Id;
-                                    int index = dv.Find(json.Root.results[i].Id);
+                            for (int i = 0; i < json.Root.Results.Length; i++) {
+                                if (listUpdate.Contains(json.Root.Results[i].Id)) {
+                                    command.Parameters["@edinetCode"].Value = json.Root.Results[i].EdinetCode;
+                                    command.Parameters["@withdrawalStatus"].Value = json.Root.Results[i].WithdrawalStatus;
+                                    command.Parameters["@docInfoEditStatus"].Value = json.Root.Results[i].DocInfoEditStatus;
+                                    command.Parameters["@disclosureStatus"].Value = json.Root.Results[i].DisclosureStatus;
+                                    command.Parameters["@submitDateTime"].Value = json.Root.Results[i].SubmitDateTime;
+                                    command.Parameters["@opeDateTime"].Value = json.Root.Results[i].OpeDateTime;
+                                    command.Parameters["@status"].Value = json.Root.Results[i].Status;
+                                    command.Parameters["@id"].Value = json.Root.Results[i].Id;
+                                    int index = dv.Find(json.Root.Results[i].Id);
                                     dv[index].BeginEdit();
                                     for(int j=0;j< command.Parameters.Count; j++) {
                                         string field = command.Parameters[j].ParameterName.Replace("@", "");
@@ -484,9 +486,10 @@ namespace Disclosures.Database {
 
                 }
             }
+            return table;
         }
 
-        //public void UpdateInsertDisclosures(ref DataTable table, Disclosures.JsonList json) {
+        //public void UpdateInsertDisclosures(ref DataTable table, Disclosures.Json.JsonList json) {
         //    DataView dv = new DataView(table, "", "id", DataViewRowState.CurrentRows);
         //    using (var conn = new SQLiteConnection(string.Format("Data Source={0}", DbPath))) {
         //        using (SQLiteCommand command = new SQLiteCommand()) {
@@ -626,7 +629,7 @@ namespace Disclosures.Database {
         //    }
         //}
 
-        //public void UpdateInsertDisclosures(Disclosures.JsonList json) {
+        //public void UpdateInsertDisclosures(Disclosures.Json.JsonList json) {
         //    using (var conn = new SQLiteConnection(string.Format("Data Source={0}", DbPath))) {
         //        using (SQLiteCommand command = new SQLiteCommand()) {
         //            command.Connection = conn;
@@ -916,6 +919,8 @@ namespace Disclosures.Database {
                 }
             }
         }
+
+#pragma warning disable IDE0051
         private void InsertToTable(string tablename, Dictionary<string, string[]> dic, bool replace = false) {
             using (var conn = new SQLiteConnection(string.Format("Data Source={0}", DbPath))) {
                 using (SQLiteCommand command = new SQLiteCommand()) {
@@ -954,6 +959,7 @@ namespace Disclosures.Database {
                 }
             }
         }
+#pragma warning restore IDE0051
 
         public void UpdateAPIresult(Disclosures.Edinet apiresult) {
 
@@ -961,13 +967,13 @@ namespace Disclosures.Database {
             //StringBuilder sb = new StringBuilder();
             List<string[]> list = new List<string[]>() {
                 new string[]{
-                    apiresult.ListResult.Json.Root.metadata.title,
-                    apiresult.ListResult.Json.Root.metadata.parameter.date,
-                    apiresult.ListResult.Json.Root.metadata.parameter.type,
-                    apiresult.ListResult.Json.Root.metadata.resultset.count.ToString(),
-                    apiresult.ListResult.Json.Root.metadata.processDateTime,
-                    apiresult.ListResult.Json.Root.metadata.status,
-                    apiresult.ListResult.Json.Root.metadata.message,
+                    apiresult.ListResult.Json.Root.MetaData.Title,
+                    apiresult.ListResult.Json.Root.MetaData.Parameter.Date,
+                    apiresult.ListResult.Json.Root.MetaData.Parameter.Type,
+                    apiresult.ListResult.Json.Root.MetaData.Resultset.Count.ToString(),
+                    apiresult.ListResult.Json.Root.MetaData.ProcessDateTime,
+                    apiresult.ListResult.Json.Root.MetaData.Status,
+                    apiresult.ListResult.Json.Root.MetaData.Message,
                     DateTime.Now.ToString()} };
             InsertToTable("Metadata", fields, list);
 
@@ -975,8 +981,8 @@ namespace Disclosures.Database {
             for (int i = 0; i < Disclosures.Const.FieldName.Keys.Count; i++) {
                 //string key = Disclosures.Const.FieldName.Keys.ElementAt(i);
                 List<string> values = new List<string>();
-                for (int j = 0; j < apiresult.ListResult.Json.Root.results.Length; j++) {
-                    values.Add(apiresult.ListResult.Json.Root.results[j].seqNumber.ToString());
+                for (int j = 0; j < apiresult.ListResult.Json.Root.Results.Length; j++) {
+                    values.Add(apiresult.ListResult.Json.Root.Results[j].SeqNumber.ToString());
                 }
             }
         }
@@ -1242,7 +1248,7 @@ namespace Disclosures.Database {
         }
 
 
-        public void SaveTaxonomy(Dictionary<string, string> dicTaxonomy, string url, XmlNodeList arcs, Dictionary<string, string> dicArc, Dictionary<string, XmlNode> dicLoc, Dictionary<string, string[]> dicLabel) {
+        public void SaveTaxonomy(Dictionary<string, string> dicTaxonomy, string url, XmlNodeList arcs, Dictionary<string, XmlNode> dicLoc, Dictionary<string, string[]> dicLabel) {
             string[] path = url.Split('/');
             string fn = path[path.Length - 1];
             using (var conn = new SQLiteConnection(string.Format("Data Source={0}", DbPath))) {

@@ -7,231 +7,22 @@ using System.Net.Http;
 using System.IO;
 using System.IO.Compression;
 using System.Data;
-using System.ComponentModel;
+//using System.ComponentModel;
 using System.Threading.Tasks;
 //System.Runtime.Serialization 参照追加が必要
-using System.Runtime.Serialization.Json;
-using System.Runtime.Serialization;
+//using System.Runtime.Serialization.Json;
+//using System.Runtime.Serialization;
 
 
 namespace Disclosures {
 
-    /*
-     * EDINET WebAPIレスポンスのJSONをデシリアライズするためのクラス（標準のSystem.Runtime.Serialization.Jsonを利用）
-     *書類取得エラーのレスポンスはJsonListでデシリアライズ可能だが、APIクラス同様にJsonDocumentErrorに分けてみた
-     * プロパティの先頭が小文字のため名前指定の規則違反の警告がでるが、
-     * System.Runtime.Serialization.Jsonの仕様を理解していない
-     * とりあえず動くので将来修正の予定
-    */
-    public class JsonList {
-        //refer to JSONをコピペしてC#のクラス生成  //https://blog.beachside.dev/entry/2016/04/15/193000
-        [DataContract]
-        public class Rootobject {
-            [DataMember]
-            public Metadata metadata { get; set; }
-            [DataMember]
-            public Result[] results { get; set; }
-        }
 
-        [DataContract]
-        public class Metadata {
-            [DataMember]
-            public string title { get; set; }
-            [DataMember]
-            public Parameter parameter { get; set; }
-            [DataMember]
-            public Resultset resultset { get; set; }
-            [DataMember]
-            public string processDateTime { get; set; }
-            [DataMember]
-            public string status { get; set; }
-            [DataMember]
-            public string message { get; set; }
-        }
-
-        [DataContract]
-        public class Parameter {
-            [DataMember]
-            public string date { get; set; }
-            [DataMember]
-            public string type { get; set; }
-        }
-
-        [DataContract]
-        public class Resultset {
-            [DataMember]
-            public int count { get; set; }
-        }
-
-        [DataContract]
-        public class Result {
-            [DataMember]
-            public int seqNumber { get; set; }
-            [DataMember]
-            public string docID { get; set; }
-            [DataMember]
-            public string edinetCode { get; set; }
-            [DataMember]
-            public string secCode { get; set; }
-            [DataMember]
-            public string JCN { get; set; }
-            [DataMember]
-            public string filerName { get; set; }
-            [DataMember]
-            public string fundCode { get; set; }
-            [DataMember]
-            public string ordinanceCode { get; set; }
-            [DataMember]
-            public string formCode { get; set; }
-            [DataMember]
-            public string docTypeCode { get; set; }
-            [DataMember]
-            public string periodStart { get; set; }
-            [DataMember]
-            public string periodEnd { get; set; }
-            [DataMember]
-            public string submitDateTime { get; set; }
-            [DataMember]
-            public string docDescription { get; set; }
-            [DataMember]
-            public string issuerEdinetCode { get; set; }
-            [DataMember]
-            public string subjectEdinetCode { get; set; }
-            [DataMember]
-            public string subsidiaryEdinetCode { get; set; }
-            [DataMember]
-            public string currentReportReason { get; set; }
-            [DataMember]
-            public string parentDocID { get; set; }
-            [DataMember]
-            public string opeDateTime { get; set; }
-            [DataMember]
-            public string withdrawalStatus { get; set; }
-            [DataMember]
-            public string docInfoEditStatus { get; set; }
-            [DataMember]
-            public string disclosureStatus { get; set; }
-            [DataMember]
-            public string xbrlFlag { get; set; }
-            [DataMember]
-            public string pdfFlag { get; set; }
-            [DataMember]
-            public string attachDocFlag { get; set; }
-            [DataMember]
-            public string englishDocFlag { get; set; }
-
-            public int Id { get; set; }
-            public DateTime Date { get; set; }
-            public int Code { get; set; }
-            public string Status { get; set; }
-        }
-
-        public Rootobject Root { get; private set; }
-        private DataContractJsonSerializer serializer;
-        public JsonList(string source = null) {
-            serializer = new DataContractJsonSerializer(typeof(JsonList.Rootobject));
-            if (source != null)
-                Deserialize(source);
-        }
-        public void Deserialize(string source) {
-            using (var stream = new MemoryStream(Encoding.UTF8.GetBytes(source), false)) {
-                Root = serializer.ReadObject(stream) as JsonList.Rootobject;
-            }
-            for(int i = 0; i < Root.results.Length; i++) {
-                Root.results[i].Date = DateTime.Parse(Root.metadata.parameter.date);
-                Root.results[i].Id = int.Parse(Root.results[i].Date.ToString("yyMMdd")) * 10000 + Root.results[i].seqNumber;
-                Root.results[i].Status = GetStatus(Root.results[i]);
-                //if (DicEdinetCode != null & json.Root.results[i].edinetCode != null && DicEdinetCode.ContainsKey(json.Root.results[i].edinetCode))
-                //    r["code"] = DicEdinetCode[json.Root.results[i].edinetCode];
-            }
-        }
-        public void Clear() {
-            this.Root = null;
-        }
-
-        public string GetStatus(JsonList.Result result) {
-            /*
-             * 縦覧の終了　　　"edinetCode": null,"withdrawalStatus": "0",
-             * 
-             * 書類の取下げ
-             * 取り下げ提出日　　"withdrawalStatus": "1",　"submitDateTime": "2019-05-01 09:30",　submitは取り下げた日時
-             * 元書類　　　　　　"withdrawalStatus": "2","edinetCode": null,　　　　他もnull
-             * 途中に訂正があった場合　　訂正も"withdrawalStatus": "2","edinetCode": null,　ただし　"parentDocID": "S1000001",
-             * 
-             * 財務局職員による書類情報修正
-             * 修正発生日　　　"docInfoEditStatus": "1",　"opeDateTime": "2019-06-11 09:30",
-             * 元書類　　　　　"docInfoEditStatus": "2",
-             * 提出書類は修正されない　修正はフィールドのみ
-             * 
-             * disclosureStatus 財務局職員による書類の不開示
-             * 不開示開始日　　"disclosureStatus": "1","opeDateTime": "2019-05-01 19:30",
-             * 不開示期間は元書類の日付は　　"disclosureStatus": "1",となる
-             * 解除日　　　"disclosureStatus": "3","opeDateTime": "2019-06-01 17:30",
-             * 
-             */
-            if (result.edinetCode == null & result.withdrawalStatus == "0")
-                return "縦覧終了";
-            else if (result.withdrawalStatus == "1")
-                return "取下日";
-            else if (result.withdrawalStatus == "2" & result.edinetCode == null) {
-                if (result.parentDocID != null)
-                    return "取下子";
-                else
-                    return "取下";
-            } else if (result.docInfoEditStatus == "1")
-                return "修正発生日";
-            else if (result.docInfoEditStatus == "2")
-                return "修正";
-            else if (result.disclosureStatus == "1")
-                return "不開示開始日";
-            else if (result.disclosureStatus == "2")
-                return "不開示";
-            else if (result.disclosureStatus == "3")
-                return "不開示解除日";
-            return null;
-        }
-
-    }
-
-    public class JsonDocumentError {
-        [DataContract]
-        public class Rootobject {
-            [DataMember]
-            public Metadata metadata { get; set; }
-        }
-        [DataContract]
-        public class Metadata {
-            [DataMember]
-            public string title { get; set; }
-            [DataMember]
-            public string status { get; set; }
-            [DataMember]
-            public string message { get; set; }
-        }
-        public Rootobject Root { get; private set; }
-        private DataContractJsonSerializer serializer;
-        public JsonDocumentError() {
-            serializer = new DataContractJsonSerializer(typeof(JsonDocumentError.Rootobject));
-        }
-        public void Deserialize(string source) {
-            using (var stream = new MemoryStream(Encoding.UTF8.GetBytes(source), false)) {
-                Root = serializer.ReadObject(stream) as JsonDocumentError.Rootobject;
-            }
-        }
-        public void Clear() {
-            this.Root = null;
-        }
-    }
-
-    //public class ApiException {
-    //    public Exception Exception { get; set; }
-    //}
     public class ApiListResult {
         public string Source { get; set; }
         public string Content { get; set; }
         public int StatusCode { get; set; }
         public string StatusText { get; set; }
-        public JsonList Json { get; set; }
+        public Json.JsonList Json { get; set; }
         public Exception Exception { get; set; }
         public ApiListResult(string source, string content, HttpStatusCode statuscode) {
             Exception = null;
@@ -240,7 +31,7 @@ namespace Disclosures {
             StatusCode = (int)statuscode;
             StatusText = statuscode.ToString();
             if (Json == null)
-                Json = new JsonList();
+                Json = new Json.JsonList();
             Json.Deserialize(source);
         }
         public ApiListResult(Exception ex) {
@@ -262,7 +53,7 @@ namespace Disclosures {
         public int StatusCode;
         public string StatusText { get; set; }
         public Api.ContentType ContentType { get; set; }
-        public JsonDocumentError Error { get; private set; }
+        public Json.JsonDocumentError Error { get; private set; }
         public Exception Exception { get; set; }
         public ApiArchiveResult(string content, HttpStatusCode? statuscode, byte[] buffer, string filename) {
             Clear();
@@ -277,7 +68,7 @@ namespace Disclosures {
             if (ContentType == Api.ContentType.Fail) {
                 string source = Encoding.ASCII.GetString(buffer);
                 if (Error == null)
-                    Error = new JsonDocumentError();
+                    Error = new Json.JsonDocumentError();
                 Error.Deserialize(source);
             }
         }
@@ -310,7 +101,7 @@ namespace Disclosures {
             client.DefaultRequestHeaders.Add("Accept-Language", "ja-JP");
             client.BaseAddress = new Uri(baseUrl);
         }
-        protected async Task<ApiListResult> GetDovumentsList(DateTime date, int type = 2) {
+        protected async Task<ApiListResult> GetDocumentsList(DateTime date, int type = 2) {
             string url = string.Format("/api/{0}/documents.json?date={1:yyyy-MM-dd}{2}", Version, date, type == 2 ? "&type=2" : "");
             try {
                 using (var response = await client.GetAsync(url)) {
@@ -374,7 +165,7 @@ namespace Disclosures {
         public DataTable TableElements;
         public ApiListResult ListResult { get; private set; }
         public ApiArchiveResult ArchiveResult { get; private set; }
-        //public JsonList Json { get; private set; }
+        //public Json.JsonList Json { get; private set; }
         public string[] Types { get; private set; }
         public Dictionary<string, int> DicEdinetCode { get; set; }
 
@@ -521,99 +312,50 @@ namespace Disclosures {
         public async Task<ApiListResult> GetDisclosureList(DateTime target, bool background = false) {
             ApiListResult result = null;
             int count = 0;
-            bool request = false;
             if (background) {
-                result = await GetDovumentsList(target);
+                result = await GetDocumentsList(target);
                 bool error = CheckException(result.Exception);
                 if (error) {
                     return result;
                 }
-                JsonList json = new JsonList();
+                Json.JsonList json = new Json.JsonList();
                 json.Deserialize(result.Source);
-                count = json.Root.metadata.resultset.count;
+                count = json.Root.MetaData.Resultset.Count;
                 //DataTable table = TableDocuments.Clone();
                 //ListToTable(ref table, json);
-                Database.UpdateDisclosures(target, json, out DataTable table);
-                request = true;
+                Database.UpdateDisclosures(target, json);
+                //request = true;
             } else {
                 object[] meta = Database.GetMetadata(target);
-                request = meta == null || ((DateTime)meta[0]).Date == target.Date ? true : false;
+                bool request = meta == null || ((DateTime)meta[0]).Date == target.Date ? true : false;
                 TableContents.Rows.Clear();
                 TableElements.Rows.Clear();
                 if (ListResult != null)
                     ListResult.Clear();
                 if (!request) {
                     LoadDocuments(target);
-                    //string query = string.Format("select * from Disclosures where date(`date`) = '{0:yyyy-MM-dd}';", target);
-                    //DataTable table = Database.ReadQuery(query);
-                    //TableDocuments.Rows.Clear();
-                    //for (int i = 0; i < table.Rows.Count; i++) {
-                    //    DataRow r = TableDocuments.NewRow();
-                    //    for (int j = 0; j < TableDocuments.Columns.Count; j++) {
-                    //        if (table.Columns.Contains(TableDocuments.Columns[j].ColumnName)) {
-                    //            r[TableDocuments.Columns[j].ColumnName] = table.Rows[i][TableDocuments.Columns[j].ColumnName];
-                    //            if (TableDocuments.Columns[j].ColumnName == "docTypeCode") {
-                    //                string docTypeCode = table.Rows[i][TableDocuments.Columns[j].ColumnName].ToString();
-                    //                if (Const.DocTypeCode.ContainsKey(docTypeCode))
-                    //                    r["タイプ"] = Const.DocTypeCode[docTypeCode];
-                    //            }
-                    //        }
-                    //    }
-                    //    TableDocuments.Rows.Add(r);
-                    //}
                 }
 
                 if (request) {
-                    result = await GetDovumentsList(target);
+                    result = await GetDocumentsList(target);
                     //bool error = CheckException(result.Exception);
                     if (CheckException(result.Exception)) {
                         LoadDocuments(target);
                         return result;
                     }
-                    //if(result.Exception!=null) {
-                    //    if(result.Exception.GetType() == typeof(HttpRequestException)) {
-                    //        if (result.Exception.Message.Contains("リモート名を解決できませんでした") | 
-                    //            result.Exception.InnerException != null &&
-                    //            result.Exception.InnerException.Message.Contains("リモート名を解決できませんでした")) {
-                    //            //リモート名を解決できませんでした インターネット接続なし
-                    //            //throw new Exception("インターネット接続を確認してください");
-                    //            string log = string.Format("{0:yyyy-MM-dd HH:mm:ss.f} DocumentListAPI:{1}\r\n", DateTime.Now,
-                    //                result.Exception.Message);
-                    //            SaveLog(log);
-                    //            LoadDocuments(target);
-                    //            return result;
-                    //        } else {
-
-                    //        }
-                    //    }
-                    //}
                     result.Json.Deserialize(result.Source);
                     if (DicEdinetCode != null) {
-                        for (int i = 0; i < result.Json.Root.results.Length; i++) {
-                            if (result.Json.Root.results[i].edinetCode != null &&
-                            DicEdinetCode.ContainsKey(result.Json.Root.results[i].edinetCode))
-                                result.Json.Root.results[i].Code = DicEdinetCode[result.Json.Root.results[i].edinetCode];
+                        for (int i = 0; i < result.Json.Root.Results.Length; i++) {
+                            if (result.Json.Root.Results[i].EdinetCode != null &&
+                            DicEdinetCode.ContainsKey(result.Json.Root.Results[i].EdinetCode))
+                                result.Json.Root.Results[i].Code = DicEdinetCode[result.Json.Root.Results[i].EdinetCode];
                         }
                     }
-                    count = result.Json.Root.metadata.resultset.count;
+                    count = result.Json.Root.MetaData.Resultset.Count;
                     ListResult = result;
-                    Database.UpdateDisclosures(target, ListResult.Json, out DataTable table);
+                    DataTable table = Database.UpdateDisclosures(target, ListResult.Json);
                     UpdateDocumentsTable(ref table);
-                    //TableDocuments.Rows.Clear();
-                    //for (int i = 0; i < table.Rows.Count; i++) {
-                    //    DataRow r = TableDocuments.NewRow();
-                    //    for (int j = 0; j < TableDocuments.Columns.Count; j++) {
-                    //        if (table.Columns.Contains(TableDocuments.Columns[j].ColumnName)) {
-                    //            r[TableDocuments.Columns[j].ColumnName] = table.Rows[i][TableDocuments.Columns[j].ColumnName];
-                    //            if (TableDocuments.Columns[j].ColumnName == "docTypeCode") {
-                    //                string docTypeCode = table.Rows[i][TableDocuments.Columns[j].ColumnName].ToString();
-                    //                if (Const.DocTypeCode.ContainsKey(docTypeCode))
-                    //                    r["タイプ"] = Const.DocTypeCode[docTypeCode];
-                    //            }
-                    //        }
-                    //    }
-                    //    TableDocuments.Rows.Add(r);
-                    //}
+
                 }
                 List<string> list = new List<string>();
                 foreach (DataRow r in TableDocuments.Rows) {
@@ -629,7 +371,7 @@ namespace Disclosures {
                         list2.Add(s);
                 Types = list2.ToArray();
             }
-            if (request) {
+            if (result != null) {
                 string log = string.Format("{0:yyyy-MM-dd HH:mm:ss.f} DocumentListAPI:{1} {2}\tcount:{3}\r\n", DateTime.Now,
                     result.StatusCode, target.ToString("yyyy-MM-dd"), count);
                 SaveLog(log);
@@ -643,7 +385,7 @@ namespace Disclosures {
 
         //書類一覧APIレスポンスのJSONはファイルに上書き保存
         private void SaveCache(DateTime target, ref ApiListResult result) {
-            if (result.Json.Root.metadata.status == "200") {
+            if (result.Json.Root.MetaData.Status == "200") {
                 if (!Directory.Exists(Path.Combine(cachedirectory, "Json")))
                     Directory.CreateDirectory(Path.Combine(cachedirectory, "Json"));
                 string dirJson = Path.Combine(cachedirectory, "Json", target.Year.ToString());
@@ -660,11 +402,15 @@ namespace Disclosures {
             if (CheckException(result.Exception))
                 return result;
             int year = 20 * 100 + id / 100000000;
-            string filepath = string.Format(@"{0}\Documents\{1}\{2}", cachedirectory, year, result.Name);
+            //string filepath = string.Format(@"{0}\Documents\{1}\{2}", cachedirectory, year, result.Name);
             ContentType content = (ContentType)Enum.ToObject(typeof(ContentType), Array.IndexOf(ContentTypes, result.Content));
             if (content != ContentType.Fail) {
-                SaveFile(result.Buffer, result.Name, type, year);
+                SaveFile(result.Buffer, result.Name, year);
                 Database.UpdateFilenameOfDisclosure(id, doctype[type - 1], result.Name);
+            } else {
+                if (result.Error != null && result.Error.Root != null) {
+                    Database.UpdateFilenameOfDisclosure(id, doctype[type - 1], result.Error.Root.MetaData.Status);
+                }
             }
             string log = string.Format("{0:yyyy-MM-dd HH:mm:ss.f} ArchiveAPI status:{1} {2} {3}\tContent-Type:{4}[{5}]\r\n", DateTime.Now, result.StatusCode, id, result.Name, content.ToString(), result.Content);
             SaveLog(log);
@@ -676,9 +422,9 @@ namespace Disclosures {
             string filepath = string.Format(@"{0}\Documents\{1}\{2}_{3}.{4}", cachedirectory, year, docid, type, type == 2 ? "pdf" : "zip");
             bool exists = File.Exists(filepath);
             if (exists) {
-                //filepath = string.Format(@"{0}\Documents\{1}\{2}", cachedirectory, year, name);
                 LoadCache(filepath);
             } else {
+                
                 ArchiveResult = await this.DownloadArchive(id, docid, type);
             }
 
@@ -713,7 +459,7 @@ namespace Disclosures {
             return !exists;
         }
         //ローカルに保存
-        private void SaveFile(byte[] buffer, string name, int type, int year) {
+        private void SaveFile(byte[] buffer, string name, int year) {
             using (MemoryStream stream = new MemoryStream(buffer)) {
                 string dir = Path.Combine(cachedirectory, "Documents", year.ToString());
                 if (!Directory.Exists(dir))
@@ -734,7 +480,7 @@ namespace Disclosures {
         //private void CheckUpdate() {
 
         //}
-        //private bool Equals(JsonList.Result result1, JsonList.Result result2) {
+        //private bool Equals(Json.JsonList.Result result1, Json.JsonList.Result result2) {
         //    bool equal = true;
         //    equal = equal & result1.attachDocFlag == result2.attachDocFlag;
         //    equal = equal & result1.currentReportReason == result2.currentReportReason;
@@ -768,7 +514,7 @@ namespace Disclosures {
 
 
 
-        //private void ListToTable(ref DataTable table, JsonList json) {
+        //private void ListToTable(ref DataTable table, Json.JsonList json) {
         //    DataView dv = new DataView(table, "", "id", DataViewRowState.CurrentRows);
         //    DateTime target = DateTime.Parse(json.Root.metadata.parameter.date);
         //    //EdinetCode=null withdrawalStatus='0' 縦覧期間終了
@@ -841,7 +587,7 @@ namespace Disclosures {
         //            list2.Add(s);
         //    Types = list2.ToArray();
         //}
-        //private string GetStatus(JsonList.Result result) {
+        //private string GetStatus(Json.JsonList.Result result) {
         //    if (result.edinetCode == null & result.withdrawalStatus == "0")
         //        return "縦覧終了";
         //    else if (result.withdrawalStatus == "1")
@@ -986,16 +732,14 @@ namespace Disclosures {
                     foreach (ZipArchiveEntry entry in archive.Entries) {
                         if (entry.FullName == entryFullName) {
                             using (Stream stream = entry.Open()) {
-
-
                                 using (MemoryStream ms = new MemoryStream()) {
                                     stream.CopyTo(ms);
                                     using (System.Drawing.Image image = System.Drawing.Image.FromStream(ms)) {
                                         string extension = Path.GetExtension(entryFullName);
-                                        string dir = Path.Combine(cachedirectory, "temp");
-                                        if (!Directory.Exists(dir))
-                                            Directory.CreateDirectory(dir);
-                                        string imagefile = Path.Combine(dir, "image" + extension);
+                                        //string dir = Path.Combine(cachedirectory, "temp");
+                                        //if (!Directory.Exists(dir))
+                                        //    Directory.CreateDirectory(dir);
+                                        string imagefile = Path.Combine(dest, "image" + extension);
                                         image.Save(imagefile);
                                         return imagefile;
                                     }

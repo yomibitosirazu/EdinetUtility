@@ -11,6 +11,8 @@ using System.Reflection;
 using Disclosures;
 
 namespace EdinetViewer {
+
+
     public partial class Form1 : Form {
         public Form1() {
             InitializeComponent();
@@ -117,44 +119,6 @@ namespace EdinetViewer {
         }
 
 
-        private void DgvXbrl_CurrentCellChanged(object sender, EventArgs e) {
-            
-        }
-
-
-        private async void DgvList_CellContentClick(object sender, DataGridViewCellEventArgs e) {
-            if ("pdfFlag,attachDocFlag,englishDocFlag".Contains((sender as DataGridView).Columns[e.ColumnIndex].Name)) {
-                object value = (sender as DataGridView).Rows[e.RowIndex].Cells[e.ColumnIndex].Value;
-                if (value != null && value.ToString() == "1") {
-                    DateTime date = DateTime.Parse(dgvList.Rows[e.RowIndex].Cells["date"].Value.ToString());
-                    //string dir = Path.Combine(setting.Directory, "Documents", date.Year.ToString());
-                    int id = (int)edinet.DvDocuments[e.RowIndex]["id"];
-
-                    string docid = edinet.DvDocuments[e.RowIndex]["docID"].ToString();
-                    string[] fields = new string[] { "xbrlFlag", "pdfFlag", "attachDocFlag", "englishDocFlag" };
-                    int index = Array.IndexOf(fields, dgvList.Columns[e.ColumnIndex].Name);
-                    string filepath = string.Format(@"{0}\Documents\{1}\{2}_{3}.{4}", setting.Directory, date.Year, docid, index + 1, index == 1 ? "pdf" : "zip");
-                    bool api = await edinet.ChangeDocument(id, docid, index + 1);
-                    if (api) {
-                        StatusLabel1.Text = string.Format("{1:HH:mm:ss} 書類取得API status[{0}] {2}ダウンロード {3}", edinet.ArchiveResult.StatusCode, DateTime.Now, index == 1 ? "pdf" : "xbrl", edinet.ArchiveResult.Name);
-                        //filepath = string.Format(@"{0}\Documents\{1}\{2}", setting.Directory, year, edinet.ArchiveResult.Name);
-                    } else {
-                        StatusLabel1.Text = DateTime.Now.ToString("HH:mm:ss") + " ダウンロード済み書類 ";
-                        //filepath = edinet.ArchiveResult.Name;
-                    }
-                    //MessageBox.Show(e.RowIndex.ToString() + "行 " + e.ColumnIndex + "列 " + dgvList.Columns[e.ColumnIndex].Name);
-                    if (dgvList.Columns[e.ColumnIndex].Name == "pdfFlag") {
-                        if (File.Exists(filepath)) {
-                            string url = string.Format("file://{0}#toolbar=0&navpanes=0", filepath.Replace("\\", "/"));
-                            browser.Navigate(url);
-                        }
-                    } else {
-
-                    }
-                }
-            }
-        }
-
 
         private void DataGridView_CellFormatting(object sender, DataGridViewCellFormattingEventArgs e) {
             DataGridView dgv = (DataGridView)sender;
@@ -215,10 +179,11 @@ namespace EdinetViewer {
                     }
                     break;
                 case "dgvXbrl":
-                    if (e.ColumnIndex == 7 && decimal.TryParse(e.Value.ToString(), out decimal value)) {
+#pragma warning disable IDE0059
+                    if (e.ColumnIndex == 7 && double.TryParse(e.Value.ToString(), out double value)) {
                         e.CellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
                     }
-
+#pragma warning restore IDE0059
                     break;
             }
         }
@@ -239,7 +204,9 @@ namespace EdinetViewer {
                     prevcount = (int)meta[1];
                 ApiListResult result = await edinet.GetDisclosureList(target);
                 if(result != null && result.Exception != null) {
-                    StatusLabel1.Text = string.Format("{0:HH:mm:ss} {1}", DateTime.Now, result.Exception.Message + result.Exception.InnerException != null ? result.Exception.InnerException.Message : "");
+                    StatusLabel1.Text = string.Format("{0:HH:mm:ss} {1}", DateTime.Now, result.Exception.Message);
+                    if (result.Exception.InnerException != null)
+                        StatusLabel1.Text += result.Exception.InnerException.Message;
                     currentRow1 = -1;
                     IsReading = false;
                     return;
@@ -249,11 +216,11 @@ namespace EdinetViewer {
                     browser.DocumentText = edinet.ListResult.Source.Replace("\n", "<br>").Replace(" ", "&nbsp;");
                     if (edinet.ListResult.StatusCode != (int)System.Net.HttpStatusCode.OK) {
                         StatusLabel1.ForeColor = Color.Red;
-                        StatusLabel1.Text = string.Format("{3:HH:mm:ss} 書類一覧APIエラー {0} {1} {2}", edinet.ListResult.Json.Root.metadata.title, edinet.ListResult.Json.Root.metadata.status, edinet.ListResult.Json.Root.metadata.message, DateTime.Now);
+                        StatusLabel1.Text = string.Format("{3:HH:mm:ss} 書類一覧APIエラー {0} {1} {2}", edinet.ListResult.Json.Root.MetaData.Title, edinet.ListResult.Json.Root.MetaData.Status, edinet.ListResult.Json.Root.MetaData.Message, DateTime.Now);
                     } else {
                         string labeltext = string.Format("status:{0} {1} 新規[{3}]/計[{2}]",
-                            result.Json.Root.metadata.message, result.Json.Root.metadata.processDateTime,
-                                result.Json.Root.metadata.resultset.count, result.Json.Root.metadata.resultset.count - prevcount);
+                            result.Json.Root.MetaData.Message, result.Json.Root.MetaData.ProcessDateTime,
+                                result.Json.Root.MetaData.Resultset.Count, result.Json.Root.MetaData.Resultset.Count - prevcount);
 
                         LabelMetadata.Text = labeltext + (sender == null ? " on timer" : "");
 
@@ -261,8 +228,8 @@ namespace EdinetViewer {
                             result.StatusCode,
                             result.StatusText,
                             DateTime.Now,
-                            result.Json.Root.metadata.resultset.count - prevcount,
-                            result.Json.Root.metadata.resultset.count);
+                            result.Json.Root.MetaData.Resultset.Count - prevcount,
+                            result.Json.Root.MetaData.Resultset.Count);
                         StatusLabel1.Text = statustext + (sender == null ? " on timer" : "");
                     }
                     //dgvList.Refresh();
@@ -277,7 +244,7 @@ namespace EdinetViewer {
                     dgvList.Rows[0].Cells[0].Selected = true;
                 currentRow1 = -1;
                 IsReading = false;
-                if (result == null || result.Json.Root == null || result.Json.Root.results.Length == 0)
+                if (result == null || result.Json.Root == null || result.Json.Root.Results.Length == 0)
                     return;
                 //timerの場合続いて書類のダウンロード
                 if (sender == null && setting.Download && (setting.Xbrl|setting.Pdf|setting.Attach|setting.English) & setting.DocumentTypes.Length>0) {
@@ -287,6 +254,49 @@ namespace EdinetViewer {
                 }else if (setting.Watching != null && setting.Watching.Length > 0) {
                     //自動ダウンロードオフであっても監視銘柄はタイマーオンオフにかかわらずすべてダウンロードする 
 
+                }
+            }
+        }
+
+
+        private void DgvXbrl_CurrentCellChanged(object sender, EventArgs e) {
+
+        }
+
+
+        private async void DgvList_CellContentClick(object sender, DataGridViewCellEventArgs e) {
+            if ("pdfFlag,attachDocFlag,englishDocFlag".Contains((sender as DataGridView).Columns[e.ColumnIndex].Name)) {
+                object value = (sender as DataGridView).Rows[e.RowIndex].Cells[e.ColumnIndex].Value;
+                if (value != null && value.ToString() == "1") {
+                    DateTime date = DateTime.Parse(dgvList.Rows[e.RowIndex].Cells["date"].Value.ToString());
+                    int id = (int)edinet.DvDocuments[e.RowIndex]["id"];
+                    string docid = edinet.DvDocuments[e.RowIndex]["docID"].ToString();
+                    string[] fields = new string[] { "xbrlFlag", "pdfFlag", "attachDocFlag", "englishDocFlag" };
+                    int index = Array.IndexOf(fields, dgvList.Columns[e.ColumnIndex].Name);
+                    string filepath = string.Format(@"{0}\Documents\{1}\{2}_{3}.{4}", setting.Directory, date.Year, docid, index + 1, index == 1 ? "pdf" : "zip");
+                    string field = fields[index].Replace("Doc", "").Replace("Flag", "");
+                    string download = dgvList.CurrentRow.Cells[field].Value.ToString();
+                    if (download == "404") {
+                        StatusLabel1.Text = string.Format("{0:HH:mm:ss} {1}[{2}] 404[Not Found] in table", DateTime.Now, docid, field);
+                        return;
+                    }
+                    bool api = await edinet.ChangeDocument(id, docid, index + 1);
+                    if (api) {
+                        StatusLabel1.Text = string.Format("{1:HH:mm:ss} 書類取得API status[{0}] {2}ダウンロード {3}", edinet.ArchiveResult.StatusCode, DateTime.Now, index == 1 ? "pdf" : "xbrl", edinet.ArchiveResult.Name);
+                        //filepath = string.Format(@"{0}\Documents\{1}\{2}", setting.Directory, year, edinet.ArchiveResult.Name);
+                    } else {
+                        StatusLabel1.Text = DateTime.Now.ToString("HH:mm:ss") + " ダウンロード済み書類 ";
+                        //filepath = edinet.ArchiveResult.Name;
+                    }
+                    //MessageBox.Show(e.RowIndex.ToString() + "行 " + e.ColumnIndex + "列 " + dgvList.Columns[e.ColumnIndex].Name);
+                    if (dgvList.Columns[e.ColumnIndex].Name == "pdfFlag") {
+                        if (File.Exists(filepath)) {
+                            string url = string.Format("file://{0}#toolbar=0&navpanes=0", filepath.Replace("\\", "/"));
+                            browser.Navigate(url);
+                        }
+                    } else {
+
+                    }
                 }
             }
         }
@@ -310,27 +320,35 @@ namespace EdinetViewer {
                     type = 1;
                 else if (dgvList.Rows[dgvList.CurrentCell.RowIndex].Cells["pdfFlag"].Value.ToString() == "1")
                     type = 2;
-                else
-                    return;
-                int year = 20 * 100 + id / 100000000;
-                string filepath = null;
-                bool isApi = await edinet.ChangeDocument(id, docid, type);
-                if (edinet.ArchiveResult.Exception != null) {
-                    StatusLabel1.Text = string.Format("{0:HH:mm:ss} ダウンロードできません {1}", DateTime.Now, edinet.ArchiveResult.Exception.Message + edinet.ArchiveResult.Exception.InnerException != null ? edinet.ArchiveResult.Exception.InnerException.Message : "");
-                    return;
-                }
-                if (isApi) {
-                    StatusLabel1.Text = string.Format("{1:HH:mm:ss} 書類取得API status[{0}] {2}ダウンロード {3}", edinet.ArchiveResult.StatusCode, DateTime.Now, type == 2 ? "pdf" : "xbrl", edinet.ArchiveResult.Name);
-                    filepath = string.Format(@"{0}\Documents\{1}\{2}", setting.Directory, year, edinet.ArchiveResult.Name);
-                } else {
-                    StatusLabel1.Text = DateTime.Now.ToString("HH:mm:ss") + " ダウンロード済み書類";
-                    filepath = edinet.ArchiveResult.Name;
-                }
-                if (type == 2) {
-                    filepath = string.Format(@"{0}\Documents\{1}\{2}", setting.Directory, year, edinet.ArchiveResult.Name);
-                    if (File.Exists(filepath)) {
-                        string url = string.Format("file://{0}#toolbar=0&navpanes=0", filepath.Replace("\\", "/"));
-                        browser.Navigate(url);
+                //else
+                //    return;
+                if (type > 0) {
+                    int year = 20 * 100 + id / 100000000;
+                    //string filepath = null;
+                    string download = dgvList.CurrentRow.Cells[type == 1 ? "xbrl" : "pdf"].Value.ToString();
+                    if (download == "404") {
+                        StatusLabel1.Text = string.Format("{0:HH:mm:ss} {1}[{2}] 404[Not Found] in table", DateTime.Now, docid, type == 1 ? "xbrl" : "pdf");
+                        return;
+                    }
+                    bool isApi = await edinet.ChangeDocument(id, docid, type);
+                    if (edinet.ArchiveResult.Exception != null) {
+                        StatusLabel1.Text = string.Format("{0:HH:mm:ss} ダウンロードできません {1}", DateTime.Now, edinet.ArchiveResult.Exception.Message + edinet.ArchiveResult.Exception.InnerException != null ? edinet.ArchiveResult.Exception.InnerException.Message : "");
+                        return;
+                    }
+                    if (isApi) {
+                        StatusLabel1.Text = string.Format("{1:HH:mm:ss} 書類取得API status[{0}] {2}ダウンロード {3}", edinet.ArchiveResult.StatusCode, DateTime.Now, type == 2 ? "pdf" : "xbrl", edinet.ArchiveResult.Name);
+                        //filepath = string.Format(@"{0}\Documents\{1}\{2}", setting.Directory, year, edinet.ArchiveResult.Name);
+                    } else {
+                        StatusLabel1.Text = DateTime.Now.ToString("HH:mm:ss") + " ダウンロード済み書類";
+                        //filepath = edinet.ArchiveResult.Name;
+                    }
+                    if (type == 2) {
+                        string filepath = string.Format(@"{0}\Documents\{1}\{2}", setting.Directory, year, edinet.ArchiveResult.Name);
+                        if (File.Exists(filepath)) {
+                            string url = string.Format("file://{0}#toolbar=0&navpanes=0", filepath.Replace("\\", "/"));
+                            browser.Navigate(url);
+                        }
+
                     }
                 }
             }
@@ -690,30 +708,34 @@ namespace EdinetViewer {
             TimerCheck();
         }
         private bool TimerCheck() {
-            bool enable = setting.Timer;
+            //bool enable = setting.Timer;
             if (setting.Timer) {
                 checkTimer.BackColor = Color.Yellow;
                 checkTimer.Text = string.Format("{0} min", setting.Interval);
-                enable = true;
+                //enable = true;
             } else {
                 checkTimer.BackColor = Control.DefaultBackColor;
                 checkTimer.Text = "Off";
-                enable = false;
+                //enable = false;
             }
-            if (DateTime.Now.AddMinutes(30).Hour < 9 | DateTime.Now.AddMinutes(-15).Hour > 17) {
-                enable = false;
-                toolTip1.SetToolTip(checkTimer, "時間外です");
-            }
+
             if ((DateTime.Now.DayOfWeek == DayOfWeek.Sunday | DateTime.Now.DayOfWeek == DayOfWeek.Saturday) |
                     (DateTime.Now.Month == 12 & DateTime.Now.Day > 29) |
                     (DateTime.Now.Month == 1 & DateTime.Now.Day < 4) |
                     (setting.Holiday.ContainsKey(DateTime.Now.Date))) {
-                enable = false;
+                //enable = false;
                 toolTip1.SetToolTip(checkTimer, "市場は休みです");
-            }
-            if (!enable)
                 checkTimer.BackColor = Control.DefaultBackColor;
-            return enable;
+                return false;
+            } else if (DateTime.Now.AddMinutes(30).Hour < 9 | DateTime.Now.AddMinutes(-15).Hour > 17) {
+                //enable = false;
+                toolTip1.SetToolTip(checkTimer, "時間外です");
+                checkTimer.BackColor = Control.DefaultBackColor;
+                return false;
+            }
+            //if (!enable)
+            //    checkTimer.BackColor = Control.DefaultBackColor;
+            return setting.Timer;
 
         }
     }

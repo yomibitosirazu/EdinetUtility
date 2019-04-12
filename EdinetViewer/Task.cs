@@ -273,7 +273,7 @@ namespace EdinetViewer {
                 //}
                 if (await CheckException(result.Exception, "MenuPastList"))
                     return;
-                Console.Write("{0:mm':'ss\\.f} {1} {2} count:{3}", sw.Elapsed, result.Json.Root.metadata.parameter.date, result.Json.Root.metadata.message, result.Json.Root.metadata.resultset.count);
+                Console.Write("{0:mm':'ss\\.f} {1} {2} count:{3}", sw.Elapsed, result.Json.Root.MetaData.Parameter.Date, result.Json.Root.MetaData.Message, result.Json.Root.MetaData.Resultset.Count);
                 string output = string.Format("{1:#,##0}/{2:#,##0} ({3:yyyy-MM-dd}) status[{4}]  {0:m'min'ss\\.f'sec'}経過", sw.Elapsed, i + 1, list.Count, target, result.StatusCode.ToString());
                 string error = null;
                 if (result.StatusCode != 200) {
@@ -335,6 +335,8 @@ namespace EdinetViewer {
                 sb.Insert(0, "and (");
                 sb.Append(")");
             }
+            //if (sb.Length > 0)
+            //    sb.Append(" and xbrl != '404'");
             if (setting.DocumentTypes.Length > 0) {
                 sb.Append(" and docTypeCode in (");
                 for (int j = 0; j < setting.DocumentTypes.Length; j++) {
@@ -345,8 +347,8 @@ namespace EdinetViewer {
                 sb.Append(")");
             }
             DateTime start = today ? DateTime.Now.Date : DateTime.Now.AddYears(-5).Date;
-            //string query = string.Format("select id, `date`, secCode, filerName, docDescription, docid, docTypeCode, edinetCode, withdrawalStatus, xbrlFlag, pdfFlag, attachDocFlag, englishDocFlag, xbrl, pdf, attach, english from disclosures where date(`date`) >= '{0:yyyy-MM-dd}' {2} order by id{1};", start, today ? " desc" : "", sb.ToString());
-            string query = string.Format("select id, `date`, secCode, docid, docTypeCode, withdrawalStatus, edinetCode, xbrlFlag, pdfFlag, attachDocFlag, englishDocFlag from disclosures where date(`date`) >= '{0:yyyy-MM-dd}' {2} order by id{1};", start, today ? " desc" : "", sb.ToString());
+
+            string query = string.Format("select id, `date`, secCode, docid, docTypeCode, withdrawalStatus, edinetCode, xbrlFlag, pdfFlag, attachDocFlag, englishDocFlag, xbrl, pdf, attach, english from disclosures where date(`date`) >= '{0:yyyy-MM-dd}' {2} order by id{1};", start, today ? " desc" : "", sb.ToString());
             DataTable table = edinet.Database.ReadQuery(query);
             int i = 0;
             InvokeVisible(true);
@@ -358,7 +360,6 @@ namespace EdinetViewer {
                 Console.WriteLine("canceled background download archive");
                 return;
             }
-            //List<object[]> list = new List<object[]>();
             string[] fields = new string[] { "xbrl", "pdf", "attach", "english" };
             bool[] auto = new bool[] { setting.Xbrl, setting.Pdf, setting.Attach, setting.English };
 
@@ -368,13 +369,10 @@ namespace EdinetViewer {
             table2.Columns.Add("docID", typeof(string));
             table2.Columns.Add("type", typeof(int));
             table2.Columns.Add("no", typeof(int));
-            //table.Columns.Add("dt", typeof(DateTime));
             List<DateTime> list = new List<DateTime>();
             int no = 0;
 
             await Task.Run(() => {
-
-
 
                 foreach (DataRow r in table.Rows) {
                     if (token.IsCancellationRequested) {
@@ -408,11 +406,17 @@ namespace EdinetViewer {
                     //string pdf = r["pdf"] == DBNull.Value ? null : r["pdf"].ToString();
                     //string attach = r["attach"] == DBNull.Value ? null : r["attach"].ToString();
                     //string english = r["english"] == DBNull.Value ? null : r["english"].ToString();
+                    bool[] flag404 = new bool[] {
+                        r["xbrl"] != DBNull.Value && r["xbrl"].ToString() == "404" ? true:false,
+                        r["pdf"] != DBNull.Value && r["pdf"].ToString() == "404" ? true:false,
+                        r["attach"] != DBNull.Value && r["attach"].ToString() == "404" ? true:false,
+                        r["english"] != DBNull.Value && r["english"].ToString() == "404" ? true:false
+                    };
                     bool[] flag = new bool[] { r["xbrlFlag"].ToString() == "1", r["pdfFlag"].ToString() == "1",
                         r["attachDocFlag"].ToString() == "1", r["englishDocFlag"].ToString() == "1" };
                     bool[] check = new bool[] { setting.Xbrl, setting.Pdf, setting.Attach, setting.English };
                     for (int j = 0; j < fields.Length; j++) {
-                        if (flag[j]) {
+                        if (flag[j] & !flag404[j]) {
                             if (all | check[j]) {
                                 int year = 20 * 100 + id / 100000000;
                                 string filepath = string.Format(@"{0}\Documents\{1}\{2}_{3}.{4}", setting.Directory, year, docid, j + 1, j == 1 ? "pdf" : "zip");
@@ -438,24 +442,22 @@ namespace EdinetViewer {
                     }
                     i++;
                     if (!today) {
-                        //InvokeProgress(i * 100 / table.Rows.Count);
-                        //InvokeLabel(date.ToString("yyyy-MM-dd"));
                         InvokeProgressLabel(i * 100 / table.Rows.Count, string.Format("\t\tダウンロード済みファイルをチェックしています  {0:yyyy-MM-dd}", date));
-                        //Console.WriteLine("\tダウンロード済みファイルをチェックしています  {0:yyyy-MM-dd}", date.ToString("yyyy-MM-dd"));
                     }
                 }
             }
                         );
 
 
-            DataView dv = new DataView(table2, "", today?"id desc": "id", DataViewRowState.CurrentRows);
+            DataView dv = new DataView(table2, "", today ? "id desc" : "id", DataViewRowState.CurrentRows);
             list.Sort();
             foreach (DateTime target in list) {
                 dv.RowFilter = string.Format("date = '{0:yyyy-MM-dd}'", target);
                 i = 0;
                 int previd = 0;
+                bool flag404 = false;
                 for (int j = 0; j < dv.Count; j++) {
-                    
+
                     if (token.IsCancellationRequested) {
                         InvokeProgressLabel(0, "Canceled");
                         await Task.Delay(1000);
@@ -470,12 +472,21 @@ namespace EdinetViewer {
                     if (id != previd) {
                         Console.WriteLine();
                         Console.Write("{0} {1}", id, docid);
+                        flag404 = false;
                     }
+                    if (flag404)
+                        continue;
                     Disclosures.ApiArchiveResult result = await edinet.DownloadArchive(id, docid, type);
+                    string statuscode = result.StatusText;
+                    if (result.Error != null){
+                        statuscode = result.Error.Root.MetaData.Status;
+                        if (result.Error.Root.MetaData.Status == "404")
+                        flag404 = true;
+                    }
+                    string output = string.Format("ダウンロード {0:#,##0}/{1:#,##0} no:{2}{3}[{4}] status[{5}] ", i, dv.Count, no2, today ? "" : string.Format("({0:yyyy-MM-dd})", target), fields[type - 1], statuscode);
                     if (await CheckException(result.Exception, "MenuDownload"))
                         return;
                     i++;
-                    string output = string.Format("ダウンロード {0:#,##0}/{1:#,##0} no:{2}{3}[{4}] status[{5}] ", i, dv.Count, no2, today ? "" : string.Format("({0:yyyy-MM-dd})", target), fields[type - 1], result.StatusText);
                     if (!today)
                         output += string.Format("{0:m':'ss}経過", sw.Elapsed);
 
@@ -489,36 +500,7 @@ namespace EdinetViewer {
                 }
             }
 
-            //foreach (object[] item in list) {
-            //    if (token.IsCancellationRequested) {
-            //        InvokeProgressLabel(0, "Canceled");
-            //        await Task.Delay(1000);
-            //        InvokeVisible(false);
-            //        return;
-            //    }
-            //    int type = (int)item[2];
-            //    int id = (int)item[0];
-            //    int no = int.Parse(item[0].ToString().Substring(6, 4));
-            //    string docid = item[1].ToString();
-            //    string date = item[0].ToString().Substring(0, 6).Insert(4, "-").Insert(2, "-").Insert(0, "20");
-            //    if (id != previd) {
-            //        Console.WriteLine();
-            //        Console.Write("{0} {1}", id, docid);
-            //    }
-            //    Disclosures.ApiArchiveResult result = await edinet.DownloadArchive(id, docid, type);
-            //    i++;
-            //    string output = string.Format("ダウンロード {0:#,##0}/{1:#,##0} no:{2}{3}[{4}] status[{5}] ", i, list.Count, no, today?"":string.Format("({0})",date), fields[type - 1], result.StatusText);
-            //    if (!today)
-            //        output += string.Format("{0:m':'ss}経過", sw.Elapsed);
 
-            //    InvokeProgressLabel((int)(i * 100 / list.Count), output);
-            //    Console.Write(" {0:m':'ss'.'f} {1}[{2}]", sw.Elapsed, fields[type - 1], result.Name);
-
-            //    int wait = random.Next((int)(setting.Wait[0] * 1000), (int)(setting.Wait[1] * 1000));
-            //    await Task.Delay(wait);
-            //    Console.Write(" wait[{0}]", wait);
-            //    previd = id;
-            //}
             sw.Stop();
             Console.WriteLine("finish background download archive");
             await Task.Delay(1000);
