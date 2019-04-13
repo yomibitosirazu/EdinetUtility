@@ -2,7 +2,7 @@
 VisualStudio2017 C#を利用して作成した EDINET API を利用するユーティリティーです。
 ***
 
-## [JsonDeserializer](https://github.com/yomibitosirazu/EdinetUtility/tree/master/JsonDeserializer/)
+## [JsonDeserializer](https://github.com/yomibitosirazu/EdinetUtility/tree/master/JsonDeserializer/JsonDeserializer)
 EdinetViewerのJSONクラス設計変更を計画しており、このクラスのデシリアライズが機能しているかを確認するための小物ツール（Windowsフォームアプリ）。
 ***
 

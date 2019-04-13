@@ -8,7 +8,7 @@ EDINET API用のJSONクラスの構造とデシリアライズを大きく変更
 書類一覧取得のみで、書類アーカイブの取得は実装していない。
 
 
-<img src="images/deserializer.png">  
+<img src="https://github.com/yomibitosirazu/EdinetUtility/blob/master/JsonDeserializer/JsonDeserializer/images/Deserializer.png">  
 
 - ①ファイルボタン
     - ボタンをクリックするとファイルダイアログでJSONファイルを選択できる
