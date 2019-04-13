@@ -1,5 +1,11 @@
 # Edinet API を利用したユーティリティー
 VisualStudio2017 C#を利用して作成した EDINET API を利用するユーティリティーです。
+***
+
+## [JsonDeserializer](https://github.com/yomibitosirazu/EdinetUtility/tree/master/JsonDeserializer/)
+EdinetViewerのJSONクラス設計変更を計画しており、このクラスのデシリアライズが機能しているかを確認するための小物ツール（Windowsフォームアプリ）。
+***
+
 ## [EdinetViewer](https://github.com/yomibitosirazu/EdinetUtility/tree/master/EdinetViewer)
 EDINETの開示書類を表示するだけのC#Windowsフォームアプリケーション  
 EDINET API を利用して日付ごとの開示書類のリスト一覧を取得  
