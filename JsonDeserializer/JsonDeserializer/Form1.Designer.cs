@@ -27,6 +27,15 @@
             this.toolStrip1 = new System.Windows.Forms.ToolStrip();
             this.buttonJson = new System.Windows.Forms.ToolStripButton();
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
+            this.labelException = new System.Windows.Forms.Label();
+            this.label11 = new System.Windows.Forms.Label();
+            this.labelMessage = new System.Windows.Forms.Label();
+            this.labelStatus = new System.Windows.Forms.Label();
+            this.labelProcess = new System.Windows.Forms.Label();
+            this.labelCount = new System.Windows.Forms.Label();
+            this.labelType = new System.Windows.Forms.Label();
+            this.labelDate = new System.Windows.Forms.Label();
+            this.labelTitle = new System.Windows.Forms.Label();
             this.label10 = new System.Windows.Forms.Label();
             this.label9 = new System.Windows.Forms.Label();
             this.label8 = new System.Windows.Forms.Label();
@@ -38,17 +47,8 @@
             this.label2 = new System.Windows.Forms.Label();
             this.label1 = new System.Windows.Forms.Label();
             this.dataGridView1 = new System.Windows.Forms.DataGridView();
-            this.labelTitle = new System.Windows.Forms.Label();
-            this.labelDate = new System.Windows.Forms.Label();
-            this.labelType = new System.Windows.Forms.Label();
-            this.labelCount = new System.Windows.Forms.Label();
-            this.labelProcess = new System.Windows.Forms.Label();
-            this.labelStatus = new System.Windows.Forms.Label();
-            this.labelMessage = new System.Windows.Forms.Label();
-            this.textBoxDate = new System.Windows.Forms.ToolStripTextBox();
             this.checkBox1 = new System.Windows.Forms.CheckBox();
-            this.label11 = new System.Windows.Forms.Label();
-            this.labelException = new System.Windows.Forms.Label();
+            this.dateTimePicker1 = new System.Windows.Forms.DateTimePicker();
             this.toolStrip1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
@@ -60,8 +60,7 @@
             // toolStrip1
             // 
             this.toolStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.buttonJson,
-            this.textBoxDate});
+            this.buttonJson});
             this.toolStrip1.Location = new System.Drawing.Point(0, 0);
             this.toolStrip1.Name = "toolStrip1";
             this.toolStrip1.Size = new System.Drawing.Size(800, 25);
@@ -112,6 +111,101 @@
             this.splitContainer1.Size = new System.Drawing.Size(800, 425);
             this.splitContainer1.SplitterDistance = 150;
             this.splitContainer1.TabIndex = 1;
+            // 
+            // labelException
+            // 
+            this.labelException.Font = new System.Drawing.Font("MS UI Gothic", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(128)));
+            this.labelException.ForeColor = System.Drawing.Color.Red;
+            this.labelException.Location = new System.Drawing.Point(25, 302);
+            this.labelException.Name = "labelException";
+            this.labelException.Size = new System.Drawing.Size(122, 114);
+            this.labelException.TabIndex = 20;
+            this.labelException.Text = "    ";
+            // 
+            // label11
+            // 
+            this.label11.AutoSize = true;
+            this.label11.Location = new System.Drawing.Point(6, 277);
+            this.label11.Name = "label11";
+            this.label11.Size = new System.Drawing.Size(55, 12);
+            this.label11.TabIndex = 19;
+            this.label11.Text = "Exception";
+            // 
+            // labelMessage
+            // 
+            this.labelMessage.AutoSize = true;
+            this.labelMessage.FlatStyle = System.Windows.Forms.FlatStyle.Popup;
+            this.labelMessage.Font = new System.Drawing.Font("MS UI Gothic", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(128)));
+            this.labelMessage.Location = new System.Drawing.Point(62, 248);
+            this.labelMessage.Name = "labelMessage";
+            this.labelMessage.Size = new System.Drawing.Size(15, 12);
+            this.labelMessage.TabIndex = 18;
+            this.labelMessage.Text = "  ";
+            // 
+            // labelStatus
+            // 
+            this.labelStatus.AutoSize = true;
+            this.labelStatus.FlatStyle = System.Windows.Forms.FlatStyle.Popup;
+            this.labelStatus.Font = new System.Drawing.Font("MS UI Gothic", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(128)));
+            this.labelStatus.Location = new System.Drawing.Point(62, 227);
+            this.labelStatus.Name = "labelStatus";
+            this.labelStatus.Size = new System.Drawing.Size(15, 12);
+            this.labelStatus.TabIndex = 17;
+            this.labelStatus.Text = "  ";
+            // 
+            // labelProcess
+            // 
+            this.labelProcess.AutoSize = true;
+            this.labelProcess.FlatStyle = System.Windows.Forms.FlatStyle.Popup;
+            this.labelProcess.Font = new System.Drawing.Font("MS UI Gothic", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(128)));
+            this.labelProcess.Location = new System.Drawing.Point(25, 201);
+            this.labelProcess.Name = "labelProcess";
+            this.labelProcess.Size = new System.Drawing.Size(15, 12);
+            this.labelProcess.TabIndex = 16;
+            this.labelProcess.Text = "  ";
+            // 
+            // labelCount
+            // 
+            this.labelCount.AutoSize = true;
+            this.labelCount.FlatStyle = System.Windows.Forms.FlatStyle.Popup;
+            this.labelCount.Font = new System.Drawing.Font("MS UI Gothic", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(128)));
+            this.labelCount.Location = new System.Drawing.Point(62, 143);
+            this.labelCount.Name = "labelCount";
+            this.labelCount.Size = new System.Drawing.Size(15, 12);
+            this.labelCount.TabIndex = 15;
+            this.labelCount.Text = "  ";
+            // 
+            // labelType
+            // 
+            this.labelType.AutoSize = true;
+            this.labelType.FlatStyle = System.Windows.Forms.FlatStyle.Popup;
+            this.labelType.Font = new System.Drawing.Font("MS UI Gothic", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(128)));
+            this.labelType.Location = new System.Drawing.Point(62, 100);
+            this.labelType.Name = "labelType";
+            this.labelType.Size = new System.Drawing.Size(15, 12);
+            this.labelType.TabIndex = 14;
+            this.labelType.Text = "  ";
+            // 
+            // labelDate
+            // 
+            this.labelDate.AutoSize = true;
+            this.labelDate.FlatStyle = System.Windows.Forms.FlatStyle.Popup;
+            this.labelDate.Font = new System.Drawing.Font("MS UI Gothic", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(128)));
+            this.labelDate.Location = new System.Drawing.Point(62, 83);
+            this.labelDate.Name = "labelDate";
+            this.labelDate.Size = new System.Drawing.Size(15, 12);
+            this.labelDate.TabIndex = 13;
+            this.labelDate.Text = "  ";
+            // 
+            // labelTitle
+            // 
+            this.labelTitle.FlatStyle = System.Windows.Forms.FlatStyle.Popup;
+            this.labelTitle.Font = new System.Drawing.Font("MS UI Gothic", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(128)));
+            this.labelTitle.Location = new System.Drawing.Point(49, 28);
+            this.labelTitle.Name = "labelTitle";
+            this.labelTitle.Size = new System.Drawing.Size(99, 37);
+            this.labelTitle.TabIndex = 12;
+            this.labelTitle.Text = "  ";
             // 
             // label10
             // 
@@ -216,124 +310,32 @@
             this.dataGridView1.Size = new System.Drawing.Size(646, 425);
             this.dataGridView1.TabIndex = 0;
             // 
-            // labelTitle
-            // 
-            this.labelTitle.FlatStyle = System.Windows.Forms.FlatStyle.Popup;
-            this.labelTitle.Font = new System.Drawing.Font("MS UI Gothic", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(128)));
-            this.labelTitle.Location = new System.Drawing.Point(49, 28);
-            this.labelTitle.Name = "labelTitle";
-            this.labelTitle.Size = new System.Drawing.Size(99, 37);
-            this.labelTitle.TabIndex = 12;
-            this.labelTitle.Text = "  ";
-            // 
-            // labelDate
-            // 
-            this.labelDate.AutoSize = true;
-            this.labelDate.FlatStyle = System.Windows.Forms.FlatStyle.Popup;
-            this.labelDate.Font = new System.Drawing.Font("MS UI Gothic", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(128)));
-            this.labelDate.Location = new System.Drawing.Point(62, 83);
-            this.labelDate.Name = "labelDate";
-            this.labelDate.Size = new System.Drawing.Size(15, 12);
-            this.labelDate.TabIndex = 13;
-            this.labelDate.Text = "  ";
-            // 
-            // labelType
-            // 
-            this.labelType.AutoSize = true;
-            this.labelType.FlatStyle = System.Windows.Forms.FlatStyle.Popup;
-            this.labelType.Font = new System.Drawing.Font("MS UI Gothic", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(128)));
-            this.labelType.Location = new System.Drawing.Point(62, 100);
-            this.labelType.Name = "labelType";
-            this.labelType.Size = new System.Drawing.Size(15, 12);
-            this.labelType.TabIndex = 14;
-            this.labelType.Text = "  ";
-            // 
-            // labelCount
-            // 
-            this.labelCount.AutoSize = true;
-            this.labelCount.FlatStyle = System.Windows.Forms.FlatStyle.Popup;
-            this.labelCount.Font = new System.Drawing.Font("MS UI Gothic", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(128)));
-            this.labelCount.Location = new System.Drawing.Point(62, 143);
-            this.labelCount.Name = "labelCount";
-            this.labelCount.Size = new System.Drawing.Size(15, 12);
-            this.labelCount.TabIndex = 15;
-            this.labelCount.Text = "  ";
-            // 
-            // labelProcess
-            // 
-            this.labelProcess.AutoSize = true;
-            this.labelProcess.FlatStyle = System.Windows.Forms.FlatStyle.Popup;
-            this.labelProcess.Font = new System.Drawing.Font("MS UI Gothic", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(128)));
-            this.labelProcess.Location = new System.Drawing.Point(25, 201);
-            this.labelProcess.Name = "labelProcess";
-            this.labelProcess.Size = new System.Drawing.Size(15, 12);
-            this.labelProcess.TabIndex = 16;
-            this.labelProcess.Text = "  ";
-            // 
-            // labelStatus
-            // 
-            this.labelStatus.AutoSize = true;
-            this.labelStatus.FlatStyle = System.Windows.Forms.FlatStyle.Popup;
-            this.labelStatus.Font = new System.Drawing.Font("MS UI Gothic", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(128)));
-            this.labelStatus.Location = new System.Drawing.Point(62, 227);
-            this.labelStatus.Name = "labelStatus";
-            this.labelStatus.Size = new System.Drawing.Size(15, 12);
-            this.labelStatus.TabIndex = 17;
-            this.labelStatus.Text = "  ";
-            // 
-            // labelMessage
-            // 
-            this.labelMessage.AutoSize = true;
-            this.labelMessage.FlatStyle = System.Windows.Forms.FlatStyle.Popup;
-            this.labelMessage.Font = new System.Drawing.Font("MS UI Gothic", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(128)));
-            this.labelMessage.Location = new System.Drawing.Point(62, 248);
-            this.labelMessage.Name = "labelMessage";
-            this.labelMessage.Size = new System.Drawing.Size(15, 12);
-            this.labelMessage.TabIndex = 18;
-            this.labelMessage.Text = "  ";
-            // 
-            // textBoxDate
-            // 
-            this.textBoxDate.Name = "textBoxDate";
-            this.textBoxDate.Size = new System.Drawing.Size(100, 25);
-            this.textBoxDate.TextChanged += new System.EventHandler(this.TextBoxDate_TextChanged);
-            // 
             // checkBox1
             // 
             this.checkBox1.AutoSize = true;
             this.checkBox1.Checked = true;
             this.checkBox1.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.checkBox1.Location = new System.Drawing.Point(163, 5);
+            this.checkBox1.Location = new System.Drawing.Point(287, 5);
             this.checkBox1.Name = "checkBox1";
             this.checkBox1.Size = new System.Drawing.Size(132, 16);
             this.checkBox1.TabIndex = 2;
             this.checkBox1.Text = "type1（metadataのみ）";
             this.checkBox1.UseVisualStyleBackColor = true;
             // 
-            // label11
+            // dateTimePicker1
             // 
-            this.label11.AutoSize = true;
-            this.label11.Location = new System.Drawing.Point(6, 277);
-            this.label11.Name = "label11";
-            this.label11.Size = new System.Drawing.Size(55, 12);
-            this.label11.TabIndex = 19;
-            this.label11.Text = "Exception";
-            // 
-            // labelException
-            // 
-            this.labelException.Font = new System.Drawing.Font("MS UI Gothic", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(128)));
-            this.labelException.ForeColor = System.Drawing.Color.Red;
-            this.labelException.Location = new System.Drawing.Point(25, 302);
-            this.labelException.Name = "labelException";
-            this.labelException.Size = new System.Drawing.Size(122, 114);
-            this.labelException.TabIndex = 20;
-            this.labelException.Text = "    ";
+            this.dateTimePicker1.Location = new System.Drawing.Point(80, 2);
+            this.dateTimePicker1.Name = "dateTimePicker1";
+            this.dateTimePicker1.Size = new System.Drawing.Size(200, 19);
+            this.dateTimePicker1.TabIndex = 3;
+            this.dateTimePicker1.CloseUp += new System.EventHandler(this.DateTimePicker1_CloseUp);
             // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(800, 450);
+            this.Controls.Add(this.dateTimePicker1);
             this.Controls.Add(this.checkBox1);
             this.Controls.Add(this.splitContainer1);
             this.Controls.Add(this.toolStrip1);
@@ -378,10 +380,10 @@
         private System.Windows.Forms.Label labelType;
         private System.Windows.Forms.Label labelDate;
         private System.Windows.Forms.Label labelTitle;
-        private System.Windows.Forms.ToolStripTextBox textBoxDate;
         private System.Windows.Forms.CheckBox checkBox1;
         private System.Windows.Forms.Label labelException;
         private System.Windows.Forms.Label label11;
+        private System.Windows.Forms.DateTimePicker dateTimePicker1;
     }
 }
 
