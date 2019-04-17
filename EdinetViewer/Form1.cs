@@ -191,6 +191,9 @@ namespace Edinet {
 
         #region DataGridView_Events_CurrentRowChanged
         private async void DatePicker_CloseUp(object sender, EventArgs e) {
+            TbCode.Text = "";
+            if (comboFilter.SelectedIndex > 0)
+                comboFilter.SelectedIndex = 0;
             if (!IsReading) {
                 StatusLabel1.Text = "";
                 splitMain.Panel1Collapsed = false;

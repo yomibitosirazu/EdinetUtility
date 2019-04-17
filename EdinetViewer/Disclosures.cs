@@ -375,6 +375,7 @@ namespace Edinet {
 
         private void UpdateDocumentsTable(ref DataTable table) {
             TableDocuments.Rows.Clear();
+            List<string> list = new List<string>() { "" };
             for (int i = 0; i < table.Rows.Count; i++) {
                 DataRow r = TableDocuments.NewRow();
                 for (int j = 0; j < TableDocuments.Columns.Count; j++) {
@@ -384,11 +385,15 @@ namespace Edinet {
                             string docTypeCode = table.Rows[i][TableDocuments.Columns[j].ColumnName].ToString();
                             if (Const.DocTypeCode.ContainsKey(docTypeCode))
                                 r["タイプ"] = Const.DocTypeCode[docTypeCode];
+                            if (docTypeCode != "" && !list.Contains(Const.DocTypeCode[docTypeCode]))
+                                list.Add(Const.DocTypeCode[docTypeCode]);
                         }
                     }
                 }
                 TableDocuments.Rows.Add(r);
             }
+            if (list.Count > 0)
+                Types = list.ToArray();
         }
 
 
