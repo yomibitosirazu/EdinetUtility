@@ -75,6 +75,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Api.cs" />
+    <Compile Include="Const.cs" />
     <Compile Include="Database.cs" />
     <Compile Include="Debug.cs" />
     <Compile Include="Json.cs" />

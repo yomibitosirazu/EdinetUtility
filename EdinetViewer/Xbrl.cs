@@ -5,7 +5,7 @@ using System.Text;
 using System.Xml;
 
 
-namespace Disclosures {
+namespace Edinet {
     public class Xbrl {
         public struct Element {
             public string Name;

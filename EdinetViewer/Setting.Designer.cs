@@ -1,4 +1,4 @@
-﻿namespace EdinetViewer {
+﻿namespace Edinet {
     partial class SettingDialog {
         /// <summary>
         /// Required designer variable.

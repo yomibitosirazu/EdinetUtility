@@ -5,7 +5,7 @@ using System.IO;
 using System.Xml;
 
 
-namespace Disclosures {
+namespace Edinet {
     public class Taxonomy {
         public Dictionary<string, string> DicTaxonomy { get; set; }
         public List<string> ListXml { get; set; }

@@ -8,7 +8,7 @@ using System.IO;
 using System.Xml.Linq;
 using System.Reflection;
 
-namespace EdinetViewer {
+namespace Edinet {
 
 
 
@@ -20,7 +20,7 @@ namespace EdinetViewer {
             InitializeComponent();
         }
 
-        Dictionary<Type, int> dicPosition = new Dictionary<Type, int>() {
+        private readonly Dictionary<Type, int> dicPosition = new Dictionary<Type, int>() {
                 {typeof(TextBox), 2 },
                 {typeof(CheckBox), 5 },
                 {typeof(NumericUpDown) , 7}
@@ -58,7 +58,7 @@ namespace EdinetViewer {
                     }
                     List<string> list = new List<string>();
                     foreach (int index in listDocType.CheckedIndices) {
-                        list.Add(Disclosures.Const.DocTypeCode.ElementAt(index).Key);
+                        list.Add(Const.DocTypeCode.ElementAt(index).Key);
                     }
                     Setting.Values["Type"] = string.Join(",", list);
                     StringBuilder sb = new StringBuilder();
@@ -82,7 +82,7 @@ namespace EdinetViewer {
         }
 
         private void DialogSetting_Shown(object sender, EventArgs e) {
-            listDocType.Items.AddRange(Disclosures.Const.DocTypeCode.Values.ToArray());
+            listDocType.Items.AddRange(Const.DocTypeCode.Values.ToArray());
 
 
             foreach (Control control in this.Controls) {
@@ -107,7 +107,7 @@ namespace EdinetViewer {
                     string[] types = Setting.Values["Type"].Split(',');
                     foreach (string type1 in types) {
                         if (type1 != "") {
-                            int index = Array.IndexOf(Disclosures.Const.DocTypeCode.Keys.ToArray(), type1);
+                            int index = Array.IndexOf(Const.DocTypeCode.Keys.ToArray(), type1);
                             listDocType.SetItemCheckState(index, CheckState.Checked);
                         }
                     }
@@ -206,7 +206,7 @@ namespace EdinetViewer {
         public string FilePath { get; set; }
         public Dictionary<string, string> Values { get; set; }
 
-        public SettingBase(string settingfile = null) {
+        public SettingBase() {
             FilePath = string.Format("{0}_{1}.xml", System.Reflection.Assembly.GetExecutingAssembly().GetName().Name, Environment.MachineName);
             Values = new Dictionary<string, string>();
             if (!File.Exists(FilePath))

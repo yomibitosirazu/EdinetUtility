@@ -10,7 +10,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Data.SQLite;
 
-namespace EdinetViewer {
+namespace Edinet {
 
     //dummy デザイナー表示しないため
     public class Version { }
@@ -80,7 +80,7 @@ namespace EdinetViewer {
         }
 
         private void test() {
-            List<DateTime> list = edinet.Database.MetadataList();
+            List<DateTime> list = disclosures.Database.MetadataList();
             InvokeVisible(true);
             int i = 0;
             foreach (DateTime dt in list) {
@@ -117,7 +117,7 @@ namespace EdinetViewer {
                                 "update `Disclosures` set `status`='不開示解除日' where disclosureStatus='3';"
 
                             };
-            int n = Disclosures.Const.DocTypeCode.Count + queries.Length;
+            int n = Const.DocTypeCode.Count + queries.Length;
             //InvokeProgressLabel(n, 0, null);
 
             //Setting setting = new Setting();
@@ -189,7 +189,7 @@ namespace EdinetViewer {
                     command.Connection.Open();
                     using (SQLiteTransaction ts = command.Connection.BeginTransaction()) {
                         int i = queries.Length;
-                        foreach (var kv in Disclosures.Const.DocTypeCode) {
+                        foreach (var kv in Const.DocTypeCode) {
                             StringBuilder sb = new StringBuilder();
                             sb.AppendFormat("update Disclosures set `docTypeCode` = '{0}' where `docTypeCode` = '{1}';", kv.Key, kv.Value);
                             command.CommandText = sb.ToString();

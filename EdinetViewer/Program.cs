@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Windows.Forms;
 
-namespace EdinetViewer {
+namespace Edinet {
     static class Program {
         /// <summary>
         /// アプリケーションのメイン エントリ ポイントです。

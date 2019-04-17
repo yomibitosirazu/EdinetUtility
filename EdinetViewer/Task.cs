@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Text;
 
-namespace EdinetViewer {
+namespace Edinet {
 
     //dummy デザイナー表示しないため
     public class MyTask { }
@@ -148,7 +148,7 @@ namespace EdinetViewer {
 
         private async Task ReadMetadataList(CancellationToken token) {
             token.ThrowIfCancellationRequested();
-            List<DateTime> list = edinet.Database.MetadataList();
+            List<DateTime> list = disclosures.Database.MetadataList();
             InvokeVisible(true);
             InvokeProgressLabel(0, "");
             int i = 0;
@@ -171,10 +171,10 @@ namespace EdinetViewer {
 
         private async Task ImportEdinetCode(string archivefile) {
             InvokeVisible(true);
-            Disclosures.Database.Sqlite.Delegate delegateMethod = InvokeProgress;
+            Database.Sqlite.Delegate delegateMethod = InvokeProgress;
             await Task<Dictionary<string, int>>.Run(() => {
-                edinet.Database.UpdateEdinetCodelist(archivefile, delegateMethod, out Dictionary<string, int> dic);
-                edinet.DicEdinetCode = dic;
+                disclosures.Database.UpdateEdinetCodelist(archivefile, delegateMethod, out Dictionary<string, int> dic);
+                disclosures.DicEdinetCode = dic;
                 });
             await Task.Delay(2000);
             InvokeVisible(false);
@@ -205,14 +205,14 @@ namespace EdinetViewer {
                         using (Stream stream = entry.Open()) {
                             using (StreamReader reader = new StreamReader(stream)) {
                                 string source = reader.ReadToEnd();
-                                await Task.Run(()=> edinet.Database.ImportTaxonomy(filename, source, archivename));
+                                await Task.Run(()=> disclosures.Database.ImportTaxonomy(filename, source, archivename));
                             }
                         }
                         InvokeProgressLabel((int)(i/count*100), string.Format("{0}/{1} {2}", i, count, entry.Name));
                     }
                 }
             }
-            edinet.ImportTaxonomy();
+            disclosures.ImportTaxonomy();
             InvokeProgressLabel(0, "タクソノミを構築しました");
             await Task.Delay(2000);
             InvokeProgressLabel(0, "");
@@ -232,7 +232,7 @@ namespace EdinetViewer {
         }
         private async Task DownloadLists(CancellationToken token) {
             token.ThrowIfCancellationRequested();
-            List<DateTime> saved = edinet.Database.MetadataList();
+            List<DateTime> saved = disclosures.Database.MetadataList();
             DateTime min = DateTime.Now.AddYears(-5).Date;
             List<DateTime> list = new List<DateTime>();
             DateTime d = min;
@@ -263,7 +263,8 @@ namespace EdinetViewer {
                     InvokeVisible(false);
                     return;
                 }
-                Disclosures.ApiListResult result = await edinet.GetDisclosureList(target, true);
+                //ApiListResult result = await disclosures.GetDisclosureList(target, true);
+                JsonContent content = await disclosures.ReadDocuments(target);
                 //if(result.Exception != null) {
                 //    InvokeLabel(result.Exception.Message + result.Exception.InnerException != null ? (" " + result.Exception.InnerException.Message) : "");
                 //    await Task.Delay(5000);
@@ -271,13 +272,13 @@ namespace EdinetViewer {
                 //    InvokeVisible(false);
                 //    return;
                 //}
-                if (await CheckException(result.Exception, "MenuPastList"))
+                if (await CheckException(content.Exception, "MenuPastList"))
                     return;
-                Console.Write("{0:mm':'ss\\.f} {1} {2} count:{3}", sw.Elapsed, result.Json.Root.MetaData.Parameter.Date, result.Json.Root.MetaData.Message, result.Json.Root.MetaData.Resultset.Count);
-                string output = string.Format("{1:#,##0}/{2:#,##0} ({3:yyyy-MM-dd}) status[{4}]  {0:m'min'ss\\.f'sec'}経過", sw.Elapsed, i + 1, list.Count, target, result.StatusCode.ToString());
+                Console.Write("{0:mm':'ss\\.f} {1} {2} count:{3}", sw.Elapsed, content.Metadata.Parameter.Date, content.Metadata.Message, content.Metadata.Resultset.Count);
+                string output = string.Format("{1:#,##0}/{2:#,##0} ({3:yyyy-MM-dd}) status[{4}]  {0:m'min'ss\\.f'sec'}経過", sw.Elapsed, i + 1, list.Count, target, content.StatusCode.Message);
                 string error = null;
-                if (result.StatusCode != 200) {
-                    if (result.StatusCode == 404) {
+                if (content.StatusCode.Status != "200") {
+                    if (content.StatusCode.Status == "404") {
                         if (stack.Count > 2 && stack.Peek() == 404) {
                             stack.Pop();
                             if (stack.Peek() == 404) {
@@ -287,7 +288,7 @@ namespace EdinetViewer {
                                 stack.Push(404);
                         }
                     } else {
-                        error = string.Format("Error {0}[{1}]", result.StatusCode, result.StatusCode == 400 ? "Bad Request" : "Internal Server Error");
+                        error = string.Format("Error {0}[{1}]", content.StatusCode.Status, content.StatusCode.Status == "400" ? "Bad Request" : "Internal Server Error");
                     }
                 }
                 i++;
@@ -297,7 +298,7 @@ namespace EdinetViewer {
                 if (error != null) {
                     return;
                 }
-                stack.Push(result.StatusCode);
+                stack.Push(int.Parse(content.StatusCode.Status));
                 int wait = random.Next((int)(setting.Wait[0] * 1000), (int)(setting.Wait[1] * 1000));
                 Console.Write("  wait[{0}]", wait);
                 await Task.Delay(wait);
@@ -349,7 +350,7 @@ namespace EdinetViewer {
             DateTime start = today ? DateTime.Now.Date : DateTime.Now.AddYears(-5).Date;
 
             string query = string.Format("select id, `date`, secCode, docid, docTypeCode, withdrawalStatus, edinetCode, xbrlFlag, pdfFlag, attachDocFlag, englishDocFlag, xbrl, pdf, attach, english from disclosures where date(`date`) >= '{0:yyyy-MM-dd}' {2} order by id{1};", start, today ? " desc" : "", sb.ToString());
-            DataTable table = edinet.Database.ReadQuery(query);
+            DataTable table = disclosures.Database.ReadQuery(query);
             int i = 0;
             InvokeVisible(true);
             if (table.Rows.Count == 0) {
@@ -476,22 +477,22 @@ namespace EdinetViewer {
                     }
                     if (flag404)
                         continue;
-                    Disclosures.ApiArchiveResult result = await edinet.DownloadArchive(id, docid, type);
-                    string statuscode = result.StatusText;
-                    if (result.Error != null){
-                        statuscode = result.Error.Root.MetaData.Status;
-                        if (result.Error.Root.MetaData.Status == "404")
+                    ArchiveResponse response = await disclosures.DownloadArchive(id, docid,   (RequestDocument.DocumentType)Enum.ToObject(typeof(RequestDocument.DocumentType), type));
+                    //string statuscode = response. result.StatusText;
+                    //if (result.Error != null){
+                    //    statuscode = result.Error.Root.MetaData.Status;
+                        if (response.EdinetStatusCode!=null && response.EdinetStatusCode.Status == "404")
                         flag404 = true;
-                    }
-                    string output = string.Format("ダウンロード {0:#,##0}/{1:#,##0} no:{2}{3}[{4}] status[{5}] ", i, dv.Count, no2, today ? "" : string.Format("({0:yyyy-MM-dd})", target), fields[type - 1], statuscode);
-                    if (await CheckException(result.Exception, "MenuDownload"))
+                    //}
+                    string output = string.Format("ダウンロード {0:#,##0}/{1:#,##0} no:{2}{3}[{4}] status[{5}] ", i, dv.Count, no2, today ? "" : string.Format("({0:yyyy-MM-dd})", target), fields[type - 1], response.HttpStatusCode.ToString());
+                    if (await CheckException(response.Exception, "MenuDownload"))
                         return;
                     i++;
                     if (!today)
                         output += string.Format("{0:m':'ss}経過", sw.Elapsed);
 
                     InvokeProgressLabel((int)(i * 100 / dv.Count), output);
-                    Console.Write(" {0:m':'ss'.'f} {1}[{2}]", sw.Elapsed, fields[type - 1], result.Name);
+                    Console.Write(" {0:m':'ss'.'f} {1}[{2}]", sw.Elapsed, fields[type - 1], response.Filename);
 
                     int wait = random.Next((int)(setting.Wait[0] * 1000), (int)(setting.Wait[1] * 1000));
                     await Task.Delay(wait);
@@ -509,140 +510,6 @@ namespace EdinetViewer {
 
         }
 
-
-        //private async Task DownloadArchives(CancellationToken token, DateTime target) {
-        //    token.ThrowIfCancellationRequested();
-        //    if (token.IsCancellationRequested) {
-        //        InvokeProgressLabel(0, "Canceled");
-        //        await Task.Delay(1000);
-        //        InvokeVisible(false);
-        //        return;
-        //    }
-        //    InvokeMenuCheck("MenuDownload", true);
-        //    System.Diagnostics.Stopwatch sw = new System.Diagnostics.Stopwatch();
-        //    sw.Start();
-        //    Random random = new Random();
-        //    StringBuilder sb = new StringBuilder();
-        //    if (setting.Xbrl)
-        //        sb.Append("xbrlFlag = '1'");
-        //    if (setting.Pdf)
-        //        sb.Append((sb.Length > 0 ? " or  " : "") + "pdfFlag = '1'");
-        //    if (setting.Attach)
-        //        sb.Append((sb.Length > 0 ? " or  " : "") + "attachDocFlag = '1'");
-        //    if (setting.English)
-        //        sb.Append((sb.Length > 0 ? " or  " : "") + "englishDocFlag = '1'");
-        //    if (sb.Length > 0) {
-        //        sb.Insert(0, "and (");
-        //        sb.Append(")");
-        //    }
-        //    if (setting.DocumentTypes.Length > 0) {
-        //        sb.Append(" and docTypeCode in (");
-        //        for (int j = 0; j < setting.DocumentTypes.Length; j++) {
-        //            if (j > 0)
-        //                sb.Append(",");
-        //            sb.AppendFormat(" '{0}'", setting.DocumentTypes[j]);
-        //        }
-        //        sb.Append(")");
-        //    }
-        //    string query = string.Format("select id, secCode, filerName, docDescription, docid, docTypeCode, edinetCode, withdrawalStatus, xbrlFlag, pdfFlag, attachDocFlag, englishDocFlag, xbrl, pdf, attach, english from disclosures where date(`date`) = '{0:yyyy-MM-dd}' {2} order by id{1};", target, target == DateTime.Now.Date ? " desc" : "", sb.ToString());
-        //    DataTable table = edinet.Database.ReadQuery(query);
-        //    int i = 0;
-        //    InvokeVisible(true);
-        //    if (table.Rows.Count == 0) {
-        //        InvokeProgressLabel(0, "ダウンロードする書類はありません");
-        //        await Task.Delay(1000);
-        //        InvokeMenuCheck("MenuDownload");
-        //        InvokeVisible(false);
-        //        Console.WriteLine("canceled background download archive");
-        //        return;
-        //    }
-        //    List<object[]> list = new List<object[]>();
-        //    string[] fields = new string[] { "xbrl", "pdf", "attach", "english" };
-        //    bool[] auto = new bool[] { setting.Xbrl, setting.Pdf, setting.Attach, setting.English };
-
-        //    foreach (DataRow r in table.Rows) {
-
-        //        int id = int.Parse(r["id"].ToString());//dbはlong
-        //        string docid = r["docID"].ToString();
-        //        string withdrawalStatus = r["withdrawalStatus"].ToString();
-        //        bool isnullEdinetCode = r.IsNull("edinetCode");
-        //        if (isnullEdinetCode && withdrawalStatus == "0") {
-        //            //縦覧終了
-        //            Console.WriteLine("{0} {1} 縦覧終了", id, docid);
-        //            continue;
-        //        }
-
-        //        DateTime date = DateTime.ParseExact(id.ToString().Substring(0, 6), "yyMMdd", null);
-        //        string docTypeCode = r["docTypeCode"].ToString();
-        //        string secCode = r["secCode"] == DBNull.Value ? "0" : r["secCode"].ToString();
-        //        int code = secCode.Length > 3 ? int.Parse(secCode.Substring(0, 4)) : 0;
-        //        //監視銘柄はすべてダウンロード
-        //        bool all = code > 1300 && setting.Watching != null && setting.Watching.Length > 0 && Array.IndexOf(setting.Watching, code) > -1;
-        //        if (!all & Array.IndexOf(setting.DocumentTypes, docTypeCode) < 0) {
-        //            //Console.WriteLine(" skip type[{0}]", docTypeCode);
-        //            continue;
-        //        }
-
-        //        string xbrl = r["xbrl"] == DBNull.Value ? null : r["xbrl"].ToString();
-        //        string pdf = r["pdf"] == DBNull.Value ? null : r["pdf"].ToString();
-        //        string attach = r["attach"] == DBNull.Value ? null : r["attach"].ToString();
-        //        string english = r["english"] == DBNull.Value ? null : r["english"].ToString();
-        //        bool[] flag = new bool[] { r["xbrlFlag"].ToString() == "1", r["pdfFlag"].ToString() == "1",
-        //                r["attachDocFlag"].ToString() == "1", r["englishDocFlag"].ToString() == "1" };
-        //        bool[] check = new bool[] { setting.Xbrl, setting.Pdf, setting.Attach, setting.English };
-        //        for (int j = 0; j < fields.Length; j++) {
-        //            if (flag[j]) {
-        //                if (all | check[j]) {
-        //                    int year = 20 * 100 + id / 100000000;
-        //                    string filepath = string.Format(@"{0}\Documents\{1}\{2}_{3}.{4}", setting.Directory, year, docid, j + 1, j == 1 ? "pdf" : "zip");
-        //                    bool exists = File.Exists(filepath);
-        //                    if (!exists) {
-        //                        list.Add(new object[] { id, docid, j + 1 });
-        //                    }
-        //                }
-        //            }
-        //        }
-        //        i++;
-        //    }
-        //    i = 0;
-        //    int previd = 0;
-        //    foreach (object[] item in list) {
-        //        if (token.IsCancellationRequested) {
-        //            InvokeProgressLabel(0, "Canceled");
-        //            await Task.Delay(1000);
-        //            InvokeVisible(false);
-        //            return;
-        //        }
-        //        int type = (int)item[2];
-        //        int id = (int)item[0];
-        //        int no = int.Parse(item[0].ToString().Substring(6, 4));
-        //        string docid = item[1].ToString();
-        //        string date = item[0].ToString().Substring(0, 6).Insert(4, "-").Insert(2, "-").Insert(0, "20");
-        //        if (id != previd) {
-        //            Console.WriteLine();
-        //            Console.Write("{0} {1}", id, docid);
-        //        }
-        //        Disclosures.ApiArchiveResult result = await edinet.DownloadArchive(id, docid, type);
-        //        i++;
-        //        string output = string.Format("ダウンロード {0:#,##0}/{1:#,##0} no:{2}{3}[{4}] status[{5}] ", i, list.Count, no, target==DateTime.Now.Date ? "":target.ToString("(yyyy-MM-dd)"), fields[type - 1], result.StatusText);
-        //        if (target!=DateTime.Now.Date)
-        //            output += string.Format("{0:m':'ss}経過", sw.Elapsed);
-
-        //        InvokeProgressLabel((int)(i * 100 / list.Count), output);
-        //        Console.Write(" {0:m':'ss'.'f} {1}[{2}]", sw.Elapsed, fields[type - 1], result.Name);
-
-        //        int wait = random.Next((int)(setting.Wait[0] * 1000), (int)(setting.Wait[1] * 1000));
-        //        await Task.Delay(wait);
-        //        Console.Write(" wait[{0}]", wait);
-        //        previd = id;
-        //    }
-        //    sw.Stop();
-        //    Console.WriteLine("finish background download archive");
-        //    await Task.Delay(1000);
-        //    InvokeVisible(false);
-        //    InvokeMenuCheck("MenuDownload");
-
-        //}
 
 
     }
