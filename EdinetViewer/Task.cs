@@ -68,14 +68,19 @@ namespace Edinet {
    
         private void InvokeVisible(bool show, bool initialize = true) {
             if (this.InvokeRequired) {
-                this.Invoke((MethodInvoker)(() => {
-                    if (initialize) {
-                        ProgressBar1.Value = 0;
-                        ProgressLabel1.Text = "";
-                    }
-                    ProgressBar1.Visible = show;
-                    ProgressLabel1.Visible = show;
-                }));
+                try {
+                    this.Invoke((MethodInvoker)(() => {
+                        if (initialize) {
+                            ProgressBar1.Value = 0;
+                            ProgressLabel1.Text = "";
+                        }
+                        ProgressBar1.Visible = show;
+                        ProgressLabel1.Visible = show;
+                    }));
+                } catch (Exception ex) {
+                    Console.WriteLine($"in InvokeVisible {ex.Message.Replace("\r\n", "\t")}");
+                }
+
             } else {
                 if (initialize) {
                     ProgressBar1.Value = 0;
@@ -87,12 +92,17 @@ namespace Edinet {
         }
         private void InvokeProgressLabel(int value, string text) {
             if (this.InvokeRequired) {
-                this.Invoke((MethodInvoker)(() => {
-                    if (value >= 0)
-                        ProgressBar1.Value = value;
-                    if (text != null)
-                        ProgressLabel1.Text = text;
-                }));
+                try {
+                    this.Invoke((MethodInvoker)(() => {
+                        if (value >= 0)
+                            ProgressBar1.Value = value;
+                        if (text != null)
+                            ProgressLabel1.Text = text;
+                    }));
+
+                } catch (Exception ex) {
+                    Console.WriteLine($"in InvokeProgressLabel {ex.Message.Replace("\r\n", "\t")}");
+                }
             } else {
                 if (value >= 0)
                     ProgressBar1.Value = value;
@@ -102,10 +112,15 @@ namespace Edinet {
         }
         private void InvokeLabel(string text) {
             if (this.InvokeRequired) {
-                this.Invoke((MethodInvoker)(() => {
-                    if (text != null)
-                        ProgressLabel1.Text = text;
-                }));
+                try {
+                    this.Invoke((MethodInvoker)(() => {
+                        if (text != null)
+                            ProgressLabel1.Text = text;
+                    }));
+
+                } catch (Exception ex) {
+                    Console.WriteLine($"in InvokeLabel {ex.Message.Replace("\r\n", "\t")}");
+                }
             } else {
                 if (text != null)
                     ProgressLabel1.Text = text;
@@ -113,25 +128,35 @@ namespace Edinet {
         }
         private void InvokeProgress(int value) {
             if (this.InvokeRequired) {
-                this.Invoke((MethodInvoker)(() => {
-                    ProgressBar1.Value = value;
-                }));
+                try {
+                    this.Invoke((MethodInvoker)(() => {
+                        ProgressBar1.Value = value;
+                    }));
+
+                } catch (Exception ex) {
+                    Console.WriteLine($"in InvokeProgress {ex.Message.Replace("\r\n", "\t")}");
+                }
             } else {
                 ProgressBar1.Value = value;
             }
         }
         private void InvokeMenuCheck(string name, bool check = false) {
             if (this.InvokeRequired) {
-                this.Invoke((MethodInvoker)(() => {
-                    switch (name) {
-                        case "MenuPastList":
-                            MenuPastList.Checked = check;
-                            break;
-                        case "MenuDownload":
-                            MenuDownload.Checked = check;
-                            break;
-                    }
-                }));
+                try {
+                    this.Invoke((MethodInvoker)(() => {
+                        switch (name) {
+                            case "MenuPastList":
+                                MenuPastList.Checked = check;
+                                break;
+                            case "MenuDownload":
+                                MenuDownload.Checked = check;
+                                break;
+                        }
+                    }));
+                } catch (Exception ex) {
+                    Console.WriteLine($"in InvokeMenuCheck {ex.Message.Replace("\r\n", "\t")}");
+                }
+
             } else {
                 switch (name) {
                     case "MenuPastList":
@@ -225,8 +250,8 @@ namespace Edinet {
                 return false;
             InvokeLabel(ex.Message + ex.InnerException != null ? (" " + ex.InnerException.Message) : "");
             await Task.Delay(10000);
-            if(menu!=null)
-            InvokeMenuCheck(menu);
+            if (menu != null)
+                InvokeMenuCheck(menu);
             InvokeVisible(false);
             return true;
         }
@@ -349,8 +374,12 @@ namespace Edinet {
             }
             DateTime start = today ? DateTime.Now.Date : DateTime.Now.AddYears(-5).Date;
 
-            string query = string.Format("select id, `date`, secCode, docid, docTypeCode, withdrawalStatus, edinetCode, xbrlFlag, pdfFlag, attachDocFlag, englishDocFlag, xbrl, pdf, attach, english from disclosures where date(`date`) >= '{0:yyyy-MM-dd}' {2} order by id{1};", start, today ? " desc" : "", sb.ToString());
-            DataTable table = disclosures.Database.ReadQuery(query);
+            DataTable table = null;
+            await Task.Run(() => {
+                string query = string.Format("select id, `date`, secCode, docid, docTypeCode, withdrawalStatus, edinetCode, xbrlFlag, pdfFlag, attachDocFlag, englishDocFlag, xbrl, pdf, attach, english from disclosures where date(`date`) >= '{0:yyyy-MM-dd}' {2} order by id{1};", start, today ? " desc" : "", sb.ToString());
+                table = disclosures.Database.ReadQuery(query);
+            });
+
             int i = 0;
             InvokeVisible(true);
             if (table.Rows.Count == 0) {
@@ -361,6 +390,9 @@ namespace Edinet {
                 Console.WriteLine("canceled background download archive");
                 return;
             }
+
+
+
             string[] fields = new string[] { "xbrl", "pdf", "attach", "english" };
             bool[] auto = new bool[] { setting.Xbrl, setting.Pdf, setting.Attach, setting.English };
 
@@ -394,6 +426,9 @@ namespace Edinet {
 
                     DateTime date = DateTime.ParseExact(id.ToString().Substring(0, 6), "yyMMdd", null);
                     string docTypeCode = r["docTypeCode"].ToString();
+                    if (Array.IndexOf(setting.DocumentTypes, docTypeCode) < 0) {
+
+                    }
                     string secCode = r["secCode"] == DBNull.Value ? "0" : r["secCode"].ToString();
                     int code = secCode.Length > 3 ? int.Parse(secCode.Substring(0, 4)) : 0;
                     //監視銘柄はすべてダウンロード
@@ -443,7 +478,13 @@ namespace Edinet {
                     }
                     i++;
                     if (!today) {
+                        //try {
                         InvokeProgressLabel(i * 100 / table.Rows.Count, string.Format("\t\tダウンロード済みファイルをチェックしています  {0:yyyy-MM-dd}", date));
+
+                        //} catch (Exception ex) {
+                        //    Console.WriteLine(ex.Message);
+                        //    //throw;
+                        //}
                     }
                 }
             }
@@ -477,11 +518,11 @@ namespace Edinet {
                     }
                     if (flag404)
                         continue;
-                    ArchiveResponse response = await disclosures.DownloadArchive(id, docid,   (RequestDocument.DocumentType)Enum.ToObject(typeof(RequestDocument.DocumentType), type));
+                    ArchiveResponse response = await disclosures.DownloadArchive(id, docid, (RequestDocument.DocumentType)Enum.ToObject(typeof(RequestDocument.DocumentType), type));
                     //string statuscode = response. result.StatusText;
                     //if (result.Error != null){
                     //    statuscode = result.Error.Root.MetaData.Status;
-                        if (response.EdinetStatusCode!=null && response.EdinetStatusCode.Status == "404")
+                    if (response.EdinetStatusCode != null && response.EdinetStatusCode.Status == "404")
                         flag404 = true;
                     //}
                     string output = string.Format("ダウンロード {0:#,##0}/{1:#,##0} no:{2}{3}[{4}] status[{5}] ", i, dv.Count, no2, today ? "" : string.Format("({0:yyyy-MM-dd})", target), fields[type - 1], response.HttpStatusCode.ToString());

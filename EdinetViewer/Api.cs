@@ -132,7 +132,13 @@ namespace Edinet {
             } catch (Exception ex) {
                 response.Update(ex);
             }
-            SaveLog(GetLog(response));
+            try {
+                SaveLog(GetLog(response));
+
+            } catch (Exception ex) {
+
+                Console.WriteLine($"SaveLog(DownloadArchive)\r\n{ex.Message}");
+            }
             return response;
         }
 

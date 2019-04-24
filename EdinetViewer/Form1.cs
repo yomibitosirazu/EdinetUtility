@@ -596,7 +596,9 @@ namespace Edinet {
                             e.Cancel = true;
                             await backgroundTask[i];
                         }
-                    }
+                    } else
+                        if (backgroundCancel[i] != null)
+                        backgroundCancel[i].Cancel();
                 }
                 if (e.Cancel) Close();
             }
