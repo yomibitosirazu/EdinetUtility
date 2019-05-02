@@ -73,7 +73,6 @@ namespace Edinet {
             timer1.Interval = (int)(setting.Interval * 60 * 1000);
             timer1.Enabled = true;
             TimerCheck();
-            //if (setting.VersionUp | Application.ProductVersion.Substring(0,8)== "0.2.101.") {
             if (setting.VersionUp | Application.ProductVersion.Substring(0, 8) == "0.2.101.") {
                     await BackGroundStart(TaskType.VersionUp, Application.ProductVersion + "\t" + setting.VersionPrev);
             }

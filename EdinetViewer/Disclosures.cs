@@ -44,33 +44,7 @@ namespace Edinet {
             apiDocument = new RequestDocument(dir, version);
         }
 
-        //public async Task<JsonContent> ApiRequest(DateTime target, RequestDocument.RequestType requestType) {
-        //    if (target.Date > DateTime.Now | target.Date < DateTime.Now.Date.AddYears(-5))
-        //        return null;
-        //    JsonResponse response = await apiDocument.Request(target, requestType);
-        //    if (response.Exception != null)
-        //        return new JsonContent(response.Exception);
-        //    else {
-        //        DataTable table = JsonToTable(response.Json);
-        //        return new JsonContent(table, response.Json);
-        //        //return JsonToTable(response.Json);
-        //    }
 
-        //}
-
-
-
-        //public JsonContent ReadJsonfile(string filepath) {
-        //    using (Stream stream = File.OpenRead(filepath)) {
-        //        JsonDeserializer json = new JsonDeserializer(stream);
-        //        if (json.Response == null)
-        //            return null;
-        //        else {
-        //            DataTable table = JsonToTable(json.Response);
-        //            return new JsonContent(table, json);
-        //        }
-        //    }
-        //}
 
         public DataTable JsonToTable(Json.ApiResponse json) {
             DataTable table = new DataTable();
@@ -165,8 +139,9 @@ namespace Edinet {
 
 
         public Disclosures(string dir, string version = "v1") : base(dir, version) {
-            Database = new Database.Sqlite(Path.Combine(dir, "edinet.db"));
             directory = dir;
+            CheckLogSize();
+            Database = new Database.Sqlite(Path.Combine(dir, "edinet.db"));
             Database.LoadTaxonomy(out Dictionary<string, string> dic, out List<string> list);
             Xbrl = new Xbrl();
             Xbrl.IntializeTaxonomy(dic, list);
@@ -175,31 +150,60 @@ namespace Edinet {
             DicEdinetCode = dicCode;
         }
 
+        private void CheckLogSize() {
+            string logfile = Path.Combine(directory, "EdinetApi.log");
+            if (File.Exists(logfile)) {
+                long size = (new FileInfo(logfile)).Length;
+                double mb = size / 1024f / 1024f;
+                if (mb > 1) {
+                    string[] files = Directory.GetFiles(directory, "EdinetApi*.log");
+                    string backupname = $"EdinetApi{files.Length:00}.log";
+                    File.Move(logfile, Path.Combine(directory, backupname));
+                }
+            }
+        }
+
         public async Task<JsonContent> ReadDocuments(DateTime target, bool show = true) {
 #pragma warning disable IDE0059
             DataTable table = null;
 #pragma warning restore IDE0059
-            Json.Metadata prevmMtadata = Database.ReadMetadata(target);
-            int count = prevmMtadata != null && prevmMtadata.Resultset != null ? prevmMtadata.Resultset.Count : 0;
-            if (count > 0) {
-                table = Database.ReadDisclosure(target);
-                if (prevmMtadata.Status == "200" & DateTime.Parse(prevmMtadata.ProcessDateTime).Date > target.Date) {
-                    //翌日以降アクセスで確定
-                    if (show)
-                        UpdateDocumentsTable(ref table);
-                    return new JsonContent(table, null, "書類一覧キャッシュ");
+            Json.Metadata prevMetadata = Database.ReadMetadata(target);
+            bool skip = false;
+            int count = 0;
+            if (prevMetadata != null && prevMetadata.Status == "200") {
+                DateTime processTime = DateTime.Parse(prevMetadata.ProcessDateTime);
+                //翌日以降アクセスで確定
+                bool kakutei = processTime.Date > target.Date;
+                if (prevMetadata.Resultset != null)
+                    count = prevMetadata.Resultset.Count;
+                if (count > 0) 
+                    table = Database.ReadDisclosure(target);
+                if (kakutei) {
+                    //確定でcount0件は追加されることはない　確定24hr以内はスキップ
+                    if (show | DateTime.Now < processTime.AddHours(24) | count == 0)
+                        skip = true;
                 }
-            } else {
-                table = Database.GetTableClone("disclosures");
+
             }
+            if (table == null)
+                table = Database.GetTableClone("disclosures");
+            if (skip) {
+                if (show)
+                    UpdateDocumentsTable(ref table);
+                Json.ApiResponse apiResponse = new Json.ApiResponse() {
+                    MetaData = prevMetadata
+                };
+                //apiResponse.Status = null;
+                return new JsonContent(table, apiResponse, "書類一覧キャッシュ");
+            }
+
             DataView dv = new DataView(table, "", "id", DataViewRowState.CurrentRows);
-            //まずメタデータのみ取得
             JsonResponse resMetadata = await apiDocument.Request(target, RequestDocument.RequestType.Metadata);
             if (resMetadata.Exception != null)
                 return new JsonContent(resMetadata.Exception);
             else {
-                if (resMetadata.Json.MetaData.Resultset.Count > count) {
-                    await Task.Delay(50);
+                if (target < DateTime.Now.Date | resMetadata.Json.MetaData.Resultset.Count > count) {
+                    //await Task.Delay(50);
                     JsonResponse resList = await apiDocument.Request(target, RequestDocument.RequestType.List);
                     if (resList.Exception != null)
                         return new JsonContent(resList.Exception);
@@ -249,9 +253,9 @@ namespace Edinet {
                                     r[column.ColumnName] = DBNull.Value;
                                 else
                                     r[column.ColumnName] = value;
-                                if (column.ColumnName == "date" | (column.ColumnName == "code" & value != null) | (column.ColumnName == "status" & value != null)) {
-                                    Console.Write("{0} {1} {2}", index, column.ColumnName, r[column.ColumnName]);
-                                }
+                                //if (column.ColumnName == "date" | (column.ColumnName == "code" & value != null) | (column.ColumnName == "status" & value != null)) {
+                                //    Console.Write("{0} {1} {2}", index, column.ColumnName, r[column.ColumnName]);
+                                //}
                             } else {
                                 //Console.WriteLine("{0}", column.ColumnName);
                                 //xbrl pdf attach english
@@ -299,6 +303,21 @@ namespace Edinet {
             }
         }
 
+        public async Task<HttpResponseMessage> RequestDownload(string docid, RequestDocument.DocumentType doctype) {
+            return await apiDocument.RequestDownload(docid, doctype);
+        }
+
+        #pragma warning disable CS1998
+        public async Task DownloadArchiveNoAwait(int id, string docid, RequestDocument.DocumentType type) {
+#pragma warning disable CS4014
+            apiDocument.DownloadAsync(docid, type, id, Database);
+        }
+
+        public async Task Download(HttpResponseMessage httpResponseMessage, int id, string type) {
+            apiDocument.Download(httpResponseMessage, id, type, Database);
+#pragma warning restore CS4014
+        }
+#pragma warning restore CS1998
 
         public async Task<ArchiveResponse> DownloadArchive(int id, string docid, RequestDocument.DocumentType type) {
             ArchiveResponse response = await apiDocument.DownloadArchive(docid, type);
@@ -313,6 +332,9 @@ namespace Edinet {
 
             }
             return response;
+        }
+        public void UpdateArchiveStatus(int id, RequestDocument.DocumentType type, string status) {
+            Database.UpdateFilenameOfDisclosure(id, type.ToString(), status);
         }
         private void SaveFile(byte[] buffer, string name, int year) {
             using (MemoryStream stream = new MemoryStream(buffer)) {
@@ -449,40 +471,6 @@ namespace Edinet {
 
             return response;
         }
-
-
-
-        //private bool Equals(Json.JsonList.Result result1, Json.JsonList.Result result2) {
-        //    bool equal = true;
-        //    equal = equal & result1.attachDocFlag == result2.attachDocFlag;
-        //    equal = equal & result1.currentReportReason == result2.currentReportReason;
-        //    equal = equal & result1.disclosureStatus == result2.disclosureStatus;
-        //    equal = equal & result1.docDescription == result2.docDescription;
-        //    equal = equal & result1.docID == result2.docID;
-        //    equal = equal & result1.docInfoEditStatus == result2.docInfoEditStatus;
-        //    equal = equal & result1.docTypeCode == result2.docTypeCode;
-        //    equal = equal & result1.edinetCode == result2.edinetCode;
-        //    equal = equal & result1.englishDocFlag == result2.englishDocFlag;
-        //    equal = equal & result1.filerName == result2.filerName;
-        //    equal = equal & result1.formCode == result2.formCode;
-        //    equal = equal & result1.fundCode == result2.fundCode;
-        //    equal = equal & result1.issuerEdinetCode == result2.issuerEdinetCode;
-        //    equal = equal & result1.JCN == result2.JCN;
-        //    equal = equal & result1.opeDateTime == result2.opeDateTime;
-        //    equal = equal & result1.ordinanceCode == result2.ordinanceCode;
-        //    equal = equal & result1.parentDocID == result2.parentDocID;
-        //    equal = equal & result1.pdfFlag == result2.pdfFlag;
-        //    equal = equal & result1.periodEnd == result2.periodEnd;
-        //    equal = equal & result1.periodStart == result2.periodStart;
-        //    equal = equal & result1.secCode == result2.secCode;
-        //    equal = equal & result1.seqNumber == result2.seqNumber;
-        //    equal = equal & result1.subjectEdinetCode == result2.subjectEdinetCode;
-        //    equal = equal & result1.submitDateTime == result2.submitDateTime;
-        //    equal = equal & result1.subsidiaryEdinetCode == result2.subsidiaryEdinetCode;
-        //    equal = equal & result1.withdrawalStatus == result2.withdrawalStatus;
-        //    equal = equal & result1.xbrlFlag == result2.xbrlFlag;
-        //    return equal;
-        //}
 
 
 

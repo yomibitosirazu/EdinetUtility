@@ -79,21 +79,21 @@ namespace Edinet {
 
         }
 
-        private void test() {
-            List<DateTime> list = disclosures.Database.MetadataList();
-            InvokeVisible(true);
-            int i = 0;
-            foreach (DateTime dt in list) {
-                InvokeProgressLabel((int)(i/list.Count*100), dt.ToString("yyyy-MM-dd"));
-                i++;
-            }
-            //Task.Delay(3000);
-            //InvokeProgressLabel(0, 0, "");
-            //Task.Delay(2000);
-            System.Threading.Thread.Sleep(1000);
-            InvokeVisible(false);
+        //private void test() {
+        //    List<DateTime> list = disclosures.Database.MetadataList();
+        //    InvokeVisible(true);
+        //    int i = 0;
+        //    foreach (DateTime dt in list) {
+        //        InvokeProgressLabel((int)(i/list.Count*100), dt.ToString("yyyy-MM-dd"));
+        //        i++;
+        //    }
+        //    //Task.Delay(3000);
+        //    //InvokeProgressLabel(0, 0, "");
+        //    //Task.Delay(2000);
+        //    System.Threading.Thread.Sleep(1000);
+        //    InvokeVisible(false);
 
-        }
+        //}
 
         private void Update02101() {
             InvokeLabel("バージョンアップ　データベース更新中");

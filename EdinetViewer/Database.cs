@@ -460,9 +460,9 @@ namespace Database {
                                         //    command.Parameters["@" + dv.Table.Columns[i].ColumnName].Value = DateTime.Parse(dv[j][i].ToString()).ToString("yyyy-MM-dd");
                                         //else
                                         command.Parameters["@" + dv.Table.Columns[i].ColumnName].Value = dv[j][i];
-                                        if (dv.Table.Columns[i].ColumnName == "date" | dv.Table.Columns[i].ColumnName == "code") {
-                                            Console.WriteLine(dv[j][i]);
-                                        }
+                                        //if (dv.Table.Columns[i].ColumnName == "date" | dv.Table.Columns[i].ColumnName == "code") {
+                                        //    Console.WriteLine(dv[j][i]);
+                                        //}
                                     }
                                 }
                                 command.ExecuteNonQuery();

@@ -18,6 +18,8 @@ namespace Edinet {
         public SettingDialog(Setting setting) {
             Setting = setting;
             InitializeComponent();
+            numericWait1.Minimum = Setting.Min1;
+            numericWait2.Minimum = Setting.Min2;
         }
 
         private readonly Dictionary<Type, int> dicPosition = new Dictionary<Type, int>() {
@@ -196,16 +198,14 @@ namespace Edinet {
             }
         }
 
-        //private void TbDocumentDirectory_Leave(object sender, EventArgs e) {
-
-        //}
     }
 
 
     public class SettingBase {
         public string FilePath { get; set; }
         public Dictionary<string, string> Values { get; set; }
-
+        public static decimal Min1 { get {if (Environment.MachineName == "H270M" | Environment.MachineName == "PD-1712") return 0.2m; else return 0.5m;}}
+        public static decimal Min2 { get {if (Environment.MachineName == "H270M" | Environment.MachineName == "PD-1712") return 0.2m; else return 0.5m;}}
         public SettingBase() {
             FilePath = string.Format("{0}_{1}.xml", System.Reflection.Assembly.GetExecutingAssembly().GetName().Name, Environment.MachineName);
             Values = new Dictionary<string, string>();
@@ -241,8 +241,6 @@ namespace Edinet {
     }
 
     public class Setting:SettingBase {
-        //private readonly string settingfile = string.Format("{0}_{1}.xml", System.Reflection.Assembly.GetExecutingAssembly().GetName().Name, Environment.MachineName);
-        //public Dictionary<string, string> Values { get; set; }
         public Dictionary<DateTime, string> Holiday {
             get {
                 Dictionary<DateTime, string> dic = new Dictionary<DateTime, string>();
@@ -270,9 +268,13 @@ namespace Edinet {
         public bool English { get { return bool.TryParse(Values["Eng"], out bool flag) ? flag : false; } }
         public decimal Interval { get { return Values.ContainsKey("Interval") && decimal.TryParse(Values["Interval"], out decimal value) && value > 1 ? value : 1; } }
         public decimal[] Wait { get {
+                //decimal min1 = 0.4m;
+                //decimal min2 = 0.4m;
+                //if (Environment.MachineName == "H270M" | Environment.MachineName == "PD-1712")
+                //    min1 = 0.2m;
                 return new decimal[] {
-                    Values.ContainsKey("Wait1") && decimal.TryParse(Values["Wait1"], out decimal value) && value > 0.5m ? value : 1,
-                    Values.ContainsKey("Wait2") && decimal.TryParse(Values["Wait2"], out decimal value2) && value2 > 0.5m ? value2 : 1
+                    Values.ContainsKey("Wait1") && decimal.TryParse(Values["Wait1"], out decimal value) && value > Setting.Min1 ? value : Setting.Min1,
+                    Values.ContainsKey("Wait2") && decimal.TryParse(Values["Wait2"], out decimal value2) && value2 > Setting.Min2 ? value2 : Setting.Min2
             };
             } }
         public string[] DocumentTypes { get { return Values.ContainsKey("Type") && Values["Type"].Trim() != "" ? Values["Type"].Split(',') : null; } }
@@ -312,10 +314,6 @@ namespace Edinet {
                     dir = dlg.SelectedPath;
                 Update(key, dir);
             }
-            //if (!System.IO.Directory.Exists(Values["DocumentDirectory"])) {
-            //    System.IO.Directory.CreateDirectory(Values["DocumentDirectory"]);
-            //}
-
             key = "ApiVersion";
             if (!Values.ContainsKey(key)) {
                 if (Values.ContainsKey("version")) {

@@ -32,6 +32,9 @@
             this.checkTimer = new System.Windows.Forms.CheckBox();
             this.checkDownload = new System.Windows.Forms.CheckBox();
             this.listDocType = new System.Windows.Forms.CheckedListBox();
+            this.MenuDocType = new System.Windows.Forms.ContextMenuStrip(this.components);
+            this.MenuCheckAll = new System.Windows.Forms.ToolStripMenuItem();
+            this.MenuCheckOffAll = new System.Windows.Forms.ToolStripMenuItem();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
             this.checkEng = new System.Windows.Forms.CheckBox();
             this.checkAttach = new System.Windows.Forms.CheckBox();
@@ -55,15 +58,12 @@
             this.date = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.name = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.label7 = new System.Windows.Forms.Label();
-            this.MenuDocType = new System.Windows.Forms.ContextMenuStrip(this.components);
-            this.MenuCheckAll = new System.Windows.Forms.ToolStripMenuItem();
-            this.MenuCheckOffAll = new System.Windows.Forms.ToolStripMenuItem();
+            this.MenuDocType.SuspendLayout();
             this.groupBox1.SuspendLayout();
             this.MenuTbHoliday.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.numericInterval)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.numericWait1)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.numericWait2)).BeginInit();
-            this.MenuDocType.SuspendLayout();
             this.SuspendLayout();
             // 
             // tbDocumentDirectory
@@ -142,6 +142,28 @@
             this.listDocType.Name = "listDocType";
             this.listDocType.Size = new System.Drawing.Size(232, 172);
             this.listDocType.TabIndex = 9;
+            // 
+            // MenuDocType
+            // 
+            this.MenuDocType.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.MenuCheckAll,
+            this.MenuCheckOffAll});
+            this.MenuDocType.Name = "MenuDocType";
+            this.MenuDocType.Size = new System.Drawing.Size(137, 48);
+            // 
+            // MenuCheckAll
+            // 
+            this.MenuCheckAll.Name = "MenuCheckAll";
+            this.MenuCheckAll.Size = new System.Drawing.Size(136, 22);
+            this.MenuCheckAll.Text = "すべてチェック";
+            this.MenuCheckAll.Click += new System.EventHandler(this.MenuCheck_Click);
+            // 
+            // MenuCheckOffAll
+            // 
+            this.MenuCheckOffAll.Name = "MenuCheckOffAll";
+            this.MenuCheckOffAll.Size = new System.Drawing.Size(136, 22);
+            this.MenuCheckOffAll.Text = "すべてオフ";
+            this.MenuCheckOffAll.Click += new System.EventHandler(this.MenuCheck_Click);
             // 
             // groupBox1
             // 
@@ -315,7 +337,7 @@
             // 
             this.numericWait1.DecimalPlaces = 1;
             this.numericWait1.Increment = new decimal(new int[] {
-            2,
+            1,
             0,
             0,
             65536});
@@ -326,7 +348,7 @@
             0,
             0});
             this.numericWait1.Minimum = new decimal(new int[] {
-            5,
+            1,
             0,
             0,
             65536});
@@ -334,7 +356,7 @@
             this.numericWait1.Size = new System.Drawing.Size(35, 19);
             this.numericWait1.TabIndex = 25;
             this.numericWait1.Value = new decimal(new int[] {
-            16,
+            8,
             0,
             0,
             65536});
@@ -343,7 +365,7 @@
             // 
             this.numericWait2.DecimalPlaces = 1;
             this.numericWait2.Increment = new decimal(new int[] {
-            2,
+            1,
             0,
             0,
             65536});
@@ -354,7 +376,7 @@
             0,
             0});
             this.numericWait2.Minimum = new decimal(new int[] {
-            6,
+            1,
             0,
             0,
             65536});
@@ -362,7 +384,7 @@
             this.numericWait2.Size = new System.Drawing.Size(35, 19);
             this.numericWait2.TabIndex = 26;
             this.numericWait2.Value = new decimal(new int[] {
-            42,
+            10,
             0,
             0,
             65536});
@@ -400,28 +422,6 @@
             this.label7.TabIndex = 29;
             this.label7.Text = "監視銘柄";
             // 
-            // MenuDocType
-            // 
-            this.MenuDocType.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.MenuCheckAll,
-            this.MenuCheckOffAll});
-            this.MenuDocType.Name = "MenuDocType";
-            this.MenuDocType.Size = new System.Drawing.Size(181, 70);
-            // 
-            // MenuCheckAll
-            // 
-            this.MenuCheckAll.Name = "MenuCheckAll";
-            this.MenuCheckAll.Size = new System.Drawing.Size(180, 22);
-            this.MenuCheckAll.Text = "すべてチェック";
-            this.MenuCheckAll.Click += new System.EventHandler(this.MenuCheck_Click);
-            // 
-            // MenuCheckOffAll
-            // 
-            this.MenuCheckOffAll.Name = "MenuCheckOffAll";
-            this.MenuCheckOffAll.Size = new System.Drawing.Size(180, 22);
-            this.MenuCheckOffAll.Text = "すべてオフ";
-            this.MenuCheckOffAll.Click += new System.EventHandler(this.MenuCheck_Click);
-            // 
             // SettingDialog
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
@@ -452,13 +452,13 @@
             this.Name = "SettingDialog";
             this.Text = "設定";
             this.Shown += new System.EventHandler(this.DialogSetting_Shown);
+            this.MenuDocType.ResumeLayout(false);
             this.groupBox1.ResumeLayout(false);
             this.groupBox1.PerformLayout();
             this.MenuTbHoliday.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.numericInterval)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.numericWait1)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.numericWait2)).EndInit();
-            this.MenuDocType.ResumeLayout(false);
             this.ResumeLayout(false);
             this.PerformLayout();
 
