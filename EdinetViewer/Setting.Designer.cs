@@ -356,7 +356,7 @@
             this.numericWait1.Size = new System.Drawing.Size(35, 19);
             this.numericWait1.TabIndex = 25;
             this.numericWait1.Value = new decimal(new int[] {
-            8,
+            12,
             0,
             0,
             65536});
@@ -384,7 +384,7 @@
             this.numericWait2.Size = new System.Drawing.Size(35, 19);
             this.numericWait2.TabIndex = 26;
             this.numericWait2.Value = new decimal(new int[] {
-            10,
+            16,
             0,
             0,
             65536});
