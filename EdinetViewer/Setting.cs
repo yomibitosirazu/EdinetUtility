@@ -86,7 +86,6 @@ namespace Edinet {
         private void DialogSetting_Shown(object sender, EventArgs e) {
             listDocType.Items.AddRange(Const.DocTypeCode.Values.ToArray());
 
-
             foreach (Control control in this.Controls) {
                 Type type = control.GetType();
                 if (dicPosition.ContainsKey(type)) {
@@ -94,10 +93,15 @@ namespace Edinet {
                     if (Setting.Values.ContainsKey(name)) {
                         if (control is TextBox)
                             control.Text = Setting.Values[control.Name.Substring(dicPosition[type])].Replace("\t", "\r\n");
-                        else if (control is NumericUpDown & decimal.TryParse(Setting.Values[control.Name.Substring(dicPosition[type])], out decimal value))
+                        else if (control is NumericUpDown & decimal.TryParse(Setting.Values[control.Name.Substring(dicPosition[type])], out decimal value)) {
+                            if (value < Setting.Min1)
+                                value = Setting.Min1;
                             (control as NumericUpDown).Value = value;
-                        else if (control is CheckBox & bool.TryParse(Setting.Values[control.Name.Substring(dicPosition[type])], out bool valbool))
+                        } else if (control is CheckBox & bool.TryParse(Setting.Values[control.Name.Substring(dicPosition[type])], out bool valbool)) {
+                            if (value < Setting.Min2)
+                                value = Setting.Min2;
                             (control as CheckBox).Checked = valbool;
+                        }
                     }
                 } else if (control == groupBox1) {
                     foreach (Control sub in control.Controls) {
@@ -204,7 +208,7 @@ namespace Edinet {
     public class SettingBase {
         public string FilePath { get; set; }
         public Dictionary<string, string> Values { get; set; }
-        public static decimal Min1 { get { return 0.8m;}}
+        public static decimal Min1 { get { return 1.0m;}}
         public static decimal Min2 { get { return 1.0m;}}
         public SettingBase() {
             FilePath = string.Format("{0}_{1}.xml", System.Reflection.Assembly.GetExecutingAssembly().GetName().Name, Environment.MachineName);
