@@ -204,8 +204,8 @@ namespace Edinet {
     public class SettingBase {
         public string FilePath { get; set; }
         public Dictionary<string, string> Values { get; set; }
-        public static decimal Min1 { get {if (Environment.MachineName == "H270M" | Environment.MachineName == "PD-1712") return 0.2m; else return 0.6m;}}
-        public static decimal Min2 { get {if (Environment.MachineName == "H270M" | Environment.MachineName == "PD-1712") return 0.2m; else return 0.8m;}}
+        public static decimal Min1 { get {if (Environment.MachineName == "H270M" | Environment.MachineName == "PD-1712") return 0.2m; else return 0.8m;}}
+        public static decimal Min2 { get {if (Environment.MachineName == "H270M" | Environment.MachineName == "PD-1712") return 0.2m; else return 1.0m;}}
         public SettingBase() {
             FilePath = string.Format("{0}_{1}.xml", System.Reflection.Assembly.GetExecutingAssembly().GetName().Name, Environment.MachineName);
             Values = new Dictionary<string, string>();
