@@ -238,6 +238,26 @@ namespace Database {
             return list;
         }
 
+        public Dictionary<DateTime, int> GetFinalMetalist() {
+            Dictionary<DateTime, int> dic = new Dictionary<DateTime, int>();
+            using (var conn = new SQLiteConnection(string.Format("Data Source={0}", DbPath))) {
+                using (SQLiteCommand command = new SQLiteCommand()) {
+                    command.Connection = conn;
+                    command.CommandText = "select `date`, count  from Metadata where `status` = '200' and date(`date`) != date(processDateTime) group by `date`;";
+                    command.Connection.Open();
+                    using (SQLiteDataReader reader = command.ExecuteReader()) {
+                        if (reader.HasRows) {
+                            while (reader.Read()) {
+                                dic.Add(DateTime.Parse(reader.GetString(0)), (int)reader.GetInt32(1));
+                            }
+                        }
+                    }
+                    command.Connection.Close();
+                }
+            }
+            return dic;
+        }
+
         //public int GetMaxSecNumber(DateTime target) {
         //    using (var conn = new SQLiteConnection(string.Format("Data Source={0}", DbPath))) {
         //        using (SQLiteCommand command = new SQLiteCommand()) {
@@ -449,20 +469,12 @@ namespace Database {
                                 command.Parameters.AddWithValue("@" + dv.Table.Columns[i].ColumnName, null);
                             }
                         }
-                        //command.Parameters.Add("@id", DbType.Int64);
                         command.Connection.Open();
                         using (SQLiteTransaction ts = command.Connection.BeginTransaction()) {
-                            //command.Connection.Open();
                             for (int j = 0; j < dv.Count; j++) {
                                 for (int i = 0; i < dv.Table.Columns.Count; i++) {
                                     if (dv.Table.Columns[i].ColumnName != "edit") {
-                                        //if (dv.Table.Columns[i].ColumnName == "date")
-                                        //    command.Parameters["@" + dv.Table.Columns[i].ColumnName].Value = DateTime.Parse(dv[j][i].ToString()).ToString("yyyy-MM-dd");
-                                        //else
                                         command.Parameters["@" + dv.Table.Columns[i].ColumnName].Value = dv[j][i];
-                                        //if (dv.Table.Columns[i].ColumnName == "date" | dv.Table.Columns[i].ColumnName == "code") {
-                                        //    Console.WriteLine(dv[j][i]);
-                                        //}
                                     }
                                 }
                                 command.ExecuteNonQuery();
@@ -512,6 +524,17 @@ namespace Database {
             }
         }
 
+        public void UpdateCode() {
+            using (var conn = new SQLiteConnection(string.Format("Data Source={0}", DbPath))) {
+                using (SQLiteCommand command = new SQLiteCommand(conn)) {
+                    string query = "update disclosures set `code` = substr(secCode, 1, 4);";
+                    command.CommandText = query;
+                    command.Connection.Open();
+                    command.ExecuteNonQuery();
+                    command.Connection.Close();
+                }
+            }
+        }
 
         //public DataTable UpdateDisclosures(DateTime target, Edinet.Json.ApiResponse json) {
         //    //jsonがnullの場合は確定した日付の書類一覧
@@ -765,7 +788,8 @@ namespace Database {
             using (var conn = new SQLiteConnection(string.Format("Data Source={0}", DbPath))) {
                 using (SQLiteCommand command = new SQLiteCommand()) {
                     command.Connection = conn;
-                    command.CommandText = string.Format("select count(*) from Disclosures where `secCode` = {0} order by submitDatetime desc;", code * 10);
+                    //command.CommandText = string.Format("select count(*) from Disclosures where `secCode` = {0} order by submitDatetime desc;", code * 10);
+                    command.CommandText = string.Format("select count(*) from Disclosures where substr(`secCode`, 1, 4) = '{0}' order by submitDatetime desc;", code);
                     command.Connection.Open();
                     using (SQLiteDataReader reader = command.ExecuteReader()) {
                         if (reader.HasRows) {
@@ -780,12 +804,47 @@ namespace Database {
             return 0;
         }
 
+        public DataTable Search(string filtertext) {
+            DataTable table = GetTableClone("Disclosures");
+            using (var conn = new SQLiteConnection(string.Format("Data Source={0}", DbPath))) {
+                using (SQLiteCommand command = new SQLiteCommand()) {
+                    command.Connection = conn;
+                    command.CommandText = $"select * from Disclosures where {filtertext} order by id;";
+                    command.Connection.Open();
+                    try {
+                        using (SQLiteDataReader reader = command.ExecuteReader()) {
+                            if (reader.HasRows) {
+                                while (reader.Read()) {
+                                    DataRow r = table.NewRow();
+                                    for (int i = 0; i < table.Columns.Count; i++) {
+                                        if (reader.IsDBNull(i))
+                                            r[i] = DBNull.Value;
+                                        else
+                                            r[i] = reader.GetValue(i);
+                                    }
+                                    table.Rows.Add(r);
+                                }
+                            }
+                        }
+                    } catch (Exception ex) {
+                        DataRow r = table.NewRow();
+                        r["id"] = 0;
+                        r["docID"] = "エラー";
+                        r["status"] = ex.Message;
+                        table.Rows.Add(r);
+                    }
+                    command.Connection.Close();
+                }
+            }
+            return table;
+        }
         public DataTable SearchBrand(int code) {
             DataTable table = GetTableClone("Disclosures");
             using (var conn = new SQLiteConnection(string.Format("Data Source={0}", DbPath))) {
                 using (SQLiteCommand command = new SQLiteCommand()) {
                     command.Connection = conn;
-                    command.CommandText = string.Format("select * from Disclosures where `secCode` = {0} order by submitDatetime desc;", code * 10);
+                    //command.CommandText = string.Format("select * from Disclosures where `secCode` = {0} order by submitDatetime desc;", code * 10);
+                    command.CommandText = string.Format("select * from Disclosures where substr(`secCode`, 1, 4) = '{0}' order by submitDatetime desc;", code);
                     command.Connection.Open();
                     using (SQLiteDataReader reader = command.ExecuteReader()) {
                         if (reader.HasRows) {
@@ -822,6 +881,33 @@ namespace Database {
                                 //    //    r["タイプ"] = Edinet.Const.DocTypeCode[r[i].ToString()]; 
                                 //}
                                 //table.Rows.Add(r);
+                            }
+                        }
+                    }
+                    command.Connection.Close();
+                }
+            }
+            return table;
+        }
+
+        public DataTable AllDisclosures() {
+            DataTable table = GetTableClone("Disclosures");
+            using (var conn = new SQLiteConnection(string.Format("Data Source={0}", DbPath))) {
+                using (SQLiteCommand command = new SQLiteCommand()) {
+                    command.Connection = conn;
+                    command.CommandText = string.Format("select * from Disclosures order by id;");
+                    command.Connection.Open();
+                    using (SQLiteDataReader reader = command.ExecuteReader()) {
+                        if (reader.HasRows) {
+                            while (reader.Read()) {
+                                DataRow r = table.NewRow();
+                                for (int i = 0; i < table.Columns.Count; i++) {
+                                    if (reader.IsDBNull(i))
+                                        r[i] = DBNull.Value;
+                                    else
+                                        r[i] = reader.GetValue(i);
+                                }
+                                table.Rows.Add(r);
                             }
                         }
                     }

@@ -13,7 +13,6 @@ namespace Edinet {
 
 
     public partial class SettingDialog : Form {
-        //private DialogSetting setting;
 
         public SettingDialog(Setting setting) {
             Setting = setting;
@@ -215,6 +214,7 @@ namespace Edinet {
             Values = new Dictionary<string, string>();
             if (!File.Exists(FilePath))
                 Save();
+
         }
 
         public void Update(string key, string value) {
@@ -270,6 +270,9 @@ namespace Edinet {
         public bool Pdf { get { return bool.TryParse(Values["Pdf"], out bool flag) ? flag : false; } }
         public bool Attach { get { return bool.TryParse(Values["Attach"], out bool flag) ? flag : false; } }
         public bool English { get { return bool.TryParse(Values["Eng"], out bool flag) ? flag : false; } }
+        public bool OrderAscendingToday { get { return Values.ContainsKey("OrderToday") && bool.TryParse(Values["OrderToday"], out bool flag) ? flag : false; } }
+        public bool OrderAscendingYear5 { get { return Values.ContainsKey("OrderYear5") && bool.TryParse(Values["OrderYear5"], out bool flag) ? flag : true; } }
+        public bool OrderAscendingList { get { return Values.ContainsKey("OrderList") && bool.TryParse(Values["OrderList"], out bool flag) ? flag : false; } }
         public decimal Interval { get { return Values.ContainsKey("Interval") && decimal.TryParse(Values["Interval"], out decimal value) && value > 1 ? value : 1; } }
         public decimal[] Wait { get {
                 return new decimal[] {

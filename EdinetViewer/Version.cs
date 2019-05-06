@@ -48,16 +48,16 @@ namespace Edinet {
             }
             if (current < 210108)
                 await Task.Run(() => DisclosureColumnDateCheck());
-            //if (versions[0].Substring(0, 4) == "0.2.") {
-            //    if (versions.Length == 1 || versions[1] == "" | versions[1].Length < 4 || versions[1].Substring(0, 4) != versions[0].Substring(0, 4))
-            //        await Task.Run(() => Update02101());
-            //} else {
-            //    await Task.Run(() => test());
-            //}
-            //if (versions.Length > 1) {
-            //    //string[] prev = versions[1].Split('.');
-
-            //}
+            if (current == 220401) {
+                InvokeVisible(false);
+                InvokeLabel("database コード更新中");
+                await Task.Run(() => {
+                    disclosures.Database.UpdateCode();
+                });
+                InvokeLabel("database updated");
+                await Task.Delay(1000);
+                InvokeVisible(false);
+            }
         }
 
         private void DisclosureColumnDateCheck() {
@@ -79,21 +79,6 @@ namespace Edinet {
 
         }
 
-        //private void test() {
-        //    List<DateTime> list = disclosures.Database.MetadataList();
-        //    InvokeVisible(true);
-        //    int i = 0;
-        //    foreach (DateTime dt in list) {
-        //        InvokeProgressLabel((int)(i/list.Count*100), dt.ToString("yyyy-MM-dd"));
-        //        i++;
-        //    }
-        //    //Task.Delay(3000);
-        //    //InvokeProgressLabel(0, 0, "");
-        //    //Task.Delay(2000);
-        //    System.Threading.Thread.Sleep(1000);
-        //    InvokeVisible(false);
-
-        //}
 
         private void Update02101() {
             InvokeLabel("バージョンアップ　データベース更新中");

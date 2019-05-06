@@ -163,7 +163,7 @@ namespace Edinet {
             }
         }
 
-        public async Task<JsonContent> ReadDocuments(DateTime target, bool show = true) {
+        public async Task<JsonContent> ReadDocuments(DateTime target, bool skipFirst = true, bool show = true) {
 #pragma warning disable IDE0059
             DataTable table = null;
 #pragma warning restore IDE0059
@@ -198,11 +198,20 @@ namespace Edinet {
             }
 
             DataView dv = new DataView(table, "", "id", DataViewRowState.CurrentRows);
-            JsonResponse resMetadata = await apiDocument.Request(target, RequestDocument.RequestType.Metadata);
-            if (resMetadata.Exception != null)
+            JsonResponse resMetadata = null;
+            if (!skipFirst) {
+                resMetadata = await apiDocument.Request(target, RequestDocument.RequestType.Metadata);
+            }
+            if (resMetadata != null && resMetadata.Exception != null)
                 return new JsonContent(resMetadata.Exception);
             else {
-                if (target < DateTime.Now.Date | resMetadata.Json.MetaData.Resultset.Count > count) {
+                if (resMetadata != null && resMetadata.Json.Status.Status != "200")
+                    return new JsonContent(dv.Table, resMetadata.Json, resMetadata.Json.Status.Status);
+                if (resMetadata != null && DateTime.Parse(resMetadata.Json.MetaData.ProcessDateTime).Date > target & resMetadata.Json.MetaData.Resultset.Count == 0) {
+                    Database.UpdateMetadata(resMetadata.Json.MetaData);
+                    return new JsonContent(dv.Table, resMetadata.Json, "0");
+                }
+                if (resMetadata == null || target < DateTime.Now.Date | resMetadata.Json.MetaData.Resultset.Count > count) {
                     //await Task.Delay(50);
                     JsonResponse resList = await apiDocument.Request(target, RequestDocument.RequestType.List);
                     if (resList.Exception != null)
@@ -256,47 +265,73 @@ namespace Edinet {
                                 //if (column.ColumnName == "date" | (column.ColumnName == "code" & value != null) | (column.ColumnName == "status" & value != null)) {
                                 //    Console.Write("{0} {1} {2}", index, column.ColumnName, r[column.ColumnName]);
                                 //}
-                            } else {
-                                //Console.WriteLine("{0}", column.ColumnName);
-                                //xbrl pdf attach english
+                            //} else {
+                            //    //Console.WriteLine("{0}", column.ColumnName);
+                            //    //xbrl pdf attach english
                             }
                         }
                         r["edit"] = "new";
                         r.EndEdit();
-                        Console.WriteLine();
+                        //Console.WriteLine();
                     } else {
                         int index = dv.Find(id);
-                        string status = dv[index]["Status"].ToString();
-                        if (status == "")
-                            status = null;
-                        if (status != json.Documents[i].Status) {
-                            dv[index].BeginEdit();
-                            dv[index]["status"] = json.Documents[i].Status;
-                            //dv[index]["@edinetCode"] = json.Documents[i].EdinetCode;
-                            if (json.Documents[i].WithdrawalStatus == null)
-                                dv[index]["withdrawalStatus"] = DBNull.Value;
-                            else
-                                dv[index]["withdrawalStatus"] = json.Documents[i].WithdrawalStatus;
-                            if (json.Documents[i].DocInfoEditStatus == null)
-                                dv[index]["docInfoEditStatus"] = DBNull.Value;
-                            else
-                                dv[index]["docInfoEditStatus"] = json.Documents[i].DocInfoEditStatus;
-                            if (json.Documents[i].DisclosureStatus == null)
-                                dv[index]["disclosureStatus"] = DBNull.Value;
-                            else
-                                dv[index]["disclosureStatus"] = json.Documents[i].DisclosureStatus;
-                            if (json.Documents[i].SubmitDateTime == null)
-                                dv[index]["submitDateTime"] = DBNull.Value;
-                            else
-                                dv[index]["submitDateTime"] = json.Documents[i].SubmitDateTime;
-                            if (json.Documents[i].OpeDateTime == null)
-                                dv[index]["opeDateTime"] = DBNull.Value;
-                            else
-                                dv[index]["opeDateTime"] = json.Documents[i].OpeDateTime;
-                            dv[index]["edit"] = "update";
-                            dv[index].EndEdit();
+                        if (index < 0) {
+                            //debug.Info info = debug.ProgramCodeInfo.GetInfo();
+                            //Console.WriteLine($"{info.Line} {info.Method} {info.File}");
+                            DataRowView r = dv.AddNew();
+                            System.Diagnostics.Debug.Write($"AddJson not in disclosures {id}\t");
+                            foreach (DataColumn column in dv.Table.Columns) {
+                                index = fields.IndexOf(column.ColumnName.ToLower());
+                                if (index > -1) {
+                                    object value = properties[index].GetValue(json.Documents[i], null);
+                                    if (value == null)
+                                        r[column.ColumnName] = DBNull.Value;
+                                    else
+                                        r[column.ColumnName] = value;
+                                    //if (column.ColumnName == "date" | (column.ColumnName == "code" & value != null) | (column.ColumnName == "status" & value != null)) {
+                                    //    System.Diagnostics.Debug.Write($"{index} {column.ColumnName} {r[column.ColumnName]}");
+                                    //}
+                                    System.Diagnostics.Debug.Write($"{value ?? ""}\t");
+                                //} else {
+                                //    //Console.WriteLine("{0}", column.ColumnName);
+                                //    //xbrl pdf attach english
+                                }
+                            }
+                            System.Diagnostics.Debug.WriteLine("");
+                            r["edit"] = "new";
+                            r.EndEdit();
+                        } else {
+                            string status = dv[index]["Status"].ToString();
+                            if (status == "")
+                                status = null;
+                            if (status != json.Documents[i].Status) {
+                                dv[index].BeginEdit();
+                                dv[index]["status"] = json.Documents[i].Status;
+                                //dv[index]["@edinetCode"] = json.Documents[i].EdinetCode;
+                                if (json.Documents[i].WithdrawalStatus == null)
+                                    dv[index]["withdrawalStatus"] = DBNull.Value;
+                                else
+                                    dv[index]["withdrawalStatus"] = json.Documents[i].WithdrawalStatus;
+                                if (json.Documents[i].DocInfoEditStatus == null)
+                                    dv[index]["docInfoEditStatus"] = DBNull.Value;
+                                else
+                                    dv[index]["docInfoEditStatus"] = json.Documents[i].DocInfoEditStatus;
+                                if (json.Documents[i].DisclosureStatus == null)
+                                    dv[index]["disclosureStatus"] = DBNull.Value;
+                                else
+                                    dv[index]["disclosureStatus"] = json.Documents[i].DisclosureStatus;
+                                if (json.Documents[i].SubmitDateTime == null)
+                                    dv[index]["submitDateTime"] = DBNull.Value;
+                                else
+                                    dv[index]["submitDateTime"] = json.Documents[i].SubmitDateTime;
+                                if (json.Documents[i].OpeDateTime == null)
+                                    dv[index]["opeDateTime"] = DBNull.Value;
+                                else
+                                    dv[index]["opeDateTime"] = json.Documents[i].OpeDateTime;
+                                dv[index]["edit"] = "update";
+                                dv[index].EndEdit();
+                            }
                         }
-
 
                     }
                 }
@@ -327,8 +362,14 @@ namespace Edinet {
                 Database.UpdateFilenameOfDisclosure(id, type.ToString(), response.EdinetStatusCode.Status);
             } else {
                 int year = 20 * 100 + id / 100000000;
-                SaveFile(response.Buffer, response.Filename, year);
-                Database.UpdateFilenameOfDisclosure(id, type.ToString(), response.Filename);
+                try {
+                    SaveFile(response.Buffer, response.Filename, year);
+                    Database.UpdateFilenameOfDisclosure(id, type.ToString(), response.Filename);
+
+                } catch (Exception ex) {
+
+                    throw(ex);
+                }
 
             }
             return response;
@@ -474,7 +515,41 @@ namespace Edinet {
 
 
 
+        public void SetDocumentTable(DataTable table) {
+            TableDocuments.Rows.Clear();
+            //UpdateDocumentsTable(ref table);
+            table.Columns.Add("タイプ", typeof(string));
 
+            List<string> list = new List<string>() { "" };
+            foreach (DataRow r in table.Rows) {
+                string docTypeCode = r["docTypeCode"].ToString();
+                if (Const.DocTypeCode.ContainsKey(docTypeCode))
+                    r["タイプ"] = Const.DocTypeCode[docTypeCode];
+                if (docTypeCode != "" && !list.Contains(Const.DocTypeCode[docTypeCode]))
+                    list.Add(Const.DocTypeCode[docTypeCode]);
+            }
+            //for (int j = 0; j < TableDocuments.Columns.Count; j++) {
+            //    if (table.Columns.Contains(TableDocuments.Columns[j].ColumnName)) {
+            //        r[TableDocuments.Columns[j].ColumnName] = table.Rows[i][TableDocuments.Columns[j].ColumnName];
+            //        if (TableDocuments.Columns[j].ColumnName == "docTypeCode") {
+            //            string docTypeCode = table.Rows[i][TableDocuments.Columns[j].ColumnName].ToString();
+            //            if (Const.DocTypeCode.ContainsKey(docTypeCode))
+            //                r["タイプ"] = Const.DocTypeCode[docTypeCode];
+            //            if (docTypeCode != "" && !list.Contains(Const.DocTypeCode[docTypeCode]))
+            //                list.Add(Const.DocTypeCode[docTypeCode]);
+            //        }
+            //    }
+            //}
+            TableDocuments = table;
+            //foreach (DataRow r in TableDocuments.Rows) {
+            //    if (r["docTypeCode"] != null && !list.Contains(Const.DocTypeCode[r["docTypeCode"].ToString()]))
+            //        list.Add(Const.DocTypeCode[r["docTypeCode"].ToString()]);
+
+            //}
+            Types = list.ToArray();
+            DvDocuments = new DataView(TableDocuments, "", "id desc", DataViewRowState.CurrentRows);
+
+        }
         public int SearchBrand(int code) {
             int count = Database.GetDocumentsCount(code);
             if (count > 0) {

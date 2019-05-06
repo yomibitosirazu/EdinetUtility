@@ -37,8 +37,11 @@
             this.MenuBackground = new System.Windows.Forms.ToolStripMenuItem();
             this.MenuPastList = new System.Windows.Forms.ToolStripMenuItem();
             this.MenuDownload = new System.Windows.Forms.ToolStripMenuItem();
+            this.MenuDownloadDgvList = new System.Windows.Forms.ToolStripMenuItem();
             this.MenuImportTaxonomy = new System.Windows.Forms.ToolStripMenuItem();
             this.MenuIEdinetCodeImport = new System.Windows.Forms.ToolStripMenuItem();
+            this.MenuApiHistory = new System.Windows.Forms.ToolStripMenuItem();
+            this.MenuSearch = new System.Windows.Forms.ToolStripMenuItem();
             this.statusStrip1 = new System.Windows.Forms.StatusStrip();
             this.ProgressBar1 = new System.Windows.Forms.ToolStripProgressBar();
             this.StatusLabel1 = new System.Windows.Forms.ToolStripStatusLabel();
@@ -57,7 +60,7 @@
             this.splitForm = new System.Windows.Forms.SplitContainer();
             this.toolTip1 = new System.Windows.Forms.ToolTip(this.components);
             this.timer1 = new System.Windows.Forms.Timer(this.components);
-            this.MenuApiHistory = new System.Windows.Forms.ToolStripMenuItem();
+            this.MenuNotFinalList = new System.Windows.Forms.ToolStripMenuItem();
             ((System.ComponentModel.ISupportInitialize)(this.dgvList)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.dgvContents)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.dgvXbrl)).BeginInit();
@@ -172,21 +175,23 @@
             this.MenuSetting,
             this.MenuEdinet,
             this.MenuBackground,
+            this.MenuNotFinalList,
+            this.MenuSearch,
             this.MenuApiHistory});
             this.MenuToolbar.Name = "contextMenuStrip1";
-            this.MenuToolbar.Size = new System.Drawing.Size(194, 114);
+            this.MenuToolbar.Size = new System.Drawing.Size(206, 158);
             // 
             // MenuSetting
             // 
             this.MenuSetting.Name = "MenuSetting";
-            this.MenuSetting.Size = new System.Drawing.Size(193, 22);
+            this.MenuSetting.Size = new System.Drawing.Size(205, 22);
             this.MenuSetting.Text = "設定";
             this.MenuSetting.Click += new System.EventHandler(this.Menu_Click);
             // 
             // MenuEdinet
             // 
             this.MenuEdinet.Name = "MenuEdinet";
-            this.MenuEdinet.Size = new System.Drawing.Size(193, 22);
+            this.MenuEdinet.Size = new System.Drawing.Size(205, 22);
             this.MenuEdinet.Text = "Edinetトップページを表示";
             this.MenuEdinet.Click += new System.EventHandler(this.Menu_Click);
             // 
@@ -195,10 +200,11 @@
             this.MenuBackground.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.MenuPastList,
             this.MenuDownload,
+            this.MenuDownloadDgvList,
             this.MenuImportTaxonomy,
             this.MenuIEdinetCodeImport});
             this.MenuBackground.Name = "MenuBackground";
-            this.MenuBackground.Size = new System.Drawing.Size(193, 22);
+            this.MenuBackground.Size = new System.Drawing.Size(205, 22);
             this.MenuBackground.Text = "バックグラウンドで実行";
             // 
             // MenuPastList
@@ -220,6 +226,14 @@
             this.MenuDownload.ToolTipText = "設定ダイアログでチェックされている書類を5年前から現在に向かってダウンロードします。\r\n実行中はチェックがオンになり、オフオンで中断再開可能です。";
             this.MenuDownload.Click += new System.EventHandler(this.MenuCheckBackground_Click);
             // 
+            // MenuDownloadDgvList
+            // 
+            this.MenuDownloadDgvList.CheckOnClick = true;
+            this.MenuDownloadDgvList.Name = "MenuDownloadDgvList";
+            this.MenuDownloadDgvList.Size = new System.Drawing.Size(214, 22);
+            this.MenuDownloadDgvList.Text = "表示中の書類ダウンロード";
+            this.MenuDownloadDgvList.Click += new System.EventHandler(this.MenuCheckBackground_Click);
+            // 
             // MenuImportTaxonomy
             // 
             this.MenuImportTaxonomy.Name = "MenuImportTaxonomy";
@@ -235,6 +249,20 @@
             this.MenuIEdinetCodeImport.Text = "Edinetコードリストのインポート";
             this.MenuIEdinetCodeImport.ToolTipText = "ダウンロード済みのEdinetコードリストまたはファンドコードリストをデータベースにインポートします。";
             this.MenuIEdinetCodeImport.Click += new System.EventHandler(this.MenuBackground_Click);
+            // 
+            // MenuApiHistory
+            // 
+            this.MenuApiHistory.Name = "MenuApiHistory";
+            this.MenuApiHistory.Size = new System.Drawing.Size(205, 22);
+            this.MenuApiHistory.Text = "APIリクエスト履歴を確認";
+            this.MenuApiHistory.Click += new System.EventHandler(this.Menu_Click);
+            // 
+            // MenuSearch
+            // 
+            this.MenuSearch.Name = "MenuSearch";
+            this.MenuSearch.Size = new System.Drawing.Size(205, 22);
+            this.MenuSearch.Text = "取得済みメタデータ検索";
+            this.MenuSearch.Click += new System.EventHandler(this.Menu_Click);
             // 
             // statusStrip1
             // 
@@ -443,12 +471,12 @@
             // 
             this.timer1.Tick += new System.EventHandler(this.Timer_Tick);
             // 
-            // MenuApiHistory
+            // MenuNotFinalList
             // 
-            this.MenuApiHistory.Name = "MenuApiHistory";
-            this.MenuApiHistory.Size = new System.Drawing.Size(193, 22);
-            this.MenuApiHistory.Text = "APIリクエスト履歴を確認";
-            this.MenuApiHistory.Click += new System.EventHandler(this.Menu_Click);
+            this.MenuNotFinalList.Name = "MenuNotFinalList";
+            this.MenuNotFinalList.Size = new System.Drawing.Size(205, 22);
+            this.MenuNotFinalList.Text = "５年分の未取得リスト一覧";
+            this.MenuNotFinalList.Click += new System.EventHandler(this.Menu_Click);
             // 
             // Form1
             // 
@@ -527,6 +555,9 @@
         private System.Windows.Forms.ContextMenuStrip MenuXbrl;
         private System.Windows.Forms.ToolStripMenuItem MenuShowBrowser;
         private System.Windows.Forms.ToolStripMenuItem MenuApiHistory;
+        private System.Windows.Forms.ToolStripMenuItem MenuSearch;
+        private System.Windows.Forms.ToolStripMenuItem MenuDownloadDgvList;
+        private System.Windows.Forms.ToolStripMenuItem MenuNotFinalList;
     }
 }
 

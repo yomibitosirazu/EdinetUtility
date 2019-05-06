@@ -58,6 +58,10 @@
             this.date = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.name = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.label7 = new System.Windows.Forms.Label();
+            this.label2 = new System.Windows.Forms.Label();
+            this.checkOrderYear5 = new System.Windows.Forms.CheckBox();
+            this.checkOrderList = new System.Windows.Forms.CheckBox();
+            this.checkOrderToday = new System.Windows.Forms.CheckBox();
             this.MenuDocType.SuspendLayout();
             this.groupBox1.SuspendLayout();
             this.MenuTbHoliday.SuspendLayout();
@@ -86,7 +90,7 @@
             // buttonOK
             // 
             this.buttonOK.DialogResult = System.Windows.Forms.DialogResult.OK;
-            this.buttonOK.Location = new System.Drawing.Point(415, 360);
+            this.buttonOK.Location = new System.Drawing.Point(411, 366);
             this.buttonOK.Name = "buttonOK";
             this.buttonOK.Size = new System.Drawing.Size(75, 23);
             this.buttonOK.TabIndex = 3;
@@ -97,7 +101,7 @@
             // buttonCancel
             // 
             this.buttonCancel.DialogResult = System.Windows.Forms.DialogResult.Cancel;
-            this.buttonCancel.Location = new System.Drawing.Point(415, 389);
+            this.buttonCancel.Location = new System.Drawing.Point(411, 395);
             this.buttonCancel.Name = "buttonCancel";
             this.buttonCancel.Size = new System.Drawing.Size(75, 23);
             this.buttonCancel.TabIndex = 4;
@@ -276,7 +280,7 @@
             // label4
             // 
             this.label4.AutoSize = true;
-            this.label4.Location = new System.Drawing.Point(14, 287);
+            this.label4.Location = new System.Drawing.Point(14, 350);
             this.label4.Name = "label4";
             this.label4.Size = new System.Drawing.Size(53, 12);
             this.label4.TabIndex = 17;
@@ -395,10 +399,10 @@
             this.date,
             this.name});
             this.listHoliday.Cursor = System.Windows.Forms.Cursors.Default;
-            this.listHoliday.Location = new System.Drawing.Point(12, 304);
+            this.listHoliday.Location = new System.Drawing.Point(12, 366);
             this.listHoliday.MultiSelect = false;
             this.listHoliday.Name = "listHoliday";
-            this.listHoliday.Size = new System.Drawing.Size(274, 198);
+            this.listHoliday.Size = new System.Drawing.Size(274, 136);
             this.listHoliday.TabIndex = 28;
             this.listHoliday.UseCompatibleStateImageBehavior = false;
             this.listHoliday.View = System.Windows.Forms.View.Details;
@@ -422,11 +426,56 @@
             this.label7.TabIndex = 29;
             this.label7.Text = "監視銘柄";
             // 
+            // label2
+            // 
+            this.label2.AutoSize = true;
+            this.label2.Location = new System.Drawing.Point(12, 291);
+            this.label2.Name = "label2";
+            this.label2.Size = new System.Drawing.Size(130, 36);
+            this.label2.TabIndex = 30;
+            this.label2.Text = "書類の自動ダウンロード順\r\n　　チェックすると日付昇順\r\n　　オフで日付降順";
+            // 
+            // checkOrderYear5
+            // 
+            this.checkOrderYear5.AutoSize = true;
+            this.checkOrderYear5.Checked = true;
+            this.checkOrderYear5.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.checkOrderYear5.Location = new System.Drawing.Point(161, 313);
+            this.checkOrderYear5.Name = "checkOrderYear5";
+            this.checkOrderYear5.Size = new System.Drawing.Size(138, 16);
+            this.checkOrderYear5.TabIndex = 31;
+            this.checkOrderYear5.Text = "過去５年間の書類取得";
+            this.checkOrderYear5.UseVisualStyleBackColor = true;
+            // 
+            // checkOrderList
+            // 
+            this.checkOrderList.AutoSize = true;
+            this.checkOrderList.Location = new System.Drawing.Point(161, 333);
+            this.checkOrderList.Name = "checkOrderList";
+            this.checkOrderList.Size = new System.Drawing.Size(152, 16);
+            this.checkOrderList.TabIndex = 32;
+            this.checkOrderList.Text = "リストに表示されている書類";
+            this.checkOrderList.UseVisualStyleBackColor = true;
+            // 
+            // checkOrderToday
+            // 
+            this.checkOrderToday.AutoSize = true;
+            this.checkOrderToday.Location = new System.Drawing.Point(161, 291);
+            this.checkOrderToday.Name = "checkOrderToday";
+            this.checkOrderToday.Size = new System.Drawing.Size(94, 16);
+            this.checkOrderToday.TabIndex = 33;
+            this.checkOrderToday.Text = "当日分の書類";
+            this.checkOrderToday.UseVisualStyleBackColor = true;
+            // 
             // SettingDialog
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(584, 655);
+            this.Controls.Add(this.checkOrderToday);
+            this.Controls.Add(this.checkOrderList);
+            this.Controls.Add(this.checkOrderYear5);
+            this.Controls.Add(this.label2);
             this.Controls.Add(this.label7);
             this.Controls.Add(this.listHoliday);
             this.Controls.Add(this.numericWait2);
@@ -499,5 +548,9 @@
         private System.Windows.Forms.ContextMenuStrip MenuDocType;
         private System.Windows.Forms.ToolStripMenuItem MenuCheckAll;
         private System.Windows.Forms.ToolStripMenuItem MenuCheckOffAll;
+        private System.Windows.Forms.Label label2;
+        private System.Windows.Forms.CheckBox checkOrderYear5;
+        private System.Windows.Forms.CheckBox checkOrderList;
+        private System.Windows.Forms.CheckBox checkOrderToday;
     }
 }

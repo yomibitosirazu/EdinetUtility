@@ -4,7 +4,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net;
 using System.Text;
-
+using System.Diagnostics;
 using System.IO;
 
 namespace Edinet {
@@ -54,6 +54,12 @@ namespace Edinet {
         }
         public void Update(Exception ex) {
             Exception = ex;
+            Debug.WriteLine($"{DateTime.Now.TimeOfDay}  {ex.Message}");
+        }
+        public void Update(TaskCanceledException ex) {
+            Exception = ex;
+            HttpStatusCode = System.Net.HttpStatusCode.RequestTimeout;
+            Debug.WriteLine($"{DateTime.Now.TimeOfDay} Timeout {ex.Message}");
         }
     }
     public class ApiResponse : HttpResponse {
@@ -114,18 +120,31 @@ namespace Edinet {
             //JsonDeserializer json = null;
             string url = string.Format("/api/{0}/documents.json?date={1:yyyy-MM-dd}{2}", Version, date, type == RequestType.List ? "&type=2" : "");
             try {
+                debug.ProgramCodeInfo.SetDebugQueue(debug.ProgramCodeInfo.GetInfo());
                 using (HttpResponseMessage res = await client.GetAsync(url)) {
+                    debug.ProgramCodeInfo.SetDebugQueue(debug.ProgramCodeInfo.GetInfo());
                     Stream stream = await res.Content.ReadAsStreamAsync();
                     JsonDeserializer json = new JsonDeserializer(stream);
                     response.Update(json.Response, res.StatusCode, res.Content.Headers.ContentType);
+#pragma warning disable CS4014
+                    SaveLog(GetLog(response, type, date));
+#pragma warning restore CS4014
                     stream.Dispose();
                 }
+            }catch(TaskCanceledException ex) {
+                response.Update(ex);
+#pragma warning disable CS4014
+                SaveLog(GetLog(response, type, date));
+#pragma warning restore CS4014
+                debug.ProgramCodeInfo.SetDebugQueue(debug.ProgramCodeInfo.GetInfo());
             } catch (Exception ex) {
                 response.Update(ex);
-            }
 #pragma warning disable CS4014
-            SaveLog(GetLog(response, type, date));
+                SaveLog(GetLog(response, type, date));
 #pragma warning restore CS4014
+                debug.ProgramCodeInfo.SetDebugQueue(debug.ProgramCodeInfo.GetInfo());
+            }
+            debug.ProgramCodeInfo.SetDebugQueue(debug.ProgramCodeInfo.GetInfo());
             return response;
         }
 
@@ -133,32 +152,44 @@ namespace Edinet {
             ArchiveResponse response = new ArchiveResponse();
             string url = string.Format("/api/{0}/documents/{1}?type={2}", Version, docid, (int)type);
             try {
+                debug.ProgramCodeInfo.SetDebugQueue(debug.ProgramCodeInfo.GetInfo());
                 using (HttpResponseMessage res = await client.GetAsync(url)) {
+                    debug.ProgramCodeInfo.SetDebugQueue(debug.ProgramCodeInfo.GetInfo());
+                    string filename = res.Content.Headers.ContentDisposition.FileName.Replace("\"", "");
+                    //string filename = $"{docid}_{(int)type}";
+                    System.Net.Http.Headers.MediaTypeHeaderValue contenttype = res.Content.Headers.ContentType;
+                    if (filename == "404.json") {
+                        filename = url;
+                    }
+#pragma warning disable CS4014
+                    SaveLog(GetLog(res.StatusCode, RequestType.Archive, contenttype, filename));
+#pragma warning restore CS4014
                     using (Stream stream = await res.Content.ReadAsStreamAsync()) {
                         using (MemoryStream ms = new MemoryStream()) {
-                            string filename = res.Content.Headers.ContentDisposition.FileName.Replace("\"", "");
-                            //string filename = $"{docid}_{(int)type}";
-                            System.Net.Http.Headers.MediaTypeHeaderValue contenttype = res.Content.Headers.ContentType;
-                            if (filename == "404.json") {
-                                filename = url;
-                            }
-#pragma warning disable CS4014
-
-                            SaveLog(GetLog(res.StatusCode, RequestType.Archive, contenttype, filename));
                             stream.CopyTo(ms);
                             byte[] buffer = ms.ToArray();
                             stream.Flush();
                             response.Update(buffer, res.StatusCode, filename, contenttype);
+                            debug.ProgramCodeInfo.SetDebugQueue(debug.ProgramCodeInfo.GetInfo());
                             return response;
                         }
                     }
                 }
+            } catch (TaskCanceledException ex) {
+                response.Update(ex);
+#pragma warning disable CS4014
+                SaveLog(GetLog(response));
+#pragma warning restore CS4014
+                debug.ProgramCodeInfo.SetDebugQueue(debug.ProgramCodeInfo.GetInfo());
+                return response;
             } catch (Exception ex) {
                 response.Update(ex);
+#pragma warning disable CS4014
                 SaveLog(GetLog(response));
+#pragma warning restore CS4014
+                debug.ProgramCodeInfo.SetDebugQueue(debug.ProgramCodeInfo.GetInfo());
                 return response;
             }
-#pragma warning restore CS4014
 
             //try {
             //    SaveLog(GetLog(response));
@@ -173,13 +204,17 @@ namespace Edinet {
         public async Task DownloadAsync(string docid, DocumentType type, int id, Database.Sqlite db) {
             string url = string.Format("/api/{0}/documents/{1}?type={2}", Version, docid, (int)type);
             try {
+                debug.ProgramCodeInfo.SetDebugQueue(debug.ProgramCodeInfo.GetInfo());
                 using (HttpResponseMessage res = await client.GetAsync(url)) {
+                    debug.ProgramCodeInfo.SetDebugQueue(debug.ProgramCodeInfo.GetInfo());
+                    string filename = res.Content.Headers.ContentDisposition.FileName.Replace("\"", "");
+                    //string filename = $"{docid}_{(int)type}";
+                    System.Net.Http.Headers.MediaTypeHeaderValue contenttype = res.Content.Headers.ContentType;
+#pragma warning disable CS4014
+                    SaveLog(GetLog(res.StatusCode, RequestType.Archive, contenttype, filename, id));
+#pragma warning restore CS4014
                     using (Stream stream = await res.Content.ReadAsStreamAsync()) {
                         using (MemoryStream ms = new MemoryStream()) {
-                            
-                            string filename = res.Content.Headers.ContentDisposition.FileName.Replace("\"", "");
-                            //string filename = $"{docid}_{(int)type}";
-                            System.Net.Http.Headers.MediaTypeHeaderValue contenttype = res.Content.Headers.ContentType;
                             //SaveLog(GetLog(res.StatusCode, RequestType.Archive, contenttype));
                             stream.CopyTo(ms);
                             byte[] buffer = ms.ToArray();
@@ -191,18 +226,26 @@ namespace Edinet {
                                 SaveFile(buffer, filename, year);
                                 db.UpdateFilenameOfDisclosure(id, type.ToString(), filename);
                             }
-#pragma warning disable CS4014
-                            SaveLog(GetLog(res.StatusCode, RequestType.Archive, contenttype, filename, id));
 
                         }
                     }
                 }
+            } catch (TaskCanceledException ex) {
+                ArchiveResponse response = new ArchiveResponse();
+                response.Update(ex);
+#pragma warning disable CS4014
+                SaveLog(GetLog(response));
+#pragma warning restore CS4014
+                debug.ProgramCodeInfo.SetDebugQueue(debug.ProgramCodeInfo.GetInfo());
             } catch (Exception ex) {
                 ArchiveResponse response = new ArchiveResponse();
                 response.Update(ex);
+#pragma warning disable CS4014
                 SaveLog(GetLog(response));
-            }
 #pragma warning restore CS4014
+                debug.ProgramCodeInfo.SetDebugQueue(debug.ProgramCodeInfo.GetInfo());
+            }
+            debug.ProgramCodeInfo.SetDebugQueue(debug.ProgramCodeInfo.GetInfo());
 
         }
         private void SaveFile(byte[] buffer, string name, int year) {
@@ -262,27 +305,47 @@ namespace Edinet {
         private async Task SaveLog(string log) {
             string logfile = Path.Combine(directory, "EdinetApi.log");
             //File.AppendAllLines(logfile, new string[] { log });
-            using (var sw = new StreamWriter(logfile, true)) {
-                await sw.WriteLineAsync(log);
-                sw.Flush();
+            try {
+                using (var sw = new StreamWriter(logfile, true)) {
+                    await sw.WriteLineAsync(log);
+                    sw.Flush();
+                }
+            } catch (Exception ex) {
+                Console.WriteLine("at SaveLog   " + ex.Message);
             }
+
 
         }
         private string GetLog(JsonResponse response, RequestType type, DateTime target) {
             StringBuilder sb = new StringBuilder();
-            sb.Append(GetLog(response.HttpStatusCode,type, null,"", 0, response.Exception, response.EdinetStatusCode));
-            if (response.Exception == null) {
-                sb.AppendFormat("\t{0}", target.ToString("yyyy-MM-dd"));
-                if (response != null && response.Json != null && response.Json.MetaData.Resultset != null)
-                    sb.AppendFormat("\tcount:{0}", response.Json.MetaData.Resultset.Count);
+            try {
+                sb.Append(GetLog(response.HttpStatusCode, type, null, "", 0, response.Exception, response.EdinetStatusCode));
+                if (response.Exception == null) {
+                    sb.AppendFormat("\t{0}", target.ToString("yyyy-MM-dd"));
+                    if (response != null && response.Json != null && response.Json.MetaData.Resultset != null)
+                        sb.AppendFormat("\tcount:{0}", response.Json.MetaData.Resultset.Count);
+                }
+
+            } catch (Exception ex) {
+
+                throw(ex);
             }
             return sb.ToString();
         }
         private string GetLog(ArchiveResponse response) {
             StringBuilder sb = new StringBuilder();
-            sb.Append(GetLog(response.HttpStatusCode, RequestType.Archive, response.HeaderContentType, response.Filename, 0, response.Exception));
-            if (response.Exception == null) {
-                sb.AppendFormat("\t{0}", response.Filename);
+            try {
+                if (response.Exception != null) {
+                    return response.Exception.Message;
+                }
+                sb.Append(GetLog(response.HttpStatusCode, RequestType.Archive, response.HeaderContentType, response.Filename, 0, response.Exception));
+                if (response.Exception == null) {
+                    sb.AppendFormat("\t{0}", response.Filename);
+                }
+
+            } catch (Exception ex) {
+
+                throw(ex);
             }
             return sb.ToString();
         }
@@ -307,23 +370,29 @@ namespace Edinet {
 
         private string GetLog(Nullable<HttpStatusCode> statusCode, RequestType type, MediaTypeHeaderValue mediaType, string filename = "", int id = 0, Exception exception = null, Json.StatusCode edinetStatusCode = null) {
             StringBuilder sb = new StringBuilder();
-            sb.AppendFormat("{0:yyyy-MM-dd HH:mm:ss.fff}\t{1}\t", DateTime.Now, type.ToString());
-            if (statusCode != null)
-                sb.AppendFormat("{0}[{1}]", (int)statusCode, statusCode.ToString());
-            else
-                sb.Append("\t");
-            if (edinetStatusCode != null)
-                sb.AppendFormat("\t{0}[{1}]", edinetStatusCode.Status, edinetStatusCode.Message);
-            else
-                sb.Append("\t" + mediaType ?? "");
-            if (exception != null) {
-                sb.AppendFormat("\t{0}", exception.Message);
-                if (exception.InnerException != null)
-                    sb.AppendFormat(" {0}", exception.InnerException.Message);
+            try {
+                sb.AppendFormat("{0:yyyy-MM-dd HH:mm:ss.fff}\t{1}\t", DateTime.Now, type.ToString());
+                if (statusCode != null)
+                    sb.AppendFormat("{0}[{1}]", (int)statusCode, statusCode.ToString());
+                else
+                    sb.Append("\t");
+                if (edinetStatusCode != null)
+                    sb.AppendFormat("\t{0}[{1}]", edinetStatusCode.Status, edinetStatusCode.Message);
+                else
+                    sb.Append("\t" + mediaType ?? "");
+                if (exception != null) {
+                    sb.AppendFormat("\t{0}", exception.Message);
+                    if (exception.InnerException != null)
+                        sb.AppendFormat(" {0}", exception.InnerException.Message);
+                }
+                sb.AppendFormat("\t{0}", filename);
+                if (id > 0)
+                    sb.AppendFormat("\t{0}", id);
+            } catch (Exception ex) {
+
+                throw(ex);
             }
-            sb.AppendFormat("\t{0}", filename);
-            if (id > 0)
-                sb.AppendFormat("\t{0}", id);
+
             return sb.ToString();
         }
 

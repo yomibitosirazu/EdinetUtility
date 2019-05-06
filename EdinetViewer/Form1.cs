@@ -1,14 +1,10 @@
 ﻿using System;
-//using System.Collections.Generic;
-//using System.Data;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Windows.Forms;
 using System.IO;
 using System.Text;
-//using System.Threading;
-//using System.Threading.Tasks;
 using System.Reflection;
-//using Disclosures;
 
 namespace Edinet {
 
@@ -73,7 +69,7 @@ namespace Edinet {
             timer1.Interval = (int)(setting.Interval * 60 * 1000);
             timer1.Enabled = true;
             TimerCheck();
-            if (setting.VersionUp | Application.ProductVersion.Substring(0, 8) == "0.2.101.") {
+            if (setting.VersionUp) {
                     await BackGroundStart(TaskType.VersionUp, Application.ProductVersion + "\t" + setting.VersionPrev);
             }
         }
@@ -483,6 +479,47 @@ namespace Edinet {
                     splitLower.Panel2Collapsed = true;
                     browser.DocumentText = sb.ToString();
                     break;
+                case "MenuSearch":
+                    using (EdinetViewer.DialogSearch search = new EdinetViewer.DialogSearch(disclosures.Database)) {
+                        DialogResult dialogResult = search.ShowDialog();
+                        if(dialogResult == DialogResult.OK) {
+                            //string sql = search.SqlText;
+                            if (search.Table != null && search.Table.Rows.Count > 0 & search.Table.Rows[0]["id"].ToString() != "0") {
+                                disclosures.SetDocumentTable( search.Table);
+                                comboFilter.DataSource = disclosures.Types;
+                                currentRow1 = -1;
+                                splitMain.Panel1Collapsed = false;
+                                splitUpper.Panel2Collapsed = false;
+                                splitLower.Panel2Collapsed = false;
+                                dgvList.DataSource = disclosures.DvDocuments;
+                                //dgvList.Refresh();
+
+                            }
+
+                            search.Close();
+                        }
+                    }
+                        break;
+                case "MenuNotFinalList":
+                    Dictionary<DateTime, int> dicMetadata = disclosures.Database.GetFinalMetalist();
+                    List<DateTime> list = new List<DateTime>();
+                    DateTime date = DateTime.Now.Date;
+                    do {
+                        date = date.AddDays(-1);
+                        if (!dicMetadata.ContainsKey(date)) {
+                            list.Add(date);
+                        }
+                    } while (date >= DateTime.Now.AddYears(-5).Date);
+                    list.Sort();
+                    list.Reverse();
+                    StringBuilder sb1 = new StringBuilder();
+                    foreach(DateTime target in list) {
+                        sb1.AppendLine($"{target:yyyy-MM-dd ddd}");
+                    }
+                    if (sb1.Length == 0)
+                        sb1.Append("未確定の日付は見つかりませんでした");
+                    MessageBox.Show(sb1.ToString(), "メタデータ非取得または未確定の日付一覧");
+                    break;
             }
         }
 
@@ -551,6 +588,15 @@ namespace Edinet {
                     backgroundCancel[1].Cancel();
                 }
 
+            }
+            else if(menu == MenuDownloadDgvList) {
+                if ((sender as ToolStripMenuItem).Checked) {
+                    if (backgroundTask == null || backgroundTask[1] == null) {
+                        await BackGroundStart(TaskType.DgvArchive);
+                    }
+                } else {
+                    backgroundCancel[1].Cancel();
+                }
             }
         }
 
