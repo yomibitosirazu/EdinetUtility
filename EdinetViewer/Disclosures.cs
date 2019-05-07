@@ -1,15 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using System.Net;
 using System.Net.Http;
 using System.IO;
 using System.IO.Compression;
 using System.Data;
 using System.Threading.Tasks;
 using System.Reflection;
-
+using System.Diagnostics;
 
 namespace Edinet {
 
@@ -163,7 +161,7 @@ namespace Edinet {
             }
         }
 
-        public async Task<JsonContent> ReadDocuments(DateTime target, bool skipFirst = true, bool show = true) {
+        public async Task<JsonContent> ReadDocuments(DateTime target, bool skipFirst = false, bool show = true) {
 #pragma warning disable IDE0059
             DataTable table = null;
 #pragma warning restore IDE0059
@@ -176,7 +174,7 @@ namespace Edinet {
                 bool kakutei = processTime.Date > target.Date;
                 if (prevMetadata.Resultset != null)
                     count = prevMetadata.Resultset.Count;
-                if (count > 0) 
+                if (count > 0)
                     table = Database.ReadDisclosure(target);
                 if (kakutei) {
                     //確定でcount0件は追加されることはない　確定24hr以内はスキップ
@@ -201,22 +199,29 @@ namespace Edinet {
             JsonResponse resMetadata = null;
             if (!skipFirst) {
                 resMetadata = await apiDocument.Request(target, RequestDocument.RequestType.Metadata);
+                Debug.Write($"{DateTime.Now.TimeOfDay} metadata readed");
             }
             if (resMetadata != null && resMetadata.Exception != null)
                 return new JsonContent(resMetadata.Exception);
             else {
-                if (resMetadata != null && resMetadata.Json.Status.Status != "200")
+                if (resMetadata != null && resMetadata.Json.Status.Status != "200") {
+                    Debug.WriteLine($" {resMetadata.Json.Status.Status}");
                     return new JsonContent(dv.Table, resMetadata.Json, resMetadata.Json.Status.Status);
+                }
                 if (resMetadata != null && DateTime.Parse(resMetadata.Json.MetaData.ProcessDateTime).Date > target & resMetadata.Json.MetaData.Resultset.Count == 0) {
+                    Debug.WriteLine($" count:{resMetadata.Json.MetaData.Resultset.Count}");
                     Database.UpdateMetadata(resMetadata.Json.MetaData);
                     return new JsonContent(dv.Table, resMetadata.Json, "0");
                 }
+                Debug.WriteLine("");
                 if (resMetadata == null || target < DateTime.Now.Date | resMetadata.Json.MetaData.Resultset.Count > count) {
                     //await Task.Delay(50);
                     JsonResponse resList = await apiDocument.Request(target, RequestDocument.RequestType.List);
-                    if (resList.Exception != null)
+                    Debug.Write($"{DateTime.Now.TimeOfDay} list readed");
+                    if (resList.Exception != null) {
+                        Debug.WriteLine($" exception:{resList.Exception}");
                         return new JsonContent(resList.Exception);
-                    else {
+                    } else {
                         AddJson(resList.Json, ref dv);
                         Database.UpdateDisclosures(dv, resList.Json.MetaData);
                         if (show)
@@ -224,6 +229,7 @@ namespace Edinet {
                         string message = string.Format("status:{0} 新規[{3}]/計[{2}]({1})",
                             resList.EdinetStatusCode.Message, resList.Json.MetaData.ProcessDateTime,
                                 resList.Json.MetaData.Resultset.Count, resList.Json.MetaData.Resultset.Count - count);
+                        Debug.WriteLine($" count:{resList.Json.MetaData.Resultset.Count}({resList.Json.MetaData.Resultset.Count - count:+0;-0;0})");
                         return new JsonContent(dv.Table, resList.Json, message, count);
                     }
                 } else {
@@ -235,6 +241,7 @@ namespace Edinet {
                     string message = string.Format("status:{0} 新規[なし]/計[{2}]({1})",
                         resMetadata.EdinetStatusCode.Message, resMetadata.Json.MetaData.ProcessDateTime,
                             resMetadata.Json.MetaData.Resultset.Count);
+                    Debug.WriteLine($"metadata {message}");
                     return new JsonContent(table, resMetadata.Json, message, count);
                 }
             }

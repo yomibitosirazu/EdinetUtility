@@ -67,11 +67,16 @@ namespace Edinet {
             DatePicker.Enabled = true;
             DatePicker.CloseUp += DatePicker_CloseUp;
             timer1.Interval = (int)(setting.Interval * 60 * 1000);
-            timer1.Enabled = true;
             TimerCheck();
             if (setting.VersionUp) {
                     await BackGroundStart(TaskType.VersionUp, Application.ProductVersion + "\t" + setting.VersionPrev);
             }
+            this.Refresh();
+            if (setting.Timer) {
+                //タイマーが有効であれば起動直後に当日分メタデータを一度取得
+                DatePicker_CloseUp(null, null);
+            }
+            timer1.Enabled = true;
         }
 
 

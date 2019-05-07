@@ -112,12 +112,17 @@ namespace Edinet {
                 }
 
             } else {
-                if (initialize) {
-                    ProgressBar1.Value = 0;
-                    ProgressLabel1.Text = "";
+                try {
+                    if (initialize) {
+                        ProgressBar1.Value = 0;
+                        ProgressLabel1.Text = "";
+                    }
+                    ProgressBar1.Visible = show;
+                    ProgressLabel1.Visible = show;
+
+                } catch (Exception ex) {
+                    Console.WriteLine($"in InvokeVisible {ex.Message.Replace("\r\n", "\t")}");
                 }
-                ProgressBar1.Visible = show;
-                ProgressLabel1.Visible = show;
             }
         }
         private void InvokeProgressLabel(int value, string text) {
@@ -199,7 +204,25 @@ namespace Edinet {
             }
         }
 
+        private void InvokeRefresh() {
+            if (this.InvokeRequired) {
+                try {
+                    this.Invoke((MethodInvoker)(() => {
+                        dgvList.Refresh();
+                    }));
+                } catch (Exception ex) {
+                    Console.WriteLine($"in InvokeRefresh {ex.Message.Replace("\r\n", "\t")}");
+                }
 
+            } else {
+                try {
+                    dgvList.Refresh();
+
+                } catch (Exception ex) {
+                    Console.WriteLine($"in InvokeRefresh {ex.Message.Replace("\r\n", "\t")}");
+                }
+            }
+        }
 
         private async Task ReadMetadataList(CancellationToken token) {
             token.ThrowIfCancellationRequested();
@@ -376,10 +399,7 @@ namespace Edinet {
                 return false;
             string[] fields = new string[] { "xbrl", "pdf", "attach", "english" };
             string docid = r["docID"].ToString();
-            //bool read = false;
             for (int i = 0; i < fields.Length; i++) {
-                //if (r[fields[i] + (i > 1 ? "Doc" : "") + "Flag"].ToString() == "1" & r[fields[i]] == DBNull.Value)
-                //    read = true;
                 if (r[fields[i] + (i > 1 ? "Doc" : "") + "Flag"].ToString() == "1") {
                     int id = int.Parse(r["id"].ToString());//dbはlong
                     int year = 20 * 100 + id / 100000000;
@@ -394,9 +414,7 @@ namespace Edinet {
         }
         private async Task DownloadArchives(CancellationToken token, TaskType taskType) {
             debug.ProgramCodeInfo.SetDebugQueue(debug.ProgramCodeInfo.GetInfo());
-            //bool infoDebug = true;
             if (taskType == TaskType.DgvArchive && disclosures.DvDocuments.Count == 0) {
-                //DataTable table = disclosures.Database.AllDisclosures();
                 return;
             }
             token.ThrowIfCancellationRequested();
@@ -521,60 +539,68 @@ namespace Edinet {
             Random random = new Random();
             foreach (DateTime target in list) {
 
-                //if (infoDebug)
-                //    Debug.Write($"L({debug.ProgramCodeInfo.GetLineNo()}) ");
+                if (token.IsCancellationRequested) {
+                    InvokeProgressLabel(0, "Canceled");
+                    return;
+                }
                 debug.ProgramCodeInfo.SetDebugQueue(debug.ProgramCodeInfo.GetInfo());
 
                 //確定でカウント0は必要なし
-                if (dicMetadata.ContainsKey(target) && dicMetadata[target] == 0)
+                if (dicMetadata != null && dicMetadata.ContainsKey(target) && dicMetadata[target] == 0)
                     continue;
 
                 TimeSpan last = DateTime.Now.TimeOfDay;
-                if (dicMetadata.ContainsKey(target) && dicMetadata[target] > 0)
+                if (dicMetadata != null && dicMetadata.ContainsKey(target) && dicMetadata[target] > 0)
                     Debug.Write($"Request Metadata {target:yyyy-MM-dd ddd} skip type1");
                 else
                     Debug.Write($"Request Metadata {target:yyyy-MM-dd ddd}");
-                debug.ProgramCodeInfo.SetDebugQueue(debug.ProgramCodeInfo.GetInfo());
-                //件数が確定している場合はMetadataタイプ１はスキップ
-                JsonContent content = await disclosures.ReadDocuments(target, (dicMetadata.ContainsKey(target) && dicMetadata[target] > 0) ? true : false, false);
-                debug.ProgramCodeInfo.SetDebugQueue(debug.ProgramCodeInfo.GetInfo());
-                if(content == null) {
-                    debug.ProgramCodeInfo.SetDebugQueue(debug.ProgramCodeInfo.GetInfo());
-                    InvokeLabel("メタデータ取得unknownエラー");
-                    Debug.WriteLine("メタデータ取得unknownエラー");
-                    await Task.Delay(60 * 1000);
-                    return;
-                }
-                if (content.Exception != null) {
-                    debug.ProgramCodeInfo.SetDebugQueue(debug.ProgramCodeInfo.GetInfo());
-                    InvokeLabel($"HttpClientエラー {content.Exception.Message}");
-                    Debug.WriteLine($"HttpClientエラー {content.Exception.Message}");
-                    await Task.Delay(60 * 1000);
-                    return;
-                }
-                if (content.StatusCode != null)
-                    InvokeLabel($"metadata API {target:yyyy-MM-dd (ddd)}");
-                if (content.StatusCode != null && content.StatusCode.Status != "200") {
-                    //メタデータ取得エラー
-                    InvokeLabel($"{content.StatusCode.Status} {content.StatusCode.Message}");
-                    await Task.Delay(5000);
-                    //InvokeVisible(false);
-                    Console.Write($"{content.StatusCode.Status} {content.StatusCode.Message} on {target:yyyy-MM-dd}");
-                    if (dicMetadata.ContainsKey(target) && dicMetadata[target] > 0)
-                        Console.WriteLine(" タイプ2");
-                    else
-                        Console.WriteLine();
-                    return;
-                }
-                int wait0 = random.Next(Math.Min((int)(setting.Wait[0] * 1000), (int)(setting.Wait[1] * 1000)),
-                        Math.Max((int)(setting.Wait[0] * 1000), (int)(setting.Wait[1] * 1000)));
-                await Task.Delay(wait0);
-                Debug.WriteLine($" {content.Metadata.Resultset.Count}件 delay{wait0}");
 
-                if (content.Metadata.Resultset.Count == 0)
-                    continue;
-                if (taskType == TaskType.Archive)
-                    sw.Restart();
+                DataTable table = null;
+                if (taskType != TaskType.TodayArchive) {
+                    debug.ProgramCodeInfo.SetDebugQueue(debug.ProgramCodeInfo.GetInfo());
+
+                    //件数が確定している場合はMetadataタイプ１はスキップ
+                    JsonContent content = await disclosures.ReadDocuments(target, (dicMetadata != null && dicMetadata.ContainsKey(target) && dicMetadata[target] > 0) ? true : false, false);
+                    debug.ProgramCodeInfo.SetDebugQueue(debug.ProgramCodeInfo.GetInfo());
+                    if (content == null) {
+                        debug.ProgramCodeInfo.SetDebugQueue(debug.ProgramCodeInfo.GetInfo());
+                        InvokeLabel("メタデータ取得unknownエラー");
+                        Debug.WriteLine("メタデータ取得unknownエラー");
+                        await Task.Delay(60 * 1000);
+                        return;
+                    }
+                    if (content.Exception != null) {
+                        debug.ProgramCodeInfo.SetDebugQueue(debug.ProgramCodeInfo.GetInfo());
+                        InvokeLabel($"HttpClientエラー {content.Exception.Message}");
+                        Debug.WriteLine($"HttpClientエラー {content.Exception.Message}");
+                        await Task.Delay(60 * 1000);
+                        return;
+                    }
+                    if (content.StatusCode != null)
+                        InvokeLabel($"metadata API {target:yyyy-MM-dd (ddd)}");
+                    if (content.StatusCode != null && content.StatusCode.Status != "200") {
+                        //メタデータ取得エラー
+                        InvokeLabel($"{content.StatusCode.Status} {content.StatusCode.Message}");
+                        await Task.Delay(5000);
+                        Console.Write($"{content.StatusCode.Status} {content.StatusCode.Message} on {target:yyyy-MM-dd}");
+                        if (dicMetadata != null && dicMetadata.ContainsKey(target) && dicMetadata[target] > 0)
+                            Console.WriteLine(" タイプ2");
+                        else
+                            Console.WriteLine();
+                        return;
+                    }
+                    int wait0 = random.Next(Math.Min((int)(setting.Wait[0] * 1000), (int)(setting.Wait[1] * 1000)),
+                            Math.Max((int)(setting.Wait[0] * 1000), (int)(setting.Wait[1] * 1000)));
+                    await Task.Delay(wait0);
+                    Debug.WriteLine($" {content.Metadata.Resultset.Count}件 delay{wait0}");
+
+                    if (content.Metadata.Resultset.Count == 0)
+                        continue;
+                    if (taskType == TaskType.Archive)
+                        sw.Restart();
+                    table = content.Table;
+                } else
+                    table = disclosures.TableDocuments;
                 debug.ProgramCodeInfo.SetDebugQueue(debug.ProgramCodeInfo.GetInfo());
                 string sort = "id";
                 if (taskType == TaskType.TodayArchive & !setting.OrderAscendingToday)
@@ -583,7 +609,7 @@ namespace Edinet {
                     sort = "id desc";
                 else if (taskType == TaskType.DgvArchive & !setting.OrderAscendingList)
                     sort = "id desc";
-                DataView dv = new DataView(content.Table, "", sort, DataViewRowState.CurrentRows);
+                DataView dv = new DataView(table, "", sort, DataViewRowState.CurrentRows);
                 for (int j = 0; j < dv.Count; j++) {
 
                     if (token.IsCancellationRequested) {
@@ -661,15 +687,15 @@ namespace Edinet {
                                 //5回ごとにレスポンスチェック
                                 ArchiveResponse response = await disclosures.DownloadArchive(id, docid, (RequestDocument.DocumentType)Enum.ToObject(typeof(RequestDocument.DocumentType), i + 1));
                                 debug.ProgramCodeInfo.SetDebugQueue(debug.ProgramCodeInfo.GetInfo());
-                                if (content == null) {
+                                if (response == null) {
                                     debug.ProgramCodeInfo.SetDebugQueue(debug.ProgramCodeInfo.GetInfo());
                                     InvokeLabel("メタデータ取得unknownエラー");
                                     await Task.Delay(60 * 1000);
                                     return;
                                 }
-                                if (content.Exception != null) {
+                                if (response.Exception != null) {
                                     debug.ProgramCodeInfo.SetDebugQueue(debug.ProgramCodeInfo.GetInfo());
-                                    InvokeLabel($"HttpClientエラー {content.Exception.Message}");
+                                    InvokeLabel($"HttpClientエラー {response.Exception.Message}");
                                     await Task.Delay(60 * 1000);
                                     return;
                                 }
@@ -710,8 +736,9 @@ namespace Edinet {
                         }
                         debug.ProgramCodeInfo.SetDebugQueue(debug.ProgramCodeInfo.GetInfo());
 
-                        if (taskType == TaskType.DgvArchive)
-                            dgvList.Refresh();
+                        //if (taskType == TaskType.DgvArchive)
+                        //dgvList.Refresh();
+                        InvokeRefresh();
                     }
                     Debug.WriteLine("");
                 }
