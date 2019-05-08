@@ -53,7 +53,6 @@ namespace Edinet {
             SettingLoad();
             StatusLabel1.Text = "";
             this.Text = Application.ProductName + " " + Application.ProductVersion;
-            this.Refresh();
             if (browser.Url == null)
                 browser.Navigate(toppage);
             disclosures = new Disclosures(setting.Directory, TbVersion.Text);
@@ -74,8 +73,11 @@ namespace Edinet {
             this.Refresh();
             if (setting.Timer) {
                 //タイマーが有効であれば起動直後に当日分メタデータを一度取得
-                DatePicker_CloseUp(null, null);
+                if (TimerCheck())
+                    DatePicker_CloseUp(null, null);
             }
+            //この前で上のSplitterDistanceが変更されてしまう　原因不明
+            this.splitUpper.SplitterDistance = setting.UpperDistance;
             timer1.Enabled = true;
         }
 
@@ -103,16 +105,25 @@ namespace Edinet {
 
             width = new int[] { 30, 70, 45, 40, 74, 120, 45, 25, 45, 90, 68, 68, 100, 140, 60, 60, 60, 80, 80, 80, 18, 18, 18, 24, 24, 24, 24, 68 };
             ordinary = new int[] { 0, 14, 7, 8, 19, 9, 20, 15, 16, 28, 17, 18, 6, 10, 21, 22, 23, 24, 25, 26, 11, 12, 13, 1, 2, 3, 4, 27, 29, 30, 31, 32, 33, 34, 5 };
+            //string[] display = "連番,XBRL,PDF,代替,英文,code,提出者名,提出,DocID,概要,status,修,不,下,xbrl,pdf,attach,english,様式,自,至,事由,親,操作,EDINETcode,FundCode,SecCode,法人番号,発行,対象,子会社,id,識別,タイプ,date,府令".Split(',');
+            string[] display = "seqNumber,xbrlFlag,pdfFlag,attachDocFlag,englishDocFlag,code,filerName,submitDateTime,docID,docDescription,status,docInfoEditStatus,disclosureStatus,withdrawalStatus,xbrl,pdf,attach,english,formCode,periodStart,periodEnd,currentReportReason,parentDocID,opeDateTime,edinetCode,fundCode,secCode,JCN,issuerEdinetCode,subjectEdinetCode,subsidiaryEdinetCode,id,docTypeCode,タイプ,date,ordinanceCode".Split(',');
             for (int i = 0; i < dgvList.ColumnCount; i++) {
                 if (i < width.Length)
                     dgvList.Columns[i].Width = width[i];
-                if (i < ordinary.Length)
-                    dgvList.Columns[i].DisplayIndex = ordinary[i];
                 if (i > 22 & i<27)
                     dgvList.Columns[i].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
                 if (i == 0 | i == 12)
                     dgvList.Columns[i].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
             }
+            for (int i = 0; i < display.Length; i++)
+                dgvList.Columns[display[i]].DisplayIndex = i;
+            //Console.WriteLine($"width {dgvList.Columns["code"].Width}");
+            //Console.WriteLine($"width {dgvList.Columns["secCode"].DisplayIndex}");
+            dgvList.Columns["code"].Width = 38;
+            dgvList.Columns["status"].Width = 60;
+            //dgvList.Columns["secCode"].DisplayIndex = 20;
+            //dgvList.Columns["periodEnd"].DisplayIndex = 15;
+            //dgvList.Columns["EdinetCode"].DisplayIndex = 18;
             dgvList.Columns["withdrawalStatus"].ToolTipText = "取下書は\"1\"、取り下げられた書類 は\"2\"、それ以外は\"0\"が出力されま す。\r\n";
             dgvList.Columns["docInfoEditStatus"].ToolTipText = "財務局職員が書類を修正した情報 は\"1\"、修正された書類は\"2\"、それ 以外は\"0\"が出力されます。";
             dgvList.Columns["disclosureStatus"].ToolTipText = "財務局職員によって書類の不開示を 開始した情報は\"1\"、不開示とされて いる書類は\"2\"、財務局職員によっ て書類の不開示を解除した情報は \"3\"、それ以外は\"0\"が出力されま す。";
@@ -195,10 +206,12 @@ namespace Edinet {
             if (comboFilter.SelectedIndex > 0)
                 comboFilter.SelectedIndex = 0;
             if (!IsReading) {
-                StatusLabel1.Text = "";
-                splitMain.Panel1Collapsed = false;
-                splitUpper.Panel2Collapsed = false;
-                splitLower.Panel2Collapsed = false;
+                if (splitMain.Panel1Collapsed) {
+                    splitMain.Panel1Collapsed = false;
+                    splitUpper.Panel2Collapsed = false;
+                    splitLower.Panel2Collapsed = false;
+                    this.splitUpper.SplitterDistance = setting.UpperDistance;
+                }
                 DateTime target = DatePicker.Value.Date;
                 IsReading = true;
 
@@ -236,6 +249,8 @@ namespace Edinet {
 
 
             }
+            StatusLabel1.Text = "";
+
         }
 
 
@@ -393,7 +408,6 @@ namespace Edinet {
             LabelVersion.Left = TbVersion.Left - LabelVersion.Width;
             checkTimer.Left = LabelVersion.Left - checkTimer.Width - 5;
             ProgressLabel1.Width = 350;
-            //ProgressLabel1
             StatusLabel1.Width = this.Width - ProgressBar1.Width - ProgressLabel1.Width - 36;
         }
 
@@ -493,12 +507,13 @@ namespace Edinet {
                                 disclosures.SetDocumentTable( search.Table);
                                 comboFilter.DataSource = disclosures.Types;
                                 currentRow1 = -1;
-                                splitMain.Panel1Collapsed = false;
-                                splitUpper.Panel2Collapsed = false;
-                                splitLower.Panel2Collapsed = false;
+                                if (splitMain.Panel1Collapsed) {
+                                    splitMain.Panel1Collapsed = false;
+                                    splitUpper.Panel2Collapsed = false;
+                                    splitLower.Panel2Collapsed = false;
+                                    this.splitUpper.SplitterDistance = setting.UpperDistance;
+                                }
                                 dgvList.DataSource = disclosures.DvDocuments;
-                                //dgvList.Refresh();
-
                             }
 
                             search.Close();
@@ -630,8 +645,6 @@ namespace Edinet {
                 }
 
             }
-
-
         }
 
         //refer to http://bbs.wankuma.com/index.cgi?mode=al2&namber=85389&KLOG=146
@@ -664,6 +677,7 @@ namespace Edinet {
             setting.Save(this.Left, this.Top, this.Width, this.Height, 
                 this.splitMain.SplitterDistance, this.splitUpper.SplitterDistance, 
                 this.splitLower.SplitterDistance, vacuum);
+
         }
 
 
@@ -680,12 +694,16 @@ namespace Edinet {
                 int count = disclosures.SearchBrand(code);
                 if (count > 0) {
                     LabelMetadata.Text = string.Format("コード{0}　{1}件見つかりました", code, disclosures.TableDocuments.Rows.Count);
-                    dgvList.DataSource = disclosures.DvDocuments;
+                    //dgvList.DataSource = disclosures.DvDocuments;
                     comboFilter.DataSource = disclosures.Types;
                     currentRow1 = -1;
-                    splitMain.Panel1Collapsed = false;
-                    splitUpper.Panel2Collapsed = false;
-                    splitLower.Panel2Collapsed = false;
+                    if (splitMain.Panel1Collapsed) {
+                        splitMain.Panel1Collapsed = false;
+                        splitUpper.Panel2Collapsed = false;
+                        splitLower.Panel2Collapsed = false;
+                        this.splitUpper.SplitterDistance = setting.UpperDistance;
+
+                    }
                 } else {
                     TbCode.Clear();
                     LabelMetadata.Text = string.Format("コード{0}の銘柄は見つかりませんでした", code);
@@ -741,7 +759,7 @@ namespace Edinet {
                 DatePicker.Value = DateTime.Now.Date;
                 this.Refresh();
                 //この中で終了後にバックグラウンドで書類アーカイブのダウンロード
-                DatePicker_CloseUp(null, null);
+                    DatePicker_CloseUp(null, null);
             }
         }
 
@@ -754,29 +772,24 @@ namespace Edinet {
             if (setting.Timer) {
                 checkTimer.BackColor = Color.Yellow;
                 checkTimer.Text = string.Format("{0} min", setting.Interval);
-                //enable = true;
             } else {
                 checkTimer.BackColor = Control.DefaultBackColor;
                 checkTimer.Text = "Off";
-                //enable = false;
             }
 
             if ((DateTime.Now.DayOfWeek == DayOfWeek.Sunday | DateTime.Now.DayOfWeek == DayOfWeek.Saturday) |
                     (DateTime.Now.Month == 12 & DateTime.Now.Day > 29) |
                     (DateTime.Now.Month == 1 & DateTime.Now.Day < 4) |
                     (setting.Holiday.ContainsKey(DateTime.Now.Date))) {
-                //enable = false;
                 toolTip1.SetToolTip(checkTimer, "市場は休みです");
                 checkTimer.BackColor = Control.DefaultBackColor;
                 return false;
             } else if (DateTime.Now.AddMinutes(30).Hour < 9 | DateTime.Now.AddMinutes(-15).Hour > 17) {
-                //enable = false;
                 toolTip1.SetToolTip(checkTimer, "時間外です");
                 checkTimer.BackColor = Control.DefaultBackColor;
                 return false;
             }
-            //if (!enable)
-            //    checkTimer.BackColor = Control.DefaultBackColor;
+
             return setting.Timer;
 
         }

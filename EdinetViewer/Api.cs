@@ -171,6 +171,7 @@ namespace Edinet {
                             stream.Flush();
                             response.Update(buffer, res.StatusCode, filename, contenttype);
                             debug.ProgramCodeInfo.SetDebugQueue(debug.ProgramCodeInfo.GetInfo());
+                            
                             return response;
                         }
                     }

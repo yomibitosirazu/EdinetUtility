@@ -954,6 +954,48 @@ namespace Database {
         //}
 
 
+        public void UpdateFilenameOfDisclosure(Dictionary<int, string>[] dic) {
+            using (var conn = new SQLiteConnection(string.Format("Data Source={0}", DbPath))) {
+                using (SQLiteCommand command = new SQLiteCommand(conn)) {
+                    string[] fields = new string[] { "xbrl", "pdf", "attach", "english" };
+                    for (int i = 0; i < 4; i++) {
+                        if (dic[i] != null && dic[i].Count > 0) {
+                            command.Parameters.Clear();
+                            command.CommandText = $"update Disclosures set {fields[i]} = @{fields[i]} where id = @id;";
+                            command.Parameters.AddWithValue("@" + fields[i], null);
+                            command.Parameters.AddWithValue("@id", null);
+                            command.Connection.Open();
+                            using (SQLiteTransaction ts = command.Connection.BeginTransaction()) {
+                                foreach (var kv in dic[i]) {
+                                    command.Parameters["@id"].Value = kv.Key;
+                                    command.Parameters["@" + fields[i]].Value = kv.Value;
+                                    command.ExecuteNonQuery();
+                                }
+                                ts.Commit();
+                                command.Connection.Close();
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        public async System.Threading.Tasks.Task UpdateFilenameOfDisclosureAsync(int id, string field, string value) {
+            await System.Threading.Tasks.Task.Run(() => {
+                using (var conn = new SQLiteConnection(string.Format("Data Source={0}", DbPath))) {
+                    using (SQLiteCommand command = new SQLiteCommand()) {
+                        command.Connection = conn;
+                        StringBuilder sb = new StringBuilder();
+                        sb.AppendFormat("update Disclosures set {0} = @{0} where id = {1};", field, id);
+                        command.CommandText = sb.ToString();
+                        command.Parameters.AddWithValue("@" + field, value);
+                        command.Connection.Open();
+                        command.ExecuteNonQuery();
+                        command.Connection.Close();
+                    }
+                }
+            });
+        }
+
         public void UpdateFilenameOfDisclosure(int id, string field, string value) {
             using (var conn = new SQLiteConnection(string.Format("Data Source={0}", DbPath))) {
                 using (SQLiteCommand command = new SQLiteCommand()) {
@@ -969,6 +1011,20 @@ namespace Database {
             }
         }
 
+        public void UpdateFilenameOfDisclosure(string docid, string field, int type) {
+            using (var conn = new SQLiteConnection(string.Format("Data Source={0}", DbPath))) {
+                using (SQLiteCommand command = new SQLiteCommand()) {
+                    command.Connection = conn;
+                    StringBuilder sb = new StringBuilder();
+                    sb.AppendFormat("update Disclosures set {0} = @{0} where docID = {1};", field, docid);
+                    command.CommandText = sb.ToString();
+                    command.Parameters.AddWithValue("@" + field, $"{docid}_{type}");
+                    command.Connection.Open();
+                    command.ExecuteNonQuery();
+                    command.Connection.Close();
+                }
+            }
+        }
 #pragma warning disable IDE0051
         private void InsertToTable(string tablename, string[] fields, List<string[]> list, bool replace = false) {
             using (var conn = new SQLiteConnection(string.Format("Data Source={0}", DbPath))) {
