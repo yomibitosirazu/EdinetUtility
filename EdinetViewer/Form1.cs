@@ -63,14 +63,14 @@ namespace Edinet {
             dgvContents.DataSource = disclosures.DvContents;
             dgvXbrl.DataSource = disclosures.TableElements;
             FormatDatagridview();
-            DatePicker.Enabled = true;
-            DatePicker.CloseUp += DatePicker_CloseUp;
-            timer1.Interval = (int)(setting.Interval * 60 * 1000);
-            TimerCheck();
             if (setting.VersionUp) {
                     await BackGroundStart(TaskType.VersionUp, Application.ProductVersion + "\t" + setting.VersionPrev);
             }
             this.Refresh();
+            DatePicker.Enabled = true;
+            DatePicker.CloseUp += DatePicker_CloseUp;
+            timer1.Interval = (int)(setting.Interval * 60 * 1000);
+            TimerCheck();
             if (setting.Timer) {
                 //タイマーが有効であれば起動直後に当日分メタデータを一度取得
                 if (TimerCheck())
@@ -83,6 +83,23 @@ namespace Edinet {
 
 
         #region Dgv_Format_Events
+
+        private void DgvList_DataSourceChanged(object sender, EventArgs e) {
+            string[] display = "seqNumber,xbrlFlag,pdfFlag,attachDocFlag,englishDocFlag,code,filerName,docDescription,summary,タイプ,submitDateTime,status,docID,docInfoEditStatus,disclosureStatus,withdrawalStatus,xbrl,pdf,attach,english,formCode,periodStart,periodEnd,currentReportReason,parentDocID,opeDateTime,edinetCode,fundCode,secCode,JCN,issuerEdinetCode,subjectEdinetCode,subsidiaryEdinetCode,id,docTypeCode,date,ordinanceCode".Split(',');
+            for (int i = 0; i < display.Length; i++)
+                if (dgvList.Columns.Contains(display[i]) && i < dgvList.Columns.Count)
+                    dgvList.Columns[display[i]].DisplayIndex = i;
+            dgvList.Columns["code"].Width = 38;
+            dgvList.Columns["status"].Width = 60;
+            comboFilter.Items.Clear();
+            comboFilter.Items.Add("");
+            for (int i = 0; i < disclosures.DvDocuments.Count; i++) {
+                string type = disclosures.DvDocuments[i]["タイプ"].ToString();
+                if (!comboFilter.Items.Contains(type))
+                    comboFilter.Items.Add(type);
+            }
+        }
+
         private void FormatDatagridview() {
             dgvXbrl.RowHeadersWidth = 30;
             int[] width = new int[] { 30, 70, 120, 60, 130, 80, 30, 100, 40, 20, 20 };
@@ -102,11 +119,7 @@ namespace Edinet {
             foreach (var kv in Const.FieldHeader) {
                 dgvList.Columns[kv.Key].HeaderText = kv.Value;
             }
-
             width = new int[] { 30, 70, 45, 40, 74, 120, 45, 25, 45, 90, 68, 68, 100, 140, 60, 60, 60, 80, 80, 80, 18, 18, 18, 24, 24, 24, 24, 68 };
-            ordinary = new int[] { 0, 14, 7, 8, 19, 9, 20, 15, 16, 28, 17, 18, 6, 10, 21, 22, 23, 24, 25, 26, 11, 12, 13, 1, 2, 3, 4, 27, 29, 30, 31, 32, 33, 34, 5 };
-            //string[] display = "連番,XBRL,PDF,代替,英文,code,提出者名,提出,DocID,概要,status,修,不,下,xbrl,pdf,attach,english,様式,自,至,事由,親,操作,EDINETcode,FundCode,SecCode,法人番号,発行,対象,子会社,id,識別,タイプ,date,府令".Split(',');
-            string[] display = "seqNumber,xbrlFlag,pdfFlag,attachDocFlag,englishDocFlag,code,filerName,submitDateTime,docID,docDescription,status,docInfoEditStatus,disclosureStatus,withdrawalStatus,xbrl,pdf,attach,english,formCode,periodStart,periodEnd,currentReportReason,parentDocID,opeDateTime,edinetCode,fundCode,secCode,JCN,issuerEdinetCode,subjectEdinetCode,subsidiaryEdinetCode,id,docTypeCode,タイプ,date,ordinanceCode".Split(',');
             for (int i = 0; i < dgvList.ColumnCount; i++) {
                 if (i < width.Length)
                     dgvList.Columns[i].Width = width[i];
@@ -115,15 +128,6 @@ namespace Edinet {
                 if (i == 0 | i == 12)
                     dgvList.Columns[i].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
             }
-            for (int i = 0; i < display.Length; i++)
-                dgvList.Columns[display[i]].DisplayIndex = i;
-            //Console.WriteLine($"width {dgvList.Columns["code"].Width}");
-            //Console.WriteLine($"width {dgvList.Columns["secCode"].DisplayIndex}");
-            dgvList.Columns["code"].Width = 38;
-            dgvList.Columns["status"].Width = 60;
-            //dgvList.Columns["secCode"].DisplayIndex = 20;
-            //dgvList.Columns["periodEnd"].DisplayIndex = 15;
-            //dgvList.Columns["EdinetCode"].DisplayIndex = 18;
             dgvList.Columns["withdrawalStatus"].ToolTipText = "取下書は\"1\"、取り下げられた書類 は\"2\"、それ以外は\"0\"が出力されま す。\r\n";
             dgvList.Columns["docInfoEditStatus"].ToolTipText = "財務局職員が書類を修正した情報 は\"1\"、修正された書類は\"2\"、それ 以外は\"0\"が出力されます。";
             dgvList.Columns["disclosureStatus"].ToolTipText = "財務局職員によって書類の不開示を 開始した情報は\"1\"、不開示とされて いる書類は\"2\"、財務局職員によっ て書類の不開示を解除した情報は \"3\"、それ以外は\"0\"が出力されま す。";
@@ -139,6 +143,8 @@ namespace Edinet {
 
                         int row = e.RowIndex;
                         int col = e.ColumnIndex;
+                    if (e.RowIndex >= disclosures.DvDocuments.Count)
+                        return;
                         DateTime target = DateTime.Parse(disclosures.DvDocuments[row]["date"].ToString());
                         string dir = Path.Combine(setting.Directory, "Documents", target.Year.ToString());
                         string docid = disclosures.DvDocuments[row]["docID"].ToString();
@@ -216,6 +222,7 @@ namespace Edinet {
                 IsReading = true;
 
                 JsonContent content = await disclosures.ReadDocuments(target);
+                dgvList.DataSource = disclosures.DvDocuments;
                 StatusLabel1.Text = string.Format("{0:HH:mm:ss} List {1}", DateTime.Now, content.OutputMessage);
                 if(content.Table != null && content.Table.Rows.Count > 0) {
                     comboFilter.DataSource = disclosures.Types;
@@ -246,7 +253,7 @@ namespace Edinet {
                         }
                     }
                 }
-
+                await UpdateSummaryAsync();
 
             }
             StatusLabel1.Text = "";
@@ -276,7 +283,7 @@ namespace Edinet {
                         return;
                     }
                     
-                    ArchiveResponse response = await disclosures.ChangeDocument(id, docid, (RequestDocument.DocumentType)Enum.ToObject(typeof(RequestDocument.DocumentType), index + 1));
+                    ArchiveResponse response = await disclosures.ChangeDocumentAsync(id, docid, (RequestDocument.DocumentType)Enum.ToObject(typeof(RequestDocument.DocumentType), index + 1));
                     dgvList.Refresh();
                     if (response != null) {
                         StatusLabel1.Text = string.Format("{1:HH:mm:ss} 書類取得API status[{0}] {2}ダウンロード {3}", response.EdinetStatusCode.Message, DateTime.Now, index == 1 ? "pdf" : "xbrl", response.Filename);
@@ -329,7 +336,8 @@ namespace Edinet {
                         StatusLabel1.Text = string.Format("{0:HH:mm:ss} {1}[{2}] 404[Not Found] in table", DateTime.Now, docid, type ==  RequestDocument.DocumentType.Xbrl ? "xbrl" : "pdf");
                         return;
                     }
-                    ArchiveResponse response = await disclosures.ChangeDocument(id, docid,  type.Value);
+                    ArchiveResponse response = await disclosures.ChangeDocumentAsync(id, docid,  type.Value);
+                    dgvContents.DataSource = disclosures.DvContents;
                     dgvList.Refresh();
                     if(response == null) {
                         StatusLabel1.Text = DateTime.Now.ToString("HH:mm:ss") + " ダウンロード済み書類";
@@ -342,7 +350,12 @@ namespace Edinet {
                         StatusLabel1.Text = string.Format("{1:HH:mm:ss} 書類取得API status[{0}] {2}ダウンロード {3}", response.EdinetStatusCode.Status, DateTime.Now, type ==  RequestDocument.DocumentType.Pdf ? "pdf" : "xbrl", response.Filename);
                         else
                             StatusLabel1.Text = string.Format("{1:HH:mm:ss} 書類取得API status[{0}] {2}ダウンロード {3}", response.HttpStatusCode.ToString(), DateTime.Now, type == RequestDocument.DocumentType.Pdf ? "pdf" : "xbrl", response.Filename);
-                        //filepath = string.Format(@"{0}\Documents\{1}\{2}", setting.Directory, year, disclosures.ArchiveResult.Name);
+                        if (dgvList.CurrentRow.Cells["docTypeCode"].Value.ToString() == "350" | dgvList.CurrentRow.Cells["docTypeCode"].Value.ToString() == "360") {
+                            if (dgvList.CurrentRow.Cells["summary"].Value.ToString() == "") {
+                                await disclosures.UpdateSummary(id, true);
+                                dgvList.Refresh();
+                            }
+                        }
                     } else {
                         //filepath = disclosures.ArchiveResult.Name;
                     }
@@ -366,19 +379,14 @@ namespace Edinet {
             if (dgvContents.CurrentCell.RowIndex != currentRow2) {
                 browser.DocumentText = "";
                 currentRow2 = dgvContents.CurrentCell.RowIndex;
+
                 disclosures.SelectContent(dgvContents.CurrentCell.RowIndex, out string source);
+                dgvXbrl.DataSource = disclosures.TableElements;
                 string fullpath = dgvContents.Rows[dgvContents.CurrentCell.RowIndex].Cells["fullpath"].Value.ToString();
-                string tempdir = Path.Combine(setting.Directory, "temp");
-                if (!Directory.Exists(tempdir))
-                    Directory.CreateDirectory(tempdir);
                 if (".png .jpg .jpeg .gif .svg .tif .tiff .esp .pict .bmp".Contains(Path.GetExtension(fullpath).ToLower())) {
-                    string filepath = disclosures.ExtractImageInArchive(fullpath, tempdir);
-                    if (filepath != null && File.Exists(filepath))
-                        browser.Navigate(string.Format("file://{0}", filepath.Replace("\\", "/")));
+                    browser.Navigate(string.Format("file://{0}", source.Replace("\\", "/")));
                 } else if (Path.GetExtension(fullpath) == ".pdf") {
-                    string pdf = disclosures.ExtractPdfInArchive(fullpath, tempdir);
-                    if (pdf != null && File.Exists(pdf))
-                        browser.Navigate(string.Format("file://{0}#toolbar=0&navpanes=0", pdf.Replace("\\", "/")));
+                    browser.Navigate(string.Format("file://{0}#toolbar=0&navpanes=0", source.Replace("\\", "/")));
                 } else if (source != null) {
                     browser.DocumentText = source;
                 }
@@ -463,19 +471,25 @@ namespace Edinet {
                         timer1.Interval = (int)(setting.Interval * 1000 * 60);
                         TimerCheck();
                         if (dir != setting.Directory) {
-                            bool exists = disclosures.ChangeCacheDirectory(dialog.Setting.Directory);
-                            //MenuBackground_Click(menu)
-                            if (!exists) {
-                                string[] files = Directory.GetFiles(dir, "ALL_*.zip");
-                                if (files.Length > 0) {
-                                    Array.Reverse(files);
-                                    File.Copy(files[0], Path.Combine(setting.Directory, Path.GetFileName(files[0])));
-                                }
-                                await SetTaxonomyDownloadEvent();
+                            string dbfile = $"{dialog.Setting.Directory}\\edinet.db";
+                            if (!File.Exists(dbfile)) {
+                                await disclosures.Database.TaxonomyTableToMemoryAsync(this.InvokeProgress);
+                                //bool exists = disclosures.ChangeCacheDirectory(dialog.Setting.Directory);
+                                //if (!exists) {
+                                //    string[] files = Directory.GetFiles(dir, "ALL_*.zip");
+                                //    if (files.Length > 0) {
+                                //        Array.Reverse(files);
+                                //        File.Copy(files[0], Path.Combine(setting.Directory, Path.GetFileName(files[0])));
+                                //    }
+                                //    await SetTaxonomyDownloadEvent();
+                                //}
+                                disclosures.Database.ChangeDirectory(dbfile);
+                                disclosures.Database.MemoryToDatabase($"{dialog.Setting.Directory}\\edinet.db");
                             }
                         }
                         setting = dialog.Setting;
                         setting.Save();
+                        disclosures.ChangeCacheDirectory(setting.Directory);
                     }
                     break;
                 case "MenuApiHistory":
@@ -502,9 +516,8 @@ namespace Edinet {
                     using (EdinetViewer.DialogSearch search = new EdinetViewer.DialogSearch(disclosures.Database)) {
                         DialogResult dialogResult = search.ShowDialog();
                         if(dialogResult == DialogResult.OK) {
-                            //string sql = search.SqlText;
                             if (search.Table != null && search.Table.Rows.Count > 0 & search.Table.Rows[0]["id"].ToString() != "0") {
-                                disclosures.SetDocumentTable( search.Table);
+                                disclosures.SetDocumentTable(search.Table);
                                 comboFilter.DataSource = disclosures.Types;
                                 currentRow1 = -1;
                                 if (splitMain.Panel1Collapsed) {
@@ -573,6 +586,7 @@ namespace Edinet {
                             await BackGroundStart(TaskType.EdinetCode, dialog.FileName);
                         }
                     }
+
                     break;
             }
         }
@@ -617,6 +631,14 @@ namespace Edinet {
                 } else {
                     backgroundCancel[1].Cancel();
                 }
+            } else if (menu == MenuSummary) {
+                if ((sender as ToolStripMenuItem).Checked) {
+                    if (backgroundTask == null || backgroundTask[1] == null) {
+                        await BackGroundStart(TaskType.Summary);
+                    }
+                } else {
+                    backgroundCancel[1].Cancel();
+                }
             }
         }
 
@@ -649,6 +671,7 @@ namespace Edinet {
 
         //refer to http://bbs.wankuma.com/index.cgi?mode=al2&namber=85389&KLOG=146
         private async void Form1_FormClosing(object sender, FormClosingEventArgs e) {
+
             if (backgroundTask != null) {
                 bool[] flag = new bool[] { false, false, true };
                 for (int i = 0; i < flag.Length; i++) {
@@ -793,5 +816,6 @@ namespace Edinet {
             return setting.Timer;
 
         }
+
     }
 }

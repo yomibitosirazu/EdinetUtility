@@ -32,7 +32,7 @@ namespace Edinet {
             switch ((sender as Button).Name) {
                 case "buttonOK":
                     if (File.Exists(Path.Combine(Setting.Directory, "edinet.db")) & !Directory.Exists(tbDocumentDirectory.Text) || !File.Exists(Path.Combine(tbDocumentDirectory.Text, "edinet.db"))) {
-                        DialogResult result = MessageBox.Show("データーベースは引き継がれませんがいいですか?", "データベースが存在しないフォルダ", MessageBoxButtons.YesNo);
+                        DialogResult result = MessageBox.Show("タクソノミのみコピーされ データーベースは引き継がれませんがいいですか?", "データベースが存在しないフォルダ", MessageBoxButtons.YesNo);
                         if (result == DialogResult.Yes) {
                             if (!Directory.Exists(tbDocumentDirectory.Text)) {
                                 Directory.CreateDirectory(tbDocumentDirectory.Text);
@@ -129,6 +129,7 @@ namespace Edinet {
             }
             toolTip1.SetToolTip(tbHolidayCsv, "内閣府の祝日一覧csvまたは類似した祝日の日付と名前一覧のcsvを貼り付けて矢印ボタンを押してください");
             toolTip1.SetToolTip(linkCabinetCsv, "これをクリックすると内閣府の祝日一覧csvを貼り付けます");
+            labelUserAgent.Text = $"  UserAgent:{Setting.UserAgent}";
         }
 
         private async void LinkCabinetCsv_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e) {
@@ -205,10 +206,11 @@ namespace Edinet {
 
 
     public class SettingBase {
+        public static decimal Min1 { get { return IsYomibitosirazu ? 0.4m : 1.0m;}}
+        public static decimal Min2 { get { return IsYomibitosirazu ? 0.4m : 1.0m; }}
         public string FilePath { get; set; }
         public Dictionary<string, string> Values { get; set; }
-        public static decimal Min1 { get { return 1.0m;}}
-        public static decimal Min2 { get { return 1.0m;}}
+        public static bool IsYomibitosirazu { get { return (Environment.MachineName == "H270M" | Environment.MachineName == "PD-1712") ? true : false; } }
         public SettingBase() {
             FilePath = string.Format("{0}_{1}.xml", System.Reflection.Assembly.GetExecutingAssembly().GetName().Name, Environment.MachineName);
             Values = new Dictionary<string, string>();
@@ -258,10 +260,20 @@ namespace Edinet {
                 return dic;
             }
         }
+
+        public string UserAgent {
+            get {
+                string useragent = $"EdinetViewer {Version}";
+                string github = "https://github.com/yomibitosirazu/EdinetUtility";
+                if (IsYomibitosirazu && File.Exists("contact.txt")) {
+                    string contact = File.ReadAllText("contact.txt");
+                    useragent += $" ({github} {contact})";
+                } else
+                    useragent += $" (download from {github})";
+                return useragent; } }
         public string Version { get { return Values["Version"]; } }
         public string VersionPrev { get; private set; }
         public bool VersionUp { get; private set; }
-
         public string ApiVersion { get { return Values["ApiVersion"]; } }
         public string Directory { get { return Values["DocumentDirectory"]; } }
         public bool Timer { get { return bool.TryParse(Values["Timer"], out bool flag) ? flag : false; } }
@@ -271,8 +283,11 @@ namespace Edinet {
         public bool Attach { get { return bool.TryParse(Values["Attach"], out bool flag) ? flag : false; } }
         public bool English { get { return bool.TryParse(Values["Eng"], out bool flag) ? flag : false; } }
         public bool OrderAscendingToday { get { return Values.ContainsKey("OrderToday") && bool.TryParse(Values["OrderToday"], out bool flag) ? flag : false; } }
-        public bool OrderAscendingYear5 { get { return Values.ContainsKey("OrderYear5") && bool.TryParse(Values["OrderYear5"], out bool flag) ? flag : true; } }
+        public bool OrderAscendingYear5 { get { return Values.ContainsKey("OrderYear5") && bool.TryParse(Values["OrderYear5"], out bool flag) ? flag : false; } }
         public bool OrderAscendingList { get { return Values.ContainsKey("OrderList") && bool.TryParse(Values["OrderList"], out bool flag) ? flag : false; } }
+        public string SortToday { get { return Values.ContainsKey("OrderToday") && bool.TryParse(Values["OrderToday"], out bool flag) && flag ? "id" :"id desc"; } }
+        public string SortYear5 { get { return Values.ContainsKey("OrderYear5") && bool.TryParse(Values["OrderYear5"], out bool flag) && flag ? "id" : "id desc"; } }
+        public string SortList { get { return Values.ContainsKey("OrderList") && bool.TryParse(Values["OrderList"], out bool flag) && flag ? "id" : "id desc"; } }
         public decimal Interval { get { return Values.ContainsKey("Interval") && decimal.TryParse(Values["Interval"], out decimal value) && value > 1 ? value : 1; } }
         public decimal[] Wait { get {
                 return new decimal[] {

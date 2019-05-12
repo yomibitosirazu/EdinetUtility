@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Diagnostics;
 using System.IO;
+using System.Data;
 using System.Data.SQLite;
 
 namespace Edinet {
@@ -19,6 +20,10 @@ namespace Edinet {
 
         private async Task VersionUp(string version) {
             InvokeVisible(true);
+            //if(version == "summary") {
+            //    await UpdateSummaryAllAsync(null);
+            //    return;
+            //}
             string[] versions = version.Split('\t');
             string[] v0 = versions[0].Split('.');
             int current = 0;
@@ -43,7 +48,7 @@ namespace Edinet {
                     prev += val13;
             }
             if (current > prev) {
-                if(current > 210100 & prev < 210100)
+                if (current > 210100 & prev < 210100)
                     await Task.Run(() => Update02101());
             }
             if (current < 210108)
@@ -57,6 +62,9 @@ namespace Edinet {
                 InvokeLabel("database updated");
                 await Task.Delay(1000);
                 InvokeVisible(false);
+            } else
+            if (current >= 220601) {
+                await Update220601();
             }
         }
 
@@ -76,11 +84,25 @@ namespace Edinet {
             }
             InvokeProgress(100);
             InvokeVisible(false);
-
+            disclosures.TableDocuments.Columns.Add("summary", typeof(string));
+            //disclosures.ReInitializeTable();
+            FormatDatagridview();
         }
 
 
-        private void Update02101() {
+
+        private async Task Update220601() {
+            InvokeLabel("バージョンアップ　データベース更新中");
+            await Task<Dictionary<string, int>>.Run(() => {
+                //string query = "alter table `Disclosures` add column `summary` text DEFAULT NULL;";
+                disclosures.Database.AddColumn("Disclosures", "summary", "text");
+            });
+            InvokeLabel("");
+        }
+
+
+
+    private void Update02101() {
             InvokeLabel("バージョンアップ　データベース更新中");
             string[] queries = new string[] {
                                 "alter table `Disclosures` add column `date` text DEFAULT NULL;",

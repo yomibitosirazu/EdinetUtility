@@ -20,7 +20,7 @@ namespace Edinet {
     partial class Form1 {
 
 
-        public enum TaskType { List, Archive, TodayArchive, Taxonomy, EdinetCode, Start, VersionUp, test, DgvArchive };
+        public enum TaskType { List, Archive, TodayArchive, Taxonomy, EdinetCode, Start, VersionUp, test, DgvArchive, Summary };
 
         //非同期を３分類（⓪書類一覧取得、①アーカイブ連続ダウンロード、②その他）して同時実行可能にする
         private Task[] backgroundTask;
@@ -42,6 +42,7 @@ namespace Edinet {
                 case TaskType.DgvArchive:
                 case TaskType.TodayArchive:
                 case TaskType.Archive:
+                case TaskType.Summary:
                     typeNo = 1;
                     break;
                 default:
@@ -80,6 +81,9 @@ namespace Edinet {
                     case TaskType.test:
                         backgroundTask[2] = ReadMetadataList(backgroundCancel[2].Token);
                         break;
+                    case TaskType.Summary:
+                        backgroundTask[1] =  UpdateSummaryAllAsync(backgroundCancel[1].Token);
+                        break;
                 }
                 await backgroundTask[typeNo];
                 backgroundTask[typeNo] = null;
@@ -89,6 +93,8 @@ namespace Edinet {
                     MenuPastList.Checked = false;
                 else if (MenuDownloadDgvList.Checked)
                     MenuDownloadDgvList.Checked = false;
+                else if (MenuSummary.Checked)
+                    MenuSummary.Checked = false;
                 await Task.Delay(5000);
                 InvokeVisible(false);
             } else {
@@ -172,6 +178,7 @@ namespace Edinet {
                     Console.WriteLine($"in InvokeProgress {ex.Message.Replace("\r\n", "\t")}");
                 }
             } else {
+                if(ProgressBar1 !=null)
                 ProgressBar1.Value = value;
             }
         }
@@ -267,31 +274,37 @@ namespace Edinet {
             int count = 0;
             int i = 0;
             string archivename = Path.GetFileName(archivefile);
-            using (ZipArchive archive = ZipFile.Open(archivefile, ZipArchiveMode.Read)) {
-                foreach (ZipArchiveEntry entry in archive.Entries) {
-                    string filename = entry.FullName;
-                    if (filename.IndexOf("taxonomy") == 0 & Path.GetExtension(filename) == ".xml") {
-                        count++;
-                    }
-                }
-                InvokeProgressLabel(0, "");
-                i = 0;
-                foreach (ZipArchiveEntry entry in archive.Entries) {
-                    string filename = entry.FullName;
-                    if (filename.IndexOf("taxonomy") == 0 & Path.GetExtension(filename) == ".xml") {
-                        i++;
-                        using (Stream stream = entry.Open()) {
-                            using (StreamReader reader = new StreamReader(stream)) {
-                                string source = reader.ReadToEnd();
-                                await Task.Run(() => disclosures.Database.ImportTaxonomy(filename, source, archivename));
-                            }
+            try {
+
+                using (ZipArchive archive = ZipFile.Open(archivefile, ZipArchiveMode.Read)) {
+                    foreach (ZipArchiveEntry entry in archive.Entries) {
+                        string filename = entry.FullName;
+                        if (filename.IndexOf("taxonomy") == 0 & Path.GetExtension(filename) == ".xml") {
+                            count++;
                         }
-                        InvokeProgressLabel((int)(i / count * 100), string.Format("{0}/{1} {2}", i, count, entry.Name));
+                    }
+                    InvokeProgressLabel(0, "");
+                    i = 0;
+                    foreach (ZipArchiveEntry entry in archive.Entries) {
+                        string filename = entry.FullName;
+                        if (filename.IndexOf("taxonomy") == 0 & Path.GetExtension(filename) == ".xml") {
+                            i++;
+                            using (Stream stream = entry.Open()) {
+                                using (StreamReader reader = new StreamReader(stream)) {
+                                    string source = reader.ReadToEnd();
+                                    await Task.Run(() => disclosures.Database.ImportTaxonomy(filename, source, archivename));
+                                }
+                            }
+                            InvokeProgressLabel((int)(i * 100 / count), string.Format("{0}/{1} {2}", i, count, entry.Name));
+                        }
                     }
                 }
+                disclosures.ImportTaxonomy();
+                InvokeProgressLabel(0, "タクソノミを構築しました");
+            } catch (Exception ex) {
+
+                InvokeLabel(ex.Message);
             }
-            disclosures.ImportTaxonomy();
-            InvokeProgressLabel(0, "タクソノミを構築しました");
             await Task.Delay(2000);
             InvokeProgressLabel(0, "");
             InvokeVisible(false);
@@ -344,8 +357,6 @@ namespace Edinet {
             foreach (DateTime target in list) {
                 if (token.IsCancellationRequested) {
                     InvokeProgressLabel(0, "Canceled");
-                    //await Task.Delay(2000);
-                    //InvokeVisible(false);
                     return;
                 }
                 JsonContent content = await disclosures.ReadDocuments(target);
@@ -394,98 +405,6 @@ namespace Edinet {
 
 
 
-        //private bool CheckForDownload(DataRowView r) {
-        //    if ((r["status"] != DBNull.Value && r["status"].ToString() == "縦覧終了") | r["docID"] == DBNull.Value)
-        //        return false;
-        //    string[] fields = new string[] { "xbrl", "pdf", "attach", "english" };
-        //    string docid = r["docID"].ToString();
-        //    for (int i = 0; i < fields.Length; i++) {
-        //        if (r[fields[i] + (i > 1 ? "Doc" : "") + "Flag"].ToString() == "1") {
-        //            int id = int.Parse(r["id"].ToString());//dbはlong
-        //            int year = 20 * 100 + id / 100000000;
-        //            string filepath = string.Format(@"{0}\Documents\{1}\{2}_{3}.{4}", setting.Directory, year, docid, i + 1, i == 1 ? "pdf" : "zip");
-        //            //一つでも未ダウンロードあればtrueとする
-        //            if (!File.Exists(filepath)) {
-        //                return true;
-        //            }
-        //        }
-        //    }
-        //    return false;
-        //}
-
-
-        //private async Task<bool> UpdateListTable() {
-        //    Random random = new Random();
-        //    //Dictionary<DateTime,int> dicMetadata = disclosures.Database.GetFinalMetalist();
-        //    List<DateTime> list = new List<DateTime>();
-        //    foreach (DataRowView r in disclosures.DvDocuments) {
-        //        DateTime target = (DateTime)r["date"];
-        //        if (!list.Contains(target)) {
-        //            list.Add(target);
-        //            Edinet.Json.Metadata metadata = disclosures.Database.ReadMetadata(target);
-        //            if (metadata != null) {
-        //                DateTime process = DateTime.Parse(metadata.ProcessDateTime);
-        //                if (process.AddDays(1) > DateTime.Now)
-        //                    continue;
-        //                //件数0はありえない
-        //                //if(process.Date > target.Date && metadata.Resultset.Count == 0) { }
-        //            }
-        //            //件数が確定している場合はMetadataタイプ１はスキップ
-        //            debug.ProgramCodeInfo.SetDebugQueue(debug.ProgramCodeInfo.GetInfo());
-        //            JsonContent content = await disclosures.ReadDocuments(target, true, false);
-        //            debug.ProgramCodeInfo.SetDebugQueue(debug.ProgramCodeInfo.GetInfo());
-        //            if (content == null) {
-        //                debug.ProgramCodeInfo.SetDebugQueue(debug.ProgramCodeInfo.GetInfo());
-        //                InvokeLabel("メタデータ取得unknownエラー");
-        //                Debug.WriteLine("メタデータ取得unknownエラー");
-        //                await Task.Delay(60 * 1000);
-        //                return false;
-        //            }
-        //            if (content.Exception != null) {
-        //                debug.ProgramCodeInfo.SetDebugQueue(debug.ProgramCodeInfo.GetInfo());
-        //                InvokeLabel($"HttpClientエラー {content.Exception.Message}");
-        //                Debug.WriteLine($"HttpClientエラー {content.Exception.Message}");
-        //                await Task.Delay(60 * 1000);
-        //                return false;
-        //            }
-        //            if (content.StatusCode != null)
-        //                InvokeLabel($"metadata API {target:yyyy-MM-dd (ddd)}");
-        //            if (content.StatusCode != null && content.StatusCode.Status != "200") {
-        //                //メタデータ取得エラー
-        //                InvokeLabel($"{content.StatusCode.Status} {content.StatusCode.Message}");
-        //                await Task.Delay(5000);
-        //                Console.Write($"{content.StatusCode.Status} {content.StatusCode.Message} on {target:yyyy-MM-dd}");
-        //                //if (dicMetadata != null && dicMetadata.ContainsKey(target) && dicMetadata[target] > 0)
-        //                //    Console.WriteLine(" タイプ2");
-        //                //else
-        //                //    Console.WriteLine();
-        //                return false;
-        //            }
-        //            if(disclosures.DvDocuments.Sort.ToLower().IndexOf("id") < 0) {
-
-        //            }
-        //            for (int i = 0; i < content.Table.Rows.Count; i++) {
-        //                int id = int.Parse(content.Table.Rows[i]["id"].ToString());
-        //                int index = disclosures.DvDocuments.Find(id);
-        //                if (index > -1) {
-        //                    disclosures.DvDocuments[index]["status"] = content.Table.Rows[i]["status"];
-        //                    disclosures.DvDocuments[index]["withdrawalStatus"] = content.Table.Rows[i]["withdrawalStatus"];
-        //                    disclosures.DvDocuments[index]["docInfoEditStatus"] = content.Table.Rows[i]["docInfoEditStatus"];
-        //                    disclosures.DvDocuments[index]["disclosureStatus"] = content.Table.Rows[i]["disclosureStatus"];
-        //                }
-        //            }
-        //            int wait0 = random.Next(Math.Min((int)(setting.Wait[0] * 1000), (int)(setting.Wait[1] * 1000)),
-        //                    Math.Max((int)(setting.Wait[0] * 1000), (int)(setting.Wait[1] * 1000)));
-        //            await Task.Delay(wait0);
-        //            Debug.WriteLine($"metadata {target:yyyy-MM-dd} {content.Metadata.Resultset.Count}件 delay{wait0}");
-        //            //if (content.Metadata.Resultset.Count == 0)
-        //            //    continue;
-        //        }
-        //    }
-        //    return true;
-        //}
-
-
         private async Task<bool> DownloadTableList(CancellationToken token, DataView dv, bool isArchive) {
             //日付ごとにダウンロードリストを保持するためのテーブル
             DataTable tableDownload = new DataTable();
@@ -494,6 +413,7 @@ namespace Edinet {
             tableDownload.Columns.Add("type", typeof(int));
             tableDownload.Columns.Add("pk", typeof(Int64));
             tableDownload.Columns.Add("info", typeof(string));
+            tableDownload.Columns.Add("docType", typeof(int));
 
             string[] fields = new string[] { "xbrl", "pdf", "attach", "english" };
 
@@ -507,6 +427,10 @@ namespace Edinet {
             Dictionary<int, string>[] dicDownloaded = new Dictionary<int, string>[4];
             for (int i = 0; i < 4; i++)
                 dicDownloaded[i] = new Dictionary<int, string>();
+            
+            Xbrl xbrl = new Xbrl();
+            Dictionary<int, string> dicSummary = new Dictionary<int, string>();
+            List<int> listSummary = new List<int>();
             foreach (DataRowView r in dv) {
                 if (r["status"] != DBNull.Value && r["status"].ToString() == "縦覧終了")
                     continue;
@@ -536,6 +460,24 @@ namespace Edinet {
                             if (!dbdownloaded[i]) {
                                 dicDownloaded[i][id] = $"{docid}_{i + 1}";
                             }
+                            if (i == 0 & (r["docTypeCode"].ToString() == "350" | r["docTypeCode"].ToString() == "360")) {
+                                if (isArchive)
+                                    listSummary.Add(id);
+                                else {
+                                    //string source = await Archive.Zip.ReadXbrlSourceAsync(filepath);
+                                    //xbrl.Load(source); 
+                                    //string summary = xbrl.GetSummaryLargeVolume();
+
+                                    //int index = disclosures.DvDocuments.Find(id);
+                                    //disclosures.DvDocuments[index].BeginEdit();
+                                    //disclosures.DvDocuments[index]["summary"] = summary;
+                                    //disclosures.DvDocuments[index].EndEdit();
+                                    string summary = await disclosures.UpdateSummary(id, false);
+                                    if (summary != null)
+                                        dicSummary[id] = summary;
+                                    InvokeLabel($"{id} summary update");
+                                }
+                            }
                         }
                     }
                 }
@@ -544,6 +486,7 @@ namespace Edinet {
                 if (Array.IndexOf(setting.DocumentTypes, docType) < 0) {
                     continue;
                 }
+
                 int secno = int.Parse(id.ToString().Substring(6, 4));
 
                 debug.ProgramCodeInfo.SetDebugQueue(debug.ProgramCodeInfo.GetInfo());
@@ -562,6 +505,7 @@ namespace Edinet {
                         rdownload["type"] = i + 1;
                         rdownload["pk"] = id * 10 + i + 1;
                         rdownload["info"] = info;
+                        rdownload["docType"] = int.Parse(docType);
                         tableDownload.Rows.Add(rdownload);
                         //nvc.Add(docid, $"{id}\t{i + 1}\t{info}");
                         info = "";
@@ -622,10 +566,14 @@ namespace Edinet {
                 Debug.Write($" {fields[itype - 1]}[{DateTime.Now.TimeOfDay - last:s\\.fff}(delay:{wait})]");
                 last = DateTime.Now.TimeOfDay;
                 string strstatus = "";
-                string filename = $"{docid}_{itype}";
+                //string filename = $"{docid}_{itype}";
 
+                int docType = (int)r["docType"];
+                bool readXbrl = (itype == 1 & docType >= 350 & docType <= 360);
+                if (isArchive & readXbrl)
+                    dicSummary[id]=docid;
                 //if (taskType == TaskType.TodayArchive || totalcount % 5 == 0) {
-                if (i % 5 == 0) {
+                if ((!isArchive & readXbrl) | i % 5 == 0) {
                         System.Diagnostics.Debug.Write("await");
                     //5回ごとにレスポンスチェック
                     debug.ProgramCodeInfo.SetDebugQueue(debug.ProgramCodeInfo.GetInfo());
@@ -655,10 +603,29 @@ namespace Edinet {
                         Debug.Print($"in download 1/5 {response.Exception.Message}");
                         return true;
                     }
-                    string field = fields[itype - 1];
+                    //string field = fields[itype - 1];
                     //string archive = $"{docid}_{itype}";
-                    disclosures.Database.UpdateFilenameOfDisclosure(id, field, filename);
+                    //disclosures.Database.UpdateFilenameOfDisclosure(id, field, filename);
+                    //Dictionary<string, string> dic = new Dictionary<string, string>() { { field, filename } };
                     debug.ProgramCodeInfo.SetDebugQueue(debug.ProgramCodeInfo.GetInfo());
+                    if (readXbrl){
+                        if (!isArchive) {
+                            //string source = await Archive.Zip.ReadXbrlSourceAsync(filepath);
+                            //xbrl.Load(source);
+                            //string summary = xbrl.GetSummaryLargeVolume();
+                            //int index = disclosures.DvDocuments.Find(id);
+                            //disclosures.DvDocuments[index].BeginEdit();
+                            //disclosures.DvDocuments[index]["summary"] = summary;
+                            //disclosures.DvDocuments[index].EndEdit();
+                            string summary = await disclosures.UpdateSummary(id, false);
+                            if (summary != null)
+                                dicSummary[id] = summary;
+                            Debug.Write(" summary");
+                        } else
+                            if (!listSummary.Contains(id))
+                            listSummary.Add(id);
+                    }
+                    //disclosures.Database.UpdateFieldOfDisclosure(id, dic);
                 } else {
                     // * これが一番早い
                     debug.ProgramCodeInfo.SetDebugQueue(debug.ProgramCodeInfo.GetInfo());
@@ -677,6 +644,47 @@ namespace Edinet {
                 debug.ProgramCodeInfo.SetDebugQueue(debug.ProgramCodeInfo.GetInfo());
                 if (!isArchive)
                     InvokeRefresh();
+            }
+            //過去の連続ダウンロードの場合はまとめてsummry更新する
+            if (isArchive) {
+                Stopwatch sw = new Stopwatch();
+                sw.Start();
+                //Xbrl xbrl = new Xbrl();
+                Dictionary<int, string> dic = new Dictionary<int, string>();
+                Archive.Zip zip = new Archive.Zip(setting.Directory);
+                foreach (int id in listSummary) {
+                    //if (token.IsCancellationRequested) {
+                    //    InvokeProgressLabel(0, "Canceled");
+                    //    return;
+                    //}
+                    int index = dv.Find(id);
+                    //int docType = int.Parse(table.Rows[i]["docTypeCode"].ToString());
+                    if (dv[index]["summary"] == DBNull.Value || dv[index]["summary"].ToString() == "") {
+                        string docid = dv[index]["docID"].ToString();
+                        string filepath = zip.Exists(id, docid, 1);
+                        if (filepath != null) {
+                            string source = await Archive.Zip.ReadXbrlSourceAsync(filepath);
+                            xbrl.Load(source);
+                            string summary = xbrl.GetSummaryLargeVolume();
+                            dic[id] = summary;
+                        }
+                    }
+                }
+                sw.Stop();
+                Debug.Write($"UpdateSummary {sw.ElapsedMilliseconds} count:{dic.Count}");
+                if (dic.Count > 0) {
+                    sw.Restart();
+                    disclosures.Database.UpdateFieldOfDisclosure("summary", dic);
+                    sw.Stop();
+                    Debug.Write($" {sw.ElapsedMilliseconds} db updated");
+                }
+
+
+            } else {
+                //disclosures.UpdateSummary(dicSummary);
+                if (dicSummary.Count > 0)
+                    disclosures.Database.UpdateFieldOfDisclosure("summary", dicSummary);
+
             }
             return false;
         }
@@ -897,12 +905,20 @@ namespace Edinet {
                 list.Reverse();
 
             string sort = "id";
+            switch (taskType) {
+                case TaskType.Archive:
+                    sort = setting.SortYear5;
+                    break;
+                case TaskType.DgvArchive:
+                    sort = setting.SortList;
+                    break;
+                case TaskType.TodayArchive:
+                    sort = setting.SortToday;
+                    break;
+            }
             bool cancel = false;
             if (taskType != TaskType.Archive) {
-                if (taskType == TaskType.TodayArchive & !setting.OrderAscendingToday)
-                    sort = "id desc";
-                else if (taskType == TaskType.DgvArchive & !setting.OrderAscendingList)
-                    sort = "id desc";
+
                 DataView dv = new DataView(disclosures.TableDocuments, "", sort, DataViewRowState.CurrentRows);
                 cancel = await DownloadTableList(token, dv, false);
                 if (cancel)
@@ -951,8 +967,6 @@ namespace Edinet {
                         //table = disclosures.Database.ReadDisclosure(DateTime.Now.Date);
                     }
                     debug.ProgramCodeInfo.SetDebugQueue(debug.ProgramCodeInfo.GetInfo());
-                    if (taskType == TaskType.Archive & !setting.OrderAscendingYear5)
-                        sort = "id desc";
                     DataView dv = new DataView(table, "", sort, DataViewRowState.CurrentRows);
                     cancel = await DownloadTableList(token, dv, true);
                     if (cancel)
@@ -975,7 +989,86 @@ namespace Edinet {
             Console.WriteLine("finish background download archive");
         }
 
+        public async Task UpdateSummaryAsync() {
+            Stopwatch sw = new Stopwatch();
+            sw.Start();
+            Xbrl xbrl = new Xbrl();
+            Dictionary<int, string> dic = new Dictionary<int, string>();
+            Archive.Zip zip = new Archive.Zip(setting.Directory);
+            for (int i = 0; i < disclosures.DvDocuments.Count; i++) {
+                bool flag = disclosures.DvDocuments[i]["xbrlFlag"].ToString() == "1";
+                if (flag) {
+                    int docType = int.Parse(disclosures.DvDocuments[i]["docTypeCode"].ToString());
+                    if (docType >= 350 & docType <= 360 & (disclosures.DvDocuments[i]["summary"] == DBNull.Value || disclosures.DvDocuments[i]["summary"].ToString() == "")) {
+                        int id = int.Parse(disclosures.DvDocuments[i]["id"].ToString());
+                        string docid = disclosures.DvDocuments[i]["docID"].ToString();
+                        string filepath = zip.Exists(id, docid, 1);
+                        if (filepath != null) {
+                            string source = await Archive.Zip.ReadXbrlSourceAsync(filepath);
+                            xbrl.Load(source);
+                            string summary = xbrl.GetSummaryLargeVolume();
+                            disclosures.DvDocuments[i].BeginEdit();
+                            disclosures.DvDocuments[i]["summary"] = summary;
+                            disclosures.DvDocuments[i].EndEdit();
+                            dgvList.Refresh();
+                            dic[id] = summary;
+                        }
+                    }
+                }
+            }
+            sw.Stop();
+            Debug.Write($"UpdateSummary {sw.ElapsedMilliseconds} count:{dic.Count}");
+            if (dic.Count > 0) {
+                sw.Restart();
+                disclosures.Database.UpdateFieldOfDisclosure("summary", dic);
+                sw.Stop();
+                Debug.Write($" {sw.ElapsedMilliseconds} db updated");
+            }
+            Debug.WriteLine("");
+        }
 
+        private async Task UpdateSummaryAllAsync(CancellationToken token) {
+            InvokeVisible(true);
+
+            Stopwatch sw = new Stopwatch();
+            sw.Start();
+            DataTable table = disclosures.Database.ReadDisclosure("summary is null and xbrlFlag = '1' and xbrl is not null and (docTypeCode = '350' or docTypeCode = '360')");
+
+            Xbrl xbrl = new Xbrl();
+            Dictionary<int, string> dic = new Dictionary<int, string>();
+            Archive.Zip zip = new Archive.Zip(setting.Directory);
+            for (int i = 0; i < table.Rows.Count; i++) {
+                if (token.IsCancellationRequested) {
+                    InvokeProgressLabel(0, "Canceled");
+                    return;
+                }
+                bool flag = table.Rows[i]["xbrlFlag"].ToString() == "1";
+                if (flag) {
+                    int docType = int.Parse(table.Rows[i]["docTypeCode"].ToString());
+                    if (docType >= 350 & docType <= 360 & (table.Rows[i]["summary"] == DBNull.Value || table.Rows[i]["summary"].ToString() == "")) {
+                        int id = int.Parse(table.Rows[i]["id"].ToString());
+                        string docid = table.Rows[i]["docID"].ToString();
+                        string filepath = zip.Exists(id, docid, 1);
+                        if (filepath != null) {
+                            string source = await Archive.Zip.ReadXbrlSourceAsync(filepath);
+                            xbrl.Load(source);
+                            string summary = xbrl.GetSummaryLargeVolume();
+                            dic[id] = summary;
+                            InvokeProgress(i * 100 / table.Rows.Count);
+                        }
+                    }
+                }
+            }
+            sw.Stop();
+            Debug.Write($"UpdateSummary {sw.ElapsedMilliseconds} count:{dic.Count}");
+            if (dic.Count > 0) {
+                sw.Restart();
+                disclosures.Database.UpdateFieldOfDisclosure("summary", dic);
+                sw.Stop();
+                Debug.Write($" {sw.ElapsedMilliseconds} db updated");
+            }
+            Debug.WriteLine("");
+        }
 
 
     }

@@ -62,6 +62,7 @@
             this.checkOrderYear5 = new System.Windows.Forms.CheckBox();
             this.checkOrderList = new System.Windows.Forms.CheckBox();
             this.checkOrderToday = new System.Windows.Forms.CheckBox();
+            this.labelUserAgent = new System.Windows.Forms.Label();
             this.MenuDocType.SuspendLayout();
             this.groupBox1.SuspendLayout();
             this.MenuTbHoliday.SuspendLayout();
@@ -90,7 +91,7 @@
             // buttonOK
             // 
             this.buttonOK.DialogResult = System.Windows.Forms.DialogResult.OK;
-            this.buttonOK.Location = new System.Drawing.Point(411, 366);
+            this.buttonOK.Location = new System.Drawing.Point(411, 384);
             this.buttonOK.Name = "buttonOK";
             this.buttonOK.Size = new System.Drawing.Size(75, 23);
             this.buttonOK.TabIndex = 3;
@@ -101,7 +102,7 @@
             // buttonCancel
             // 
             this.buttonCancel.DialogResult = System.Windows.Forms.DialogResult.Cancel;
-            this.buttonCancel.Location = new System.Drawing.Point(411, 395);
+            this.buttonCancel.Location = new System.Drawing.Point(411, 413);
             this.buttonCancel.Name = "buttonCancel";
             this.buttonCancel.Size = new System.Drawing.Size(75, 23);
             this.buttonCancel.TabIndex = 4;
@@ -112,7 +113,7 @@
             // label1
             // 
             this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(138, 95);
+            this.label1.Location = new System.Drawing.Point(138, 113);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(161, 12);
             this.label1.TabIndex = 5;
@@ -121,7 +122,9 @@
             // checkTimer
             // 
             this.checkTimer.AutoSize = true;
-            this.checkTimer.Location = new System.Drawing.Point(12, 32);
+            this.checkTimer.Checked = true;
+            this.checkTimer.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.checkTimer.Location = new System.Drawing.Point(12, 50);
             this.checkTimer.Name = "checkTimer";
             this.checkTimer.Size = new System.Drawing.Size(208, 16);
             this.checkTimer.TabIndex = 6;
@@ -131,7 +134,9 @@
             // checkDownload
             // 
             this.checkDownload.AutoSize = true;
-            this.checkDownload.Location = new System.Drawing.Point(37, 75);
+            this.checkDownload.Checked = true;
+            this.checkDownload.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.checkDownload.Location = new System.Drawing.Point(37, 93);
             this.checkDownload.Name = "checkDownload";
             this.checkDownload.Size = new System.Drawing.Size(145, 16);
             this.checkDownload.TabIndex = 7;
@@ -142,7 +147,7 @@
             // 
             this.listDocType.ContextMenuStrip = this.MenuDocType;
             this.listDocType.FormattingEnabled = true;
-            this.listDocType.Location = new System.Drawing.Point(135, 112);
+            this.listDocType.Location = new System.Drawing.Point(135, 130);
             this.listDocType.Name = "listDocType";
             this.listDocType.Size = new System.Drawing.Size(232, 172);
             this.listDocType.TabIndex = 9;
@@ -175,7 +180,7 @@
             this.groupBox1.Controls.Add(this.checkAttach);
             this.groupBox1.Controls.Add(this.checkPdf);
             this.groupBox1.Controls.Add(this.checkXbrl);
-            this.groupBox1.Location = new System.Drawing.Point(37, 97);
+            this.groupBox1.Location = new System.Drawing.Point(37, 115);
             this.groupBox1.Name = "groupBox1";
             this.groupBox1.Size = new System.Drawing.Size(77, 100);
             this.groupBox1.TabIndex = 10;
@@ -205,6 +210,8 @@
             // checkPdf
             // 
             this.checkPdf.AutoSize = true;
+            this.checkPdf.Checked = true;
+            this.checkPdf.CheckState = System.Windows.Forms.CheckState.Checked;
             this.checkPdf.Location = new System.Drawing.Point(6, 34);
             this.checkPdf.Name = "checkPdf";
             this.checkPdf.Size = new System.Drawing.Size(46, 16);
@@ -215,6 +222,8 @@
             // checkXbrl
             // 
             this.checkXbrl.AutoSize = true;
+            this.checkXbrl.Checked = true;
+            this.checkXbrl.CheckState = System.Windows.Forms.CheckState.Checked;
             this.checkXbrl.Location = new System.Drawing.Point(6, 15);
             this.checkXbrl.Name = "checkXbrl";
             this.checkXbrl.Size = new System.Drawing.Size(53, 16);
@@ -224,7 +233,7 @@
             // 
             // tbWatching
             // 
-            this.tbWatching.Location = new System.Drawing.Point(373, 115);
+            this.tbWatching.Location = new System.Drawing.Point(373, 133);
             this.tbWatching.Multiline = true;
             this.tbWatching.Name = "tbWatching";
             this.tbWatching.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
@@ -235,7 +244,7 @@
             // label3
             // 
             this.label3.AutoSize = true;
-            this.label3.Location = new System.Drawing.Point(35, 53);
+            this.label3.Location = new System.Drawing.Point(35, 71);
             this.label3.Name = "label3";
             this.label3.Size = new System.Drawing.Size(181, 12);
             this.label3.TabIndex = 13;
@@ -244,7 +253,7 @@
             // tbHolidayCsv
             // 
             this.tbHolidayCsv.ContextMenuStrip = this.MenuTbHoliday;
-            this.tbHolidayCsv.Location = new System.Drawing.Point(10, 537);
+            this.tbHolidayCsv.Location = new System.Drawing.Point(10, 555);
             this.tbHolidayCsv.Multiline = true;
             this.tbHolidayCsv.Name = "tbHolidayCsv";
             this.tbHolidayCsv.ScrollBars = System.Windows.Forms.ScrollBars.Both;
@@ -269,7 +278,7 @@
             // linkCabinetCsv
             // 
             this.linkCabinetCsv.AutoSize = true;
-            this.linkCabinetCsv.Location = new System.Drawing.Point(10, 611);
+            this.linkCabinetCsv.Location = new System.Drawing.Point(10, 619);
             this.linkCabinetCsv.Name = "linkCabinetCsv";
             this.linkCabinetCsv.Size = new System.Drawing.Size(295, 12);
             this.linkCabinetCsv.TabIndex = 16;
@@ -280,7 +289,7 @@
             // label4
             // 
             this.label4.AutoSize = true;
-            this.label4.Location = new System.Drawing.Point(14, 350);
+            this.label4.Location = new System.Drawing.Point(14, 368);
             this.label4.Name = "label4";
             this.label4.Size = new System.Drawing.Size(53, 12);
             this.label4.TabIndex = 17;
@@ -288,7 +297,7 @@
             // 
             // buttonHolidayConvert
             // 
-            this.buttonHolidayConvert.Location = new System.Drawing.Point(118, 508);
+            this.buttonHolidayConvert.Location = new System.Drawing.Point(118, 526);
             this.buttonHolidayConvert.Name = "buttonHolidayConvert";
             this.buttonHolidayConvert.Size = new System.Drawing.Size(30, 23);
             this.buttonHolidayConvert.TabIndex = 19;
@@ -299,7 +308,7 @@
             // label5
             // 
             this.label5.AutoSize = true;
-            this.label5.Location = new System.Drawing.Point(237, 53);
+            this.label5.Location = new System.Drawing.Point(237, 71);
             this.label5.Name = "label5";
             this.label5.Size = new System.Drawing.Size(179, 12);
             this.label5.TabIndex = 22;
@@ -307,7 +316,7 @@
             // 
             // label6
             // 
-            this.label6.Location = new System.Drawing.Point(305, 508);
+            this.label6.Location = new System.Drawing.Point(305, 526);
             this.label6.Name = "label6";
             this.label6.Size = new System.Drawing.Size(203, 120);
             this.label6.TabIndex = 23;
@@ -316,7 +325,7 @@
             // 
             // numericInterval
             // 
-            this.numericInterval.Location = new System.Drawing.Point(162, 50);
+            this.numericInterval.Location = new System.Drawing.Point(162, 68);
             this.numericInterval.Maximum = new decimal(new int[] {
             480,
             0,
@@ -345,7 +354,7 @@
             0,
             0,
             65536});
-            this.numericWait1.Location = new System.Drawing.Point(365, 50);
+            this.numericWait1.Location = new System.Drawing.Point(365, 68);
             this.numericWait1.Maximum = new decimal(new int[] {
             10,
             0,
@@ -373,7 +382,7 @@
             0,
             0,
             65536});
-            this.numericWait2.Location = new System.Drawing.Point(415, 51);
+            this.numericWait2.Location = new System.Drawing.Point(415, 69);
             this.numericWait2.Maximum = new decimal(new int[] {
             20,
             0,
@@ -399,7 +408,7 @@
             this.date,
             this.name});
             this.listHoliday.Cursor = System.Windows.Forms.Cursors.Default;
-            this.listHoliday.Location = new System.Drawing.Point(12, 366);
+            this.listHoliday.Location = new System.Drawing.Point(12, 384);
             this.listHoliday.MultiSelect = false;
             this.listHoliday.Name = "listHoliday";
             this.listHoliday.Size = new System.Drawing.Size(274, 136);
@@ -420,7 +429,7 @@
             // label7
             // 
             this.label7.AutoSize = true;
-            this.label7.Location = new System.Drawing.Point(371, 95);
+            this.label7.Location = new System.Drawing.Point(371, 113);
             this.label7.Name = "label7";
             this.label7.Size = new System.Drawing.Size(53, 12);
             this.label7.TabIndex = 29;
@@ -429,7 +438,7 @@
             // label2
             // 
             this.label2.AutoSize = true;
-            this.label2.Location = new System.Drawing.Point(12, 291);
+            this.label2.Location = new System.Drawing.Point(12, 309);
             this.label2.Name = "label2";
             this.label2.Size = new System.Drawing.Size(130, 36);
             this.label2.TabIndex = 30;
@@ -440,7 +449,7 @@
             this.checkOrderYear5.AutoSize = true;
             this.checkOrderYear5.Checked = true;
             this.checkOrderYear5.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.checkOrderYear5.Location = new System.Drawing.Point(161, 313);
+            this.checkOrderYear5.Location = new System.Drawing.Point(161, 331);
             this.checkOrderYear5.Name = "checkOrderYear5";
             this.checkOrderYear5.Size = new System.Drawing.Size(138, 16);
             this.checkOrderYear5.TabIndex = 31;
@@ -450,7 +459,7 @@
             // checkOrderList
             // 
             this.checkOrderList.AutoSize = true;
-            this.checkOrderList.Location = new System.Drawing.Point(161, 333);
+            this.checkOrderList.Location = new System.Drawing.Point(161, 351);
             this.checkOrderList.Name = "checkOrderList";
             this.checkOrderList.Size = new System.Drawing.Size(152, 16);
             this.checkOrderList.TabIndex = 32;
@@ -460,18 +469,28 @@
             // checkOrderToday
             // 
             this.checkOrderToday.AutoSize = true;
-            this.checkOrderToday.Location = new System.Drawing.Point(161, 291);
+            this.checkOrderToday.Location = new System.Drawing.Point(161, 309);
             this.checkOrderToday.Name = "checkOrderToday";
             this.checkOrderToday.Size = new System.Drawing.Size(94, 16);
             this.checkOrderToday.TabIndex = 33;
             this.checkOrderToday.Text = "当日分の書類";
             this.checkOrderToday.UseVisualStyleBackColor = true;
             // 
+            // labelUserAgent
+            // 
+            this.labelUserAgent.AutoSize = true;
+            this.labelUserAgent.Location = new System.Drawing.Point(36, 31);
+            this.labelUserAgent.Name = "labelUserAgent";
+            this.labelUserAgent.Size = new System.Drawing.Size(59, 12);
+            this.labelUserAgent.TabIndex = 34;
+            this.labelUserAgent.Text = "UserAgent";
+            // 
             // SettingDialog
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(584, 655);
+            this.Controls.Add(this.labelUserAgent);
             this.Controls.Add(this.checkOrderToday);
             this.Controls.Add(this.checkOrderList);
             this.Controls.Add(this.checkOrderYear5);
@@ -552,5 +571,6 @@
         private System.Windows.Forms.CheckBox checkOrderYear5;
         private System.Windows.Forms.CheckBox checkOrderList;
         private System.Windows.Forms.CheckBox checkOrderToday;
+        private System.Windows.Forms.Label labelUserAgent;
     }
 }
