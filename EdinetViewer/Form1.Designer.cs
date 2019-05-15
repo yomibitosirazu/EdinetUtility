@@ -44,6 +44,7 @@
             this.MenuNotFinalList = new System.Windows.Forms.ToolStripMenuItem();
             this.MenuSearch = new System.Windows.Forms.ToolStripMenuItem();
             this.MenuApiHistory = new System.Windows.Forms.ToolStripMenuItem();
+            this.MenuImprotDownloaded = new System.Windows.Forms.ToolStripMenuItem();
             this.statusStrip1 = new System.Windows.Forms.StatusStrip();
             this.ProgressBar1 = new System.Windows.Forms.ToolStripProgressBar();
             this.StatusLabel1 = new System.Windows.Forms.ToolStripStatusLabel();
@@ -106,6 +107,7 @@
             this.dgvList.CellFormatting += new System.Windows.Forms.DataGridViewCellFormattingEventHandler(this.DataGridView_CellFormatting);
             this.dgvList.CurrentCellChanged += new System.EventHandler(this.DgvList_CurrentCellChanged);
             this.dgvList.DataError += new System.Windows.Forms.DataGridViewDataErrorEventHandler(this.DataGridView_DataError);
+            this.dgvList.DoubleClick += new System.EventHandler(this.DgvList_DoubleClick);
             // 
             // dgvContents
             // 
@@ -179,21 +181,22 @@
             this.MenuBackground,
             this.MenuNotFinalList,
             this.MenuSearch,
+            this.MenuImprotDownloaded,
             this.MenuApiHistory});
             this.MenuToolbar.Name = "contextMenuStrip1";
-            this.MenuToolbar.Size = new System.Drawing.Size(206, 136);
+            this.MenuToolbar.Size = new System.Drawing.Size(293, 180);
             // 
             // MenuSetting
             // 
             this.MenuSetting.Name = "MenuSetting";
-            this.MenuSetting.Size = new System.Drawing.Size(205, 22);
+            this.MenuSetting.Size = new System.Drawing.Size(292, 22);
             this.MenuSetting.Text = "設定";
             this.MenuSetting.Click += new System.EventHandler(this.Menu_Click);
             // 
             // MenuEdinet
             // 
             this.MenuEdinet.Name = "MenuEdinet";
-            this.MenuEdinet.Size = new System.Drawing.Size(205, 22);
+            this.MenuEdinet.Size = new System.Drawing.Size(292, 22);
             this.MenuEdinet.Text = "Edinetトップページを表示";
             this.MenuEdinet.Click += new System.EventHandler(this.Menu_Click);
             // 
@@ -207,7 +210,7 @@
             this.MenuIEdinetCodeImport,
             this.MenuSummary});
             this.MenuBackground.Name = "MenuBackground";
-            this.MenuBackground.Size = new System.Drawing.Size(205, 22);
+            this.MenuBackground.Size = new System.Drawing.Size(292, 22);
             this.MenuBackground.Text = "バックグラウンドで実行";
             // 
             // MenuPastList
@@ -264,23 +267,31 @@
             // MenuNotFinalList
             // 
             this.MenuNotFinalList.Name = "MenuNotFinalList";
-            this.MenuNotFinalList.Size = new System.Drawing.Size(205, 22);
+            this.MenuNotFinalList.Size = new System.Drawing.Size(292, 22);
             this.MenuNotFinalList.Text = "５年分の未取得リスト一覧";
             this.MenuNotFinalList.Click += new System.EventHandler(this.Menu_Click);
             // 
             // MenuSearch
             // 
             this.MenuSearch.Name = "MenuSearch";
-            this.MenuSearch.Size = new System.Drawing.Size(205, 22);
+            this.MenuSearch.Size = new System.Drawing.Size(292, 22);
             this.MenuSearch.Text = "取得済みメタデータ検索";
             this.MenuSearch.Click += new System.EventHandler(this.Menu_Click);
             // 
             // MenuApiHistory
             // 
             this.MenuApiHistory.Name = "MenuApiHistory";
-            this.MenuApiHistory.Size = new System.Drawing.Size(205, 22);
+            this.MenuApiHistory.Size = new System.Drawing.Size(292, 22);
             this.MenuApiHistory.Text = "APIリクエスト履歴を確認";
             this.MenuApiHistory.Click += new System.EventHandler(this.Menu_Click);
+            // 
+            // MenuImprotDownloaded
+            // 
+            this.MenuImprotDownloaded.Name = "MenuImprotDownloaded";
+            this.MenuImprotDownloaded.Size = new System.Drawing.Size(292, 22);
+            this.MenuImprotDownloaded.Text = "ウェブページからダウンロードした書類をインポート";
+            this.MenuImprotDownloaded.Visible = false;
+            this.MenuImprotDownloaded.Click += new System.EventHandler(this.Menu_Click);
             // 
             // statusStrip1
             // 
@@ -571,6 +582,7 @@
         private System.Windows.Forms.ToolStripMenuItem MenuDownloadDgvList;
         private System.Windows.Forms.ToolStripMenuItem MenuNotFinalList;
         private System.Windows.Forms.ToolStripMenuItem MenuSummary;
+        private System.Windows.Forms.ToolStripMenuItem MenuImprotDownloaded;
     }
 }
 

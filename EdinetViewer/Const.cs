@@ -176,6 +176,47 @@ namespace Edinet {
             }
         }
 
+        private static Dictionary<string, string> context;
+        public static Dictionary<string, string> Context {
+            get {
+                if(context == null)
+                    context = new Dictionary<string, string>() {
+                        { "FilingDateInstant","提出日時点"},
+                        { "CurrentYearInstant","当期連結時点"},
+                        { "CurrentYearDuration","当期連結期間"},
+                        { "CurrentYearInstant_NonConsolidatedMember","当期個別時点"},
+                        { "CurrentYearDuration_NonConsolidatedMember","当期個別期間"},
+                        { "Prior1YearInstant","前期連結時点"},
+                        { "Prior1YearDuration","前期連結期間"},
+                        { "Prior1YearInstant_NonConsolidatedMember","前期個別時点"},
+                        { "Prior1YearDuration_NonConsolidatedMember","前期個別期間"},
+                        { "CurrentQuarterInstant","当四半期会計期間連結時点"},
+                        { "CurrentQuarterDuration","当四半期会計期間連結期間"},
+                        { "CurrentYTDDuration","当四半期累計期間連結期間"},
+                        { "CurrentQuarterInstant_NonConsolidatedMember","当四半期会計期間個別時点"},
+                        { "CurrentQuarterDuration_NonConsolidatedMember","当四半期会計期間個別期間"},
+                        { "CurrentYTDDuration_NonConsolidatedMember","当四半期累計期間個別期間"},
+                        { "Prior1QuarterInstant","前年度同四半期会計期間連結時点"},
+                        { "Prior1QuarterDuration","前年度同四半期会計期間連結期間"},
+                        { "Prior1YTDDuration","前年度同四半期累計期間連結期間"},
+                        { "Prior1QuarterInstant_NonConsolidatedMember","前年度同四半期会計期間個別時点"},
+                        { "Prior1QuarterDuration_NonConsolidatedMember","前年度同四半期会計期間個別期間"},
+                        { "Prior1YTDDuration_NonConsolidatedMember","前年度同四半期累計期間個別期間"},
+                        { "InterimInstant","当中間期連結時点"},
+                        { "InterimDuration","当中間期連結期間"},
+                        { "InterimInstant_NonConsolidatedMember","当中間期個別時点"},
+                        { "InterimDuration_NonConsolidatedMember","当中間期個別期間"},
+                        { "Prior1InterimInstant","前中間期連結時点"},
+                        { "Prior1InterimDuration","前中間期連結期間"},
+                        { "Prior1InterimInstant_NonConsolidatedMember","前中間期個別時点"},
+                        { "Prior1InterimDuration_NonConsolidatedMember","前中間期個別期間"},
+                        { "Prior2YearInstant","前々期連結時点"},
+                        { "Prior2YearInstant_NonConsolidatedMember","前々期個別時点"},
+                    };
+                return context;
+            }
+        }
+
 
     }
 }

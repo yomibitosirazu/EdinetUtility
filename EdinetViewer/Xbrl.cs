@@ -95,7 +95,7 @@ namespace Edinet {
             return table;
         }
 
-
+        private EdinetViewer.ReportTable reportViewer;
         public string GetSummaryLargeVolume() {
             Dictionary<string, string> dic = new Dictionary<string, string>();
             foreach (XmlNode element in NodeList) {
@@ -188,6 +188,201 @@ namespace Edinet {
                 sb.Append($"{dic["事由"]} ");
             return sb.ToString();
         }
+
+
+        public string GetSummaryQuaterResult() {
+            DataTable table = new DataTable();
+            //table.Columns.Add("period", typeof(string));
+            //table.Columns.Add("start", typeof(DateTime));
+            //table.Columns.Add("end", typeof(DateTime));
+            //table.Columns.Add("sales", typeof(decimal));
+            //table.Columns.Add("saleschange", typeof(decimal));
+            //table.Columns.Add("opeincome", typeof(decimal));
+            //table.Columns.Add("opeincomechange", typeof(decimal));
+            //table.Columns.Add("ordinary", typeof(decimal));
+            //table.Columns.Add("ordinarychange", typeof(decimal));
+            //table.Columns.Add("netincome", typeof(decimal));
+            //table.Columns.Add("netincomechange", typeof(decimal));
+            //table.Columns.Add("eps", typeof(decimal));
+            //table.Columns.Add("epsadjusted", typeof(decimal));
+            //table.Columns.Add("totalasset", typeof(decimal));
+            //table.Columns.Add("netasset", typeof(decimal));
+            //table.Columns.Add("equityratio", typeof(decimal));
+            table.Columns.Add("no", typeof(int));
+            table.Columns.Add("element", typeof(string));
+            table.Columns.Add("context", typeof(string));
+            table.Columns.Add("sign", typeof(int));
+            table.Columns.Add("value", typeof(string));
+            table.Columns.Add("label", typeof(string));
+            table.Columns.Add("jcontext", typeof(string));
+            table.Columns.Add("prefix", typeof(string));
+            table.Columns.Add("attributes", typeof(string));
+
+            Dictionary<string, string> dic = new Dictionary<string, string>();
+            string[] elements = "entity,NumberOfSubmissionDEI,DocumentTitleCoverPage,FilingDateCoverPage,QuarterlyAccountingPeriodCoverPage,CompanyNameCoverPage,SecurityCodeDEI,AccountingStandardsDEI,WhetherConsolidatedFinancialStatementsArePreparedDEI,CurrentFiscalYearStartDateDEI,CurrentPeriodEndDateDEI,TypeOfCurrentPeriodDEI,CurrentFiscalYearEndDateDEI,PreviousFiscalYearStartDateDEI,ComparativePeriodEndDateDEI,PreviousFiscalYearEndDateDEI,NextFiscalYearStartDateDEI,EndDateOfQuarterlyOrSemiAnnualPeriodOfNextFiscalYearDEI,AmendmentFlagDEI,IdentificationOfDocumentSubjectToAmendmentDEI,ReportAmendmentFlagDEI,XBRLAmendmentFlagDEI".Split(',');
+            Dictionary<string, string> dicId = new Dictionary<string, string>();
+            bool skip = false;
+            DataTable table2 = new DataTable();
+
+            StringBuilder sb = new StringBuilder();
+            if (NodeList != null) {
+                List<string> listContext = new List<string>();
+                int i = 0;
+                foreach (XmlNode node in NodeList) {
+                    string[] names = node.Name.Split(':');
+                    if (names.Length > 1) {
+                        string element = names[1];
+
+                        string contextRef = "";
+                        int sign = 1;
+                        StringBuilder attributes = new StringBuilder();
+
+                        foreach (XmlAttribute attribute in node.Attributes) {
+                            switch (attribute.Name) {
+                                case "contextRef":
+                                    contextRef = attribute.InnerText;
+                                    break;
+                                case "sign":
+                                    if (attribute.InnerText.Trim() == "-")
+                                        sign = -1;
+                                    break;
+                                case "id":
+                                    dicId[attribute.InnerText] = node.InnerText;
+                                    break;
+                                default:
+                                    attributes.AppendFormat("{0}={1}", attribute.Name, attribute.InnerText);
+                                    break;
+                            }
+                        }
+                        string value = node.InnerText.Replace("\n", "").Replace("\r", "");
+                        string label = Taxonomy.DicTaxonomy.ContainsKey(names[1]) ? Taxonomy.DicTaxonomy[names[1]] : "";
+                        if (element == "entity")
+                            dic["entity"] = node.InnerText;
+                        if (element != "" & contextRef != "") {
+                            i++;
+                            //if (contextRef == "FilingDateInstant")
+                            //    Console.WriteLine($"{element}({label})\t{contextRef}\t{sign} {value}");
+                            if (Array.IndexOf(elements, element) > -1)
+                                dic[element] = value;
+                            if (element == "DocumentTitleCoverPage")
+                                skip = true;
+                            if (skip)
+                                continue;
+                            DataRow r = table.NewRow();
+                            r["no"] = i;
+                            r["element"] = element;
+                            r["label"] = label;
+                            r["prefix"] = names[0];
+                            if (sign == -1) {
+                                r["sign"] = -1;
+                                value.Insert(0, "-");
+                            }
+                            if (decimal.TryParse(value, out decimal val))
+                                r["value"] = val;
+                            else
+                                r["value"] = value;
+                            r["context"] = contextRef;
+                            if (!listContext.Contains(contextRef))
+                                listContext.Add(contextRef);
+                            if (Const.Context.ContainsKey(contextRef))
+                                r["jcontext"] = Const.Context[contextRef];
+                            else {
+                                if (Const.Context.ContainsKey(contextRef.Split('_')[0]))
+                                    r["jcontext"] = Const.Context[contextRef.Split('_')[0]];
+                                else {
+                                    Console.WriteLine(contextRef);
+                                    bool success = false;
+                                    //string[] patterns = new string[] { "Prior\\dYearDuration", "Prior\\dYearInstant", "Prior\\dYear", "Prior\\dInterim", "Prior\\dYTD", "Prior\\dQuarter" };
+                                    string[] patterns = new string[] { "Prior\\dYear(Duration|Instant)", "Prior\\dYear(Duration|Instant)", "Prior\\dYTD(Duration|Instant)" };
+                                    foreach (string pattern in patterns) {
+                                        if( System.Text.RegularExpressions.Regex.Match(contextRef, pattern).Success) {
+                                            r["jcontext"] = contextRef;
+                                            success = true;
+                                            break;
+                                        }
+
+                                    }
+                                    if (!success) {
+
+                                    }
+                                }
+                            }
+                            r["attributes"] = attributes.ToString();
+                            table.Rows.Add(r);
+                        }
+                    }
+                }
+                Dictionary<string, string> dicId2 = new Dictionary<string, string>();
+                foreach(string key in dicId.Keys) {
+                    if (dic.ContainsKey("entity"))
+                        dicId2[key] = dicId[key].Replace(dic["entity"], "");
+                }
+                Dictionary<string, string> columns = new Dictionary<string, string>() { { "contextRef", "contextRef" }, { "期間", "期間" } };
+                DataView dv = new DataView(table, "", "", DataViewRowState.CurrentRows);
+                table2.Columns.Add("contextRef", typeof(string));
+                table2.Columns.Add("期間", typeof(string));
+                foreach (string context in listContext) {
+                    if (context == "FilingDateInstant")
+                        continue;
+                    //if (!Const.Context.ContainsKey(context))
+                    //    continue;
+                        dv.RowFilter = $"context = '{context}'";
+                    foreach(DataRowView r in dv) {
+                        string field = r["element"].ToString();
+                        string value = r["value"].ToString();
+                        if (value != "") {
+                            if (!table2.Columns.Contains(field)) {
+                                table2.Columns.Add(field, typeof(string));
+                                columns.Add(field, r["label"].ToString());
+                            }
+                        }
+                    }
+                    DataRow r2 = table2.NewRow();
+                    r2["contextRef"] = context;
+                    if (dicId2.ContainsKey(context))
+                        r2["期間"] = dicId2[context];
+                    else
+                        r2["期間"] = Const.Context[context];
+                    foreach (DataRowView r in dv) {
+                        string value = r["value"].ToString();
+                        if (value != "") {
+                            string field = r["element"].ToString();
+                            r2[field] = r["value"].ToString();
+                        }
+                    }
+                    table2.Rows.Add(r2);
+                }
+
+                sb.Append("<table><tr>");
+                for (int j = 0; j < table2.Columns.Count; j++)
+                    sb.Append($"<th>{table2.Columns[j].ColumnName}</th>");
+                sb.AppendLine("</tr>");
+                sb.Append("<tr>");
+                for (int j = 0; j < table2.Columns.Count; j++)
+                    sb.Append($"<th>{columns[table2.Columns[j].ColumnName]}</th>");
+                sb.AppendLine("</tr>");
+                foreach (DataRow r in table2.Rows) {
+                    sb.Append($"<tr>");
+                    for (int j = 0; j < table2.Columns.Count; j++)
+                        sb.Append($"<td>{r[j].ToString()}</td>");
+                    sb.AppendLine("</tr>");
+                }
+
+                sb.Append("</table>");
+
+                if (reportViewer == null) {
+                    reportViewer = new EdinetViewer.ReportTable();
+                    reportViewer.Show();
+                }
+                reportViewer.ChangeSource(table2, columns, dic);
+            }
+
+
+
+
+            return sb.ToString();
+        }
+
 
     }
 
@@ -381,6 +576,60 @@ namespace Archive {
             return null;
         }
     }
+
+    public class Downloaded {
+        private readonly string filepath;
+        public Downloaded(string zipfile) {
+            filepath = zipfile;
+        }
+        public void Import() {
+            //using (ZipArchive archive = ZipFile.Open(filepath, ZipArchiveMode.Read)) {
+            //    //foreach (ZipArchiveEntry entry in archive.Entries) {
+            //    //    FileInfo inf = new FileInfo(entry.FullName);
+            //    //    Console.WriteLine(inf.Name);
+            //    //    using (ZipArchive entryarchive = entry.Archive) {
+            //    //        entryarchive.ExtractToDirectory(@"d:\data\temp");
+            //    //    }
+
+            //    //    //if (inf.FullName.Contains("PublicDoc") && inf.Extension == ".xbrl") {
+            //    //    //    using (Stream stream2 = entry.Open()) {
+            //    //    //        using (StreamReader reader = new StreamReader(stream2, Encoding.UTF8)) {
+            //    //    //            return reader.ReadToEnd();
+            //    //    //        }
+            //    //    //    }
+            //    //    //}
+            //    //}
+
+            //}
+
+
+
+            //if (File.Exists(filepath)) {
+            using (FileStream fs = new FileStream(filepath, FileMode.Open, FileAccess.Read)) {
+                using (MemoryStream stream = new MemoryStream()) {
+                    fs.CopyTo(stream);
+                    using (ZipArchive archive = new ZipArchive(stream)) {
+                        foreach (ZipArchiveEntry entry in archive.Entries) {
+                            Console.WriteLine(entry.Name);
+                            //FileInfo inf = new FileInfo(entry.FullName);
+
+                            //if (inf.FullName.Contains("PublicDoc") && inf.Extension == ".xbrl") {
+                            //    using (Stream stream2 = entry.Open()) {
+                            //        using (StreamReader reader = new StreamReader(stream2, Encoding.UTF8)) {
+                            //            return reader.ReadToEnd();
+                            //        }
+                            //    }
+                            //}
+                        }
+                    }
+                }
+            }
+        }
+    
+    }
+
+
+
 }
 
 

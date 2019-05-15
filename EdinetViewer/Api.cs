@@ -13,7 +13,7 @@ namespace Edinet {
         protected static HttpClient client;
         //private static CookieContainer cc;
         //private static HttpClientHandler handler;
-        public HttpRequest() {
+        public HttpRequest(string useragent) {
             if (client == null) {
                 client = new HttpClient();
                 //cc = new CookieContainer();
@@ -21,11 +21,11 @@ namespace Edinet {
                 //client = new HttpClient(handler);
                 //handler.CookieContainer = cc;
                 //client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 6.3; Trident/7.0; rv:11.0) like Gecko");
-                string useragent = $"EdinetViewer CSharp";
-                if ((Environment.MachineName == "H270M" | Environment.MachineName == "PD-1712") && File.Exists("contact.txt")) {
-                    string contact = File.ReadAllText("contact.txt");
-                    useragent += $"({contact})";
-                }
+                //string useragent = $"EdinetViewer CSharp";
+                //if ((Environment.MachineName == "H270M" | Environment.MachineName == "PD-1712") && File.Exists("contact.txt")) {
+                //    string contact = File.ReadAllText("contact.txt");
+                //    useragent += $"({contact})";
+                //}
                 //client.DefaultRequestHeaders.Add("User-Agent", useragent);
                 //refer to https://kagasu.hatenablog.com/entry/2017/08/10/050726
                 client.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", useragent);
@@ -41,7 +41,10 @@ namespace Edinet {
         }
     }
 
+    public enum ResponseResult { Invalid, Success = 200, Zero = 201, SameProcess = 202, SameCount = 203, Timeout = 504, BadRequest = 400, NotFound = 404, ServerError = 500, Exception = 1001 };
+
     public class HttpResponse {
+        public ResponseResult ReturnResult { get; set; }
         public MediaTypeHeaderValue HeaderContentType { get; protected set; }
         public Nullable<HttpStatusCode> HttpStatusCode { get; protected set; }
         public Exception Exception { get; protected set; }
@@ -54,24 +57,30 @@ namespace Edinet {
         }
         public void Update(Exception ex) {
             Exception = ex;
-            Debug.WriteLine($"{DateTime.Now.TimeOfDay}  {ex.Message}");
+            Debug.WriteLine($"Response Exception {DateTime.Now.TimeOfDay}  {ex.Message}");
+            ReturnResult = ResponseResult.Exception;
         }
         public void Update(TaskCanceledException ex) {
             Exception = ex;
             HttpStatusCode = System.Net.HttpStatusCode.RequestTimeout;
             Debug.WriteLine($"{DateTime.Now.TimeOfDay} Timeout {ex.Message}");
+            ReturnResult = ResponseResult.Timeout;
         }
     }
+
     public class ApiResponse : HttpResponse {
         public Json.StatusCode EdinetStatusCode { get; protected set; }
         public void Update(Json.StatusCode edinetstatuscode, Nullable<HttpStatusCode> status, MediaTypeHeaderValue contentType) {
             base.Update(status, contentType);
             EdinetStatusCode = edinetstatuscode;
+            //if (edinetstatuscode.Status != "200")
+                this.ReturnResult = (ResponseResult)Enum.ToObject(typeof(ResponseResult), int.Parse(edinetstatuscode.Status));
         }
     }
     public class JsonResponse : ApiResponse {
         public Json.ApiResponse Json { get; private set; }
         public void Update(Json.ApiResponse json, Nullable<HttpStatusCode> status, MediaTypeHeaderValue contentType) {
+            
             base.Update(json.Status, status, contentType);
             Json = json;
         }
@@ -107,7 +116,7 @@ namespace Edinet {
         public string Version { get; set; }
 
         private readonly string directory;
-        public RequestDocument(string dir, string version) : base() {
+        public RequestDocument(string dir, string version, string useragent) : base(useragent) {
             Version = version;
             directory = dir;
             //response = new HttpResponse();
@@ -115,138 +124,158 @@ namespace Edinet {
         }
 
 
-        public async Task<JsonResponse> Request(DateTime date, RequestType type) {
+        public async Task<JsonResponse> Request(DateTime date, RequestType type, int retry) {
             JsonResponse response = new JsonResponse();
             //JsonDeserializer json = null;
             string url = string.Format("/api/{0}/documents.json?date={1:yyyy-MM-dd}{2}", Version, date, type == RequestType.List ? "&type=2" : "");
-            try {
-                debug.ProgramCodeInfo.SetDebugQueue(debug.ProgramCodeInfo.GetInfo());
-                using (HttpResponseMessage res = await client.GetAsync(url)) {
-                    debug.ProgramCodeInfo.SetDebugQueue(debug.ProgramCodeInfo.GetInfo());
-                    Stream stream = await res.Content.ReadAsStreamAsync();
-                    JsonDeserializer json = new JsonDeserializer(stream);
-                    response.Update(json.Response, res.StatusCode, res.Content.Headers.ContentType);
+            int i = 0;
+            do {
+                if (i > 0) {
+                    Debug.Write($"retry Request[{i}] ");
+                    await Task.Delay(2000);
+                }
+                try {
+                    debug.ProgramCodeInfo.SetDebugQueue();
+                    using (HttpResponseMessage res = await client.GetAsync(url)) {
+                        debug.ProgramCodeInfo.SetDebugQueue();
+                        Stream stream = await res.Content.ReadAsStreamAsync();
+                        JsonDeserializer json = new JsonDeserializer(stream);
+                        response.Update(json.Response, res.StatusCode, res.Content.Headers.ContentType);
+#pragma warning disable CS4014
+                        SaveLog(GetLog(response, type, date));
+#pragma warning restore CS4014
+                        stream.Dispose();
+                        return response;
+                    }
+                } catch (TaskCanceledException ex) {
+                    //ServerTimeout
+                    response.Update(ex);
 #pragma warning disable CS4014
                     SaveLog(GetLog(response, type, date));
 #pragma warning restore CS4014
-                    stream.Dispose();
+                    debug.ProgramCodeInfo.SetDebugQueue();
+                } catch (Exception ex) {
+                    response.Update(ex);
+#pragma warning disable CS4014
+                    SaveLog(GetLog(response, type, date));
+#pragma warning restore CS4014
+                    debug.ProgramCodeInfo.SetDebugQueue();
+                    return response;
                 }
-            }catch(TaskCanceledException ex) {
-                response.Update(ex);
-#pragma warning disable CS4014
-                SaveLog(GetLog(response, type, date));
-#pragma warning restore CS4014
-                debug.ProgramCodeInfo.SetDebugQueue(debug.ProgramCodeInfo.GetInfo());
-            } catch (Exception ex) {
-                response.Update(ex);
-#pragma warning disable CS4014
-                SaveLog(GetLog(response, type, date));
-#pragma warning restore CS4014
-                debug.ProgramCodeInfo.SetDebugQueue(debug.ProgramCodeInfo.GetInfo());
-            }
-            debug.ProgramCodeInfo.SetDebugQueue(debug.ProgramCodeInfo.GetInfo());
+                debug.ProgramCodeInfo.SetDebugQueue();
+                i++;
+            } while (i<=retry);
+
             return response;
         }
 
-        public async Task<ArchiveResponse> DownloadArchive(string docid, DocumentType type) {
+        public async Task<ArchiveResponse> DownloadArchive(string docid, DocumentType type, int retry) {
             ArchiveResponse response = new ArchiveResponse();
             string url = string.Format("/api/{0}/documents/{1}?type={2}", Version, docid, (int)type);
-            try {
-                debug.ProgramCodeInfo.SetDebugQueue(debug.ProgramCodeInfo.GetInfo());
-                using (HttpResponseMessage res = await client.GetAsync(url)) {
-                    debug.ProgramCodeInfo.SetDebugQueue(debug.ProgramCodeInfo.GetInfo());
-                    string filename = res.Content.Headers.ContentDisposition.FileName.Replace("\"", "");
-                    //string filename = $"{docid}_{(int)type}";
-                    System.Net.Http.Headers.MediaTypeHeaderValue contenttype = res.Content.Headers.ContentType;
-                    if (filename == "404.json") {
-                        filename = url;
-                    }
+            int i = 0;
+            do {
+                if (i > 0) {
+                    Debug.Write($"retry Download[{i}] ");
+                    await Task.Delay(2000);
+                }
+                try {
+                    debug.ProgramCodeInfo.SetDebugQueue();
+                    using (HttpResponseMessage res = await client.GetAsync(url)) {
+                        debug.ProgramCodeInfo.SetDebugQueue();
+                        string filename = res.Content.Headers.ContentDisposition.FileName.Replace("\"", "");
+                        //string filename = $"{docid}_{(int)type}";
+                        System.Net.Http.Headers.MediaTypeHeaderValue contenttype = res.Content.Headers.ContentType;
+                        if (filename == "404.json") {
+                            filename = url;
+                        }
 #pragma warning disable CS4014
-                    SaveLog(GetLog(res.StatusCode, RequestType.Archive, contenttype, filename));
+                        SaveLog(GetLog(res.StatusCode, RequestType.Archive, contenttype, filename));
 #pragma warning restore CS4014
-                    using (Stream stream = await res.Content.ReadAsStreamAsync()) {
-                        using (MemoryStream ms = new MemoryStream()) {
-                            stream.CopyTo(ms);
-                            byte[] buffer = ms.ToArray();
-                            stream.Flush();
-                            response.Update(buffer, res.StatusCode, filename, contenttype);
-                            debug.ProgramCodeInfo.SetDebugQueue(debug.ProgramCodeInfo.GetInfo());
-                            
-                            return response;
+                        using (Stream stream = await res.Content.ReadAsStreamAsync()) {
+                            using (MemoryStream ms = new MemoryStream()) {
+                                stream.CopyTo(ms);
+                                byte[] buffer = ms.ToArray();
+                                stream.Flush();
+                                response.Update(buffer, res.StatusCode, filename, contenttype);
+                                debug.ProgramCodeInfo.SetDebugQueue();
+                                return response;
+                            }
                         }
                     }
+                } catch (TaskCanceledException ex) {
+                    response.Update(ex);
+#pragma warning disable CS4014
+                    SaveLog(GetLog(response));
+#pragma warning restore CS4014
+                    debug.ProgramCodeInfo.SetDebugQueue();
+                } catch (Exception ex) {
+                    response.Update(ex);
+#pragma warning disable CS4014
+                    SaveLog(GetLog(response));
+#pragma warning restore CS4014
+                    debug.ProgramCodeInfo.SetDebugQueue();
+                    return response;
                 }
-            } catch (TaskCanceledException ex) {
-                response.Update(ex);
-#pragma warning disable CS4014
-                SaveLog(GetLog(response));
-#pragma warning restore CS4014
-                debug.ProgramCodeInfo.SetDebugQueue(debug.ProgramCodeInfo.GetInfo());
-                return response;
-            } catch (Exception ex) {
-                response.Update(ex);
-#pragma warning disable CS4014
-                SaveLog(GetLog(response));
-#pragma warning restore CS4014
-                debug.ProgramCodeInfo.SetDebugQueue(debug.ProgramCodeInfo.GetInfo());
-                return response;
-            }
-
-            //try {
-            //    SaveLog(GetLog(response));
-
-            //} catch (Exception ex) {
-
-            //    Console.WriteLine($"SaveLog(DownloadArchive)\r\n{ex.Message}");
-            //}
+                i++;
+            } while (i <= retry);
+            return response;
         }
 
         //Responseを返さないのでファイルセーブまで待たないはず
-        public async Task DownloadAsync(string docid, DocumentType type, int id, Database.Sqlite db) {
+        public async Task DownloadAsync(string docid, DocumentType type, int id, Database.Sqlite db, int retry) {
             string url = string.Format("/api/{0}/documents/{1}?type={2}", Version, docid, (int)type);
-            try {
-                debug.ProgramCodeInfo.SetDebugQueue(debug.ProgramCodeInfo.GetInfo());
-                using (HttpResponseMessage res = await client.GetAsync(url)) {
-                    debug.ProgramCodeInfo.SetDebugQueue(debug.ProgramCodeInfo.GetInfo());
-                    string filename = res.Content.Headers.ContentDisposition.FileName.Replace("\"", "");
-                    //string filename = $"{docid}_{(int)type}";
-                    System.Net.Http.Headers.MediaTypeHeaderValue contenttype = res.Content.Headers.ContentType;
+            int i = 0;
+            do {
+                if (i > 0) {
+                    Debug.Write($"retry notawait Download[{i}] ");
+                    await Task.Delay(2000);
+                }
+                try {
+                    debug.ProgramCodeInfo.SetDebugQueue();
+                    using (HttpResponseMessage res = await client.GetAsync(url)) {
+                        debug.ProgramCodeInfo.SetDebugQueue();
+                        string filename = res.Content.Headers.ContentDisposition.FileName.Replace("\"", "");
+                        //string filename = $"{docid}_{(int)type}";
+                        System.Net.Http.Headers.MediaTypeHeaderValue contenttype = res.Content.Headers.ContentType;
 #pragma warning disable CS4014
-                    SaveLog(GetLog(res.StatusCode, RequestType.Archive, contenttype, filename, id));
+                        SaveLog(GetLog(res.StatusCode, RequestType.Archive, contenttype, filename, id));
 #pragma warning restore CS4014
-                    using (Stream stream = await res.Content.ReadAsStreamAsync()) {
-                        using (MemoryStream ms = new MemoryStream()) {
-                            //SaveLog(GetLog(res.StatusCode, RequestType.Archive, contenttype));
-                            stream.CopyTo(ms);
-                            byte[] buffer = ms.ToArray();
-                            stream.Flush();
-                            if (filename == "404.json") {
-                                filename = url;
-                            } else {
-                                int year = 20 * 100 + id / 100000000;
-                                SaveFile(buffer, filename, year);
-                                db.UpdateFilenameOfDisclosure(id, type.ToString(), filename);
+                        using (Stream stream = await res.Content.ReadAsStreamAsync()) {
+                            using (MemoryStream ms = new MemoryStream()) {
+                                //SaveLog(GetLog(res.StatusCode, RequestType.Archive, contenttype));
+                                stream.CopyTo(ms);
+                                byte[] buffer = ms.ToArray();
+                                stream.Flush();
+                                if (filename == "404.json") {
+                                    filename = url;
+                                } else {
+                                    int year = 20 * 100 + id / 100000000;
+                                    SaveFile(buffer, filename, year);
+                                    db.UpdateFilenameOfDisclosure(id, type.ToString(), filename);
+                                }
+                                return;
                             }
-
                         }
                     }
+                } catch (TaskCanceledException ex) {
+                    ArchiveResponse response = new ArchiveResponse();
+                    response.Update(ex);
+#pragma warning disable CS4014
+                    SaveLog(GetLog(response));
+#pragma warning restore CS4014
+                    debug.ProgramCodeInfo.SetDebugQueue();
+                } catch (Exception ex) {
+                    ArchiveResponse response = new ArchiveResponse();
+                    response.Update(ex);
+#pragma warning disable CS4014
+                    SaveLog(GetLog(response));
+#pragma warning restore CS4014
+                    debug.ProgramCodeInfo.SetDebugQueue();
+                    return;
                 }
-            } catch (TaskCanceledException ex) {
-                ArchiveResponse response = new ArchiveResponse();
-                response.Update(ex);
-#pragma warning disable CS4014
-                SaveLog(GetLog(response));
-#pragma warning restore CS4014
-                debug.ProgramCodeInfo.SetDebugQueue(debug.ProgramCodeInfo.GetInfo());
-            } catch (Exception ex) {
-                ArchiveResponse response = new ArchiveResponse();
-                response.Update(ex);
-#pragma warning disable CS4014
-                SaveLog(GetLog(response));
-#pragma warning restore CS4014
-                debug.ProgramCodeInfo.SetDebugQueue(debug.ProgramCodeInfo.GetInfo());
-            }
-            debug.ProgramCodeInfo.SetDebugQueue(debug.ProgramCodeInfo.GetInfo());
+                debug.ProgramCodeInfo.SetDebugQueue();
+                i++;
+            } while (i <= retry);
 
         }
         private void SaveFile(byte[] buffer, string name, int year) {

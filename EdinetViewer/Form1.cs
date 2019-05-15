@@ -34,7 +34,7 @@ namespace Edinet {
         }
 
         private async void Form1_Shown(object sender, EventArgs e) {
-
+            debug.ProgramCodeInfo.SetDebugQueue();
             //<--refer to https://dobon.net/vb/dotnet/control/doublebuffered.html (Copyright(C) DOBON! MIT) から引用しています
             (typeof(DataGridView)).InvokeMember("DoubleBuffered", BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.SetProperty,
                null, dgvList, new object[] { true });
@@ -55,7 +55,7 @@ namespace Edinet {
             this.Text = Application.ProductName + " " + Application.ProductVersion;
             if (browser.Url == null)
                 browser.Navigate(toppage);
-            disclosures = new Disclosures(setting.Directory, TbVersion.Text);
+            disclosures = new Disclosures(setting.Directory, setting.UserAgent, TbVersion.Text);
             if (disclosures.Xbrl.Taxonomy.DicTaxonomy.Count == 0) {
                 await SetTaxonomyDownloadEvent();
             }
@@ -79,6 +79,7 @@ namespace Edinet {
             //この前で上のSplitterDistanceが変更されてしまう　原因不明
             this.splitUpper.SplitterDistance = setting.UpperDistance;
             timer1.Enabled = true;
+            debug.ProgramCodeInfo.SetDebugQueue();
         }
 
 
@@ -208,6 +209,7 @@ namespace Edinet {
 
         #region DataGridView_Events_CurrentRowChanged
         private async void DatePicker_CloseUp(object sender, EventArgs e) {
+            debug.ProgramCodeInfo.SetDebugQueue();
             TbCode.Text = "";
             if (comboFilter.SelectedIndex > 0)
                 comboFilter.SelectedIndex = 0;
@@ -220,8 +222,17 @@ namespace Edinet {
                 }
                 DateTime target = DatePicker.Value.Date;
                 IsReading = true;
-
-                JsonContent content = await disclosures.ReadDocuments(target);
+                JsonContent content = await disclosures.ReadDocuments(target, setting.Retry);
+                if (content.Exception != null) {
+                    StatusLabel1.Text = content.Exception.Message;
+                    if (content.Exception.InnerException != null)
+                        StatusLabel1.Text += $" {content.Exception.InnerException.Message}";
+                    timer1.Enabled = false;
+                    checkTimer.Checked = false;
+                    checkTimer.BackColor = Control.DefaultBackColor;
+                    StatusLabel1.Text.Insert(0, "タイマーオフ");
+                    return;
+                }
                 dgvList.DataSource = disclosures.DvDocuments;
                 StatusLabel1.Text = string.Format("{0:HH:mm:ss} List {1}", DateTime.Now, content.OutputMessage);
                 if(content.Table != null && content.Table.Rows.Count > 0) {
@@ -241,7 +252,7 @@ namespace Edinet {
                     sb.AppendFormat("<tr><td>Count</td><td>{0}</td></tr></table></body>", content.Metadata.Resultset.Count);
                     browser.DocumentText = sb.ToString();
                     LabelMetadata.Text = content.OutputMessage + (sender == null ? " on timer" : "");
-
+                    //dgvList.Refresh();
                     if (content.Metadata.Resultset.Count > 0) {
                         //timerの場合続いて書類のダウンロード
                         if (sender == null && setting.Download && (setting.Xbrl | setting.Pdf | setting.Attach | setting.English) & setting.DocumentTypes.Length > 0) {
@@ -251,9 +262,9 @@ namespace Edinet {
                         } else if (setting.Watching != null && setting.Watching.Length > 0) {
                             //自動ダウンロードオフであっても監視銘柄はタイマーオンオフにかかわらずすべてダウンロードする 
                         }
+                        await UpdateSummaryAsync();
                     }
                 }
-                await UpdateSummaryAsync();
 
             }
             StatusLabel1.Text = "";
@@ -282,8 +293,8 @@ namespace Edinet {
                         StatusLabel1.Text = string.Format("{0:HH:mm:ss} {1}[{2}] 404[Not Found] in table", DateTime.Now, docid, field);
                         return;
                     }
-                    
-                    ArchiveResponse response = await disclosures.ChangeDocumentAsync(id, docid, (RequestDocument.DocumentType)Enum.ToObject(typeof(RequestDocument.DocumentType), index + 1));
+                    //int retry = 1;
+                    ArchiveResponse response = await disclosures.ChangeDocumentAsync(id, docid, (RequestDocument.DocumentType)Enum.ToObject(typeof(RequestDocument.DocumentType), index + 1), setting.Retry);
                     dgvList.Refresh();
                     if (response != null) {
                         StatusLabel1.Text = string.Format("{1:HH:mm:ss} 書類取得API status[{0}] {2}ダウンロード {3}", response.EdinetStatusCode.Message, DateTime.Now, index == 1 ? "pdf" : "xbrl", response.Filename);
@@ -336,7 +347,9 @@ namespace Edinet {
                         StatusLabel1.Text = string.Format("{0:HH:mm:ss} {1}[{2}] 404[Not Found] in table", DateTime.Now, docid, type ==  RequestDocument.DocumentType.Xbrl ? "xbrl" : "pdf");
                         return;
                     }
-                    ArchiveResponse response = await disclosures.ChangeDocumentAsync(id, docid,  type.Value);
+
+                    //int retry = 1;
+                    ArchiveResponse response = await disclosures.ChangeDocumentAsync(id, docid,  type.Value, setting.Retry);
                     dgvContents.DataSource = disclosures.DvContents;
                     dgvList.Refresh();
                     if(response == null) {
@@ -460,36 +473,37 @@ namespace Edinet {
                         splitLower.Panel2Collapsed = false;
                     }
                     break;
-                case "MenuSetting":
-                    SettingDialog dialog = new SettingDialog(setting) {
-                        Owner = this,
-                    };
-                    string dir = setting.Directory;
-                    DialogResult result = dialog.ShowDialog();
-                    if (result == DialogResult.OK) {
-                        timer1.Enabled = setting.Timer;
-                        timer1.Interval = (int)(setting.Interval * 1000 * 60);
-                        TimerCheck();
-                        if (dir != setting.Directory) {
-                            string dbfile = $"{dialog.Setting.Directory}\\edinet.db";
-                            if (!File.Exists(dbfile)) {
-                                await disclosures.Database.TaxonomyTableToMemoryAsync(this.InvokeProgress);
-                                //bool exists = disclosures.ChangeCacheDirectory(dialog.Setting.Directory);
-                                //if (!exists) {
-                                //    string[] files = Directory.GetFiles(dir, "ALL_*.zip");
-                                //    if (files.Length > 0) {
-                                //        Array.Reverse(files);
-                                //        File.Copy(files[0], Path.Combine(setting.Directory, Path.GetFileName(files[0])));
-                                //    }
-                                //    await SetTaxonomyDownloadEvent();
-                                //}
-                                disclosures.Database.ChangeDirectory(dbfile);
-                                disclosures.Database.MemoryToDatabase($"{dialog.Setting.Directory}\\edinet.db");
+                case "MenuSetting": {
+                        SettingDialog dialog = new SettingDialog(setting) {
+                            Owner = this,
+                        };
+                        string dir = setting.Directory;
+                        DialogResult result = dialog.ShowDialog();
+                        if (result == DialogResult.OK) {
+                            timer1.Enabled = setting.Timer;
+                            timer1.Interval = (int)(setting.Interval * 1000 * 60);
+                            TimerCheck();
+                            if (dir != setting.Directory) {
+                                string dbfile = $"{dialog.Setting.Directory}\\edinet.db";
+                                if (!File.Exists(dbfile)) {
+                                    await disclosures.Database.TaxonomyTableToMemoryAsync(this.InvokeProgress);
+                                    //bool exists = disclosures.ChangeCacheDirectory(dialog.Setting.Directory);
+                                    //if (!exists) {
+                                    //    string[] files = Directory.GetFiles(dir, "ALL_*.zip");
+                                    //    if (files.Length > 0) {
+                                    //        Array.Reverse(files);
+                                    //        File.Copy(files[0], Path.Combine(setting.Directory, Path.GetFileName(files[0])));
+                                    //    }
+                                    //    await SetTaxonomyDownloadEvent();
+                                    //}
+                                    disclosures.Database.ChangeDirectory(dbfile);
+                                    disclosures.Database.MemoryToDatabase($"{dialog.Setting.Directory}\\edinet.db");
+                                }
                             }
+                            setting = dialog.Setting;
+                            setting.Save();
+                            disclosures.ChangeCacheDirectory(setting.Directory);
                         }
-                        setting = dialog.Setting;
-                        setting.Save();
-                        disclosures.ChangeCacheDirectory(setting.Directory);
                     }
                     break;
                 case "MenuApiHistory":
@@ -553,8 +567,24 @@ namespace Edinet {
                         sb1.Append("未確定の日付は見つかりませんでした");
                     MessageBox.Show(sb1.ToString(), "メタデータ非取得または未確定の日付一覧");
                     break;
+                case "MenuImprotDownloaded": {
+                        using (OpenFileDialog dialog = new OpenFileDialog()) {
+                            dialog.InitialDirectory = setting.Directory;
+                            dialog.Multiselect = false;
+                            dialog.Filter = "ZIP Files (.ZIP)|*.zip";
+                            DialogResult result = dialog.ShowDialog();
+                            if (result == DialogResult.OK) {
+                                Archive.Downloaded downloaded = new Archive.Downloaded(dialog.FileName);
+                                downloaded.Import();
+
+                            }
+                        }
+                    }
+                    break;
             }
         }
+
+
 
         private void MenuShowBrowser_Click(object sender, EventArgs e) {
             string source = dgvXbrl.Rows[dgvXbrl.CurrentRow.Index].Cells["value"].Value.ToString();
@@ -745,7 +775,7 @@ namespace Edinet {
 
         private void TbVersion_Leave(object sender, EventArgs e) {
             TbVersion.Enabled = false;
-            disclosures = new Disclosures(Path.Combine(setting.Directory, "documents"), TbVersion.Text);
+            disclosures = new Disclosures(setting.Directory, setting.UserAgent, TbVersion.Text);
         }
 
 
@@ -807,7 +837,7 @@ namespace Edinet {
                 toolTip1.SetToolTip(checkTimer, "市場は休みです");
                 checkTimer.BackColor = Control.DefaultBackColor;
                 return false;
-            } else if (DateTime.Now.AddMinutes(30).Hour < 9 | DateTime.Now.AddMinutes(-15).Hour > 17) {
+            } else if (DateTime.Now.AddMinutes(30).Hour < 9 | DateTime.Now.AddMinutes(-15).Hour >= 17) {
                 toolTip1.SetToolTip(checkTimer, "時間外です");
                 checkTimer.BackColor = Control.DefaultBackColor;
                 return false;
@@ -817,5 +847,21 @@ namespace Edinet {
 
         }
 
+        //private void DgvList_CellDoubleClick(object sender, DataGridViewCellEventArgs e) {
+
+        //}
+
+        private void DgvList_DoubleClick(object sender, EventArgs e) {
+
+            Console.WriteLine($"{dgvList.CurrentCell.RowIndex}\t{dgvList.CurrentCell.ColumnIndex}");
+            Console.WriteLine($"{dgvList.Rows[dgvList.CurrentCell.RowIndex].Cells["code"].Value}");
+            int type = int.Parse(dgvList.Rows[dgvList.CurrentCell.RowIndex].Cells["docTypeCode"].Value.ToString());
+            if(type >= 120 & type <= 150) {
+                //disclosures.Xbrl.
+                int id = int.Parse(dgvList.Rows[dgvList.CurrentCell.RowIndex].Cells["id"].Value.ToString());
+                disclosures.UpdateQuarter(id);
+                //browser.DocumentText = summary;
+            }
+        }
     }
 }

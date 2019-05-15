@@ -16,7 +16,7 @@ namespace Edinet {
         public Json.Metadata Metadata { get; private set; }
         public Json.StatusCode StatusCode { get; private set; }
         public Exception Exception { get; private set; }
-        public string OutputMessage { get; private set; }
+        public string OutputMessage { get; set; }
         public int PrevCount { get; private set; }
         public JsonContent(DataTable table, Json.ApiResponse apiresponse, string outputMessage, int prevcount = 0) {
             Table = table;
@@ -38,8 +38,8 @@ namespace Edinet {
     class JsonReader {
 
         protected readonly RequestDocument apiDocument;
-        public JsonReader(string dir, string version = "v1") {
-            apiDocument = new RequestDocument(dir, version);
+        public JsonReader(string dir, string useragent, string version) {
+            apiDocument = new RequestDocument(dir, version, useragent);
         }
 
 
@@ -122,7 +122,6 @@ namespace Edinet {
         //public byte[] Buffer { get; private set; }
         public Database.Sqlite Database { get; set; }
         public Xbrl Xbrl { get; private set; }
-        //private readonly string[] doctype = new string[] { "xbrl", "pdf", "attach", "english" };
         public DataTable TableDocuments { get; private set; }
         public DataView DvDocuments { get; private set; }
         public DataTable TableContents { get; private set; }
@@ -138,13 +137,11 @@ namespace Edinet {
 
         private readonly Archive.Zip zip;
 
-        public Disclosures(string dir, string version = "v1") : base(dir, version) {
+        public Disclosures(string dir, string useragent, string version) : base(dir, useragent, version) {
             directory = dir;
             CheckLogSize();
             Database = new Database.Sqlite(Path.Combine(dir, "edinet.db"));
             Database.LoadTaxonomy(out Dictionary<string, string> dic, out List<string> list);
-            //Xbrl = new Xbrl();
-            //Xbrl.IntializeTaxonomy(dic, list);
             Xbrl = new Xbrl(dic, list);
             zip = new Archive.Zip(dir);
             InitializeTables();
@@ -163,33 +160,8 @@ namespace Edinet {
 
             TableElements = Xbrl.ToTable();
 
-            //TableContents = new DataTable();
-            //TableContents.Columns.Add("type", typeof(string));
-            //TableContents.Columns.Add("folda", typeof(string));
-            //TableContents.Columns.Add("name", typeof(string));
-            //TableContents.Columns.Add("fullpath", typeof(string));
-            //TableContents.Columns.Add("no", typeof(int));
-            //TableElements = new DataTable();
-            //TableElements.Columns.Add("no", typeof(int));
-            //TableElements.Columns.Add("tag", typeof(string));
-            //TableElements.Columns.Add("ラベル", typeof(string));
-            //TableElements.Columns.Add("prefix", typeof(string));
-            //TableElements.Columns.Add("element", typeof(string));
-            //TableElements.Columns.Add("contextRef", typeof(string));
-            //TableElements.Columns.Add("sign", typeof(string));
-            //TableElements.Columns.Add("value", typeof(string));
-            //TableElements.Columns.Add("unitRef", typeof(string));
-            //TableElements.Columns.Add("decimals", typeof(string));
-            //TableElements.Columns.Add("nil", typeof(string));
-            //TableElements.Columns.Add("attributes", typeof(string));
-            //DvContents = new DataView(TableContents, "", "no", DataViewRowState.CurrentRows);
         }
 
-        //public void ReInitializeTable() {
-        //    TableDocuments = Database.GetTableClone("Disclosures");
-        //    TableDocuments.Columns.Add("タイプ", typeof(string));
-        //    DvDocuments = new DataView(TableDocuments, "", "id desc", DataViewRowState.CurrentRows);
-        //}
         public void ImportTaxonomy() {
             Database.LoadTaxonomy(out Dictionary<string, string> dic, out List<string> list);
             if (dic.Count > 0) {
@@ -223,19 +195,110 @@ namespace Edinet {
             }
         }
 
-        private JsonContent UpdateListView(DataTable table, Json.ApiResponse jsonResponse, string message, int count, bool show) {
-            if (show) {
-                TableDocuments = table;
-                DvDocuments = new DataView(TableDocuments, "", "id desc", DataViewRowState.CurrentRows);
+        //private JsonContent UpdateListView(DataTable table, Json.ApiResponse jsonResponse, string message, int count, bool show) {
+        //    if (show) {
+        //        TableDocuments = table;
+        //        DvDocuments = new DataView(TableDocuments, "", "id desc", DataViewRowState.CurrentRows);
+        //    }
+        //    return new JsonContent(table, jsonResponse, message, count);
+        //}
+
+        //private JsonResponse CheckJson(JsonResponse response, bool diff) {
+        //    if (response.ReturnResult == ResponseResult.Success) {
+        //        DateTime processT = DateTime.Parse(response.Json.MetaData.ProcessDateTime);
+        //        int count = response.Json.MetaData.Resultset.Count;
+        //        DateTime target = DateTime.Parse(response.Json.MetaData.Parameter.Date);
+        //        if (diff) {
+        //            Json.Metadata prevMetadata = Database.ReadMetadata(target);
+        //            if (prevMetadata != null && prevMetadata.Status == "200") {
+        //                DateTime processPrev = DateTime.Parse(prevMetadata.ProcessDateTime);
+        //                int countPrev = prevMetadata.Resultset.Count;
+        //                if (processPrev != null && processT == processPrev)
+        //                    response.ReturnResult = ResponseResult.SameProcess;
+        //                else if (count == countPrev)
+        //                    response.ReturnResult = ResponseResult.SameCount;
+        //            }
+        //        }
+        //        if (count == 0)
+        //            response.ReturnResult = ResponseResult.Zero;
+        //    }
+        //    return response;
+        //}
+        private JsonResponse CheckJsonDiff(JsonResponse response, Json.Metadata prevMetadata) {
+            if (response.ReturnResult == ResponseResult.Success) {
+                DateTime processT = DateTime.Parse(response.Json.MetaData.ProcessDateTime);
+                int count = response.Json.MetaData.Resultset.Count;
+                DateTime target = DateTime.Parse(response.Json.MetaData.Parameter.Date);
+                if (prevMetadata == null)
+                    prevMetadata = Database.ReadMetadata(target);
+                if (prevMetadata != null && prevMetadata.Status == "200") {
+                    DateTime processPrev = DateTime.Parse(prevMetadata.ProcessDateTime);
+                    int countPrev = prevMetadata.Resultset.Count;
+                    if (processPrev != null && processT == processPrev)
+                        response.ReturnResult = ResponseResult.SameProcess;
+                    else if (count == countPrev)
+                        response.ReturnResult = ResponseResult.SameCount;
+                } else {
+
+                }
+
+                if (count == 0)
+                    response.ReturnResult = ResponseResult.Zero;
             }
-            return new JsonContent(table, jsonResponse, message, count);
+            return response;
         }
-        public async Task<JsonContent> ReadDocuments(DateTime target, bool skipFirst = false, bool show = true) {
-#pragma warning disable IDE0059
-            DataTable table = null;
-#pragma warning restore IDE0059
+
+
+        //private async Task<JsonResponse> ReadMetadataType1(DateTime target) {
+        //    JsonResponse response = await apiDocument.Request(target, RequestDocument.RequestType.Metadata);
+        //    if (response.ReturnResult == ResponseResult.Success) {
+        //        response = CheckJson(response, true);
+        //    }
+        //    return response;
+        //}
+        private async Task<JsonResponse> ReadMetadataType1(DateTime target, Json.Metadata prevMetadata, int retry) {
+            JsonResponse response = await apiDocument.Request(target, RequestDocument.RequestType.Metadata, retry);
+            if (response.ReturnResult == ResponseResult.Success) {
+                response = CheckJsonDiff(response, prevMetadata);
+            }
+            return response;
+        }
+        private async Task<JsonContent> ReadMetadataType2(DateTime target, int retry) {
+            DataTable table = Database.ReadDisclosure(target);
+            DataView dv = new DataView(table, "", "id", DataViewRowState.CurrentRows);
+            JsonResponse resList = await apiDocument.Request(target, RequestDocument.RequestType.List, retry);
+            
+            Debug.Write($"{DateTime.Now.TimeOfDay} metadatalist({target:yyyy-MM-dd}) readed");
+            switch (resList.ReturnResult) {
+                case  ResponseResult.Success:
+                    AddJson(resList.Json, ref dv);
+                    Database.UpdateDisclosures(dv, resList.Json.MetaData);
+                    //return new JsonContent(dv.Table, resList.Json, resList.Json.MetaData.Message, resList.Json.MetaData.Resultset.Count);
+
+                    break;
+                case ResponseResult.SameProcess:
+                case ResponseResult.SameCount:
+                case ResponseResult.Zero:
+                    //return new JsonContent(dv.Table, resList.Json, resList.Json.MetaData.Message, resList.Json.MetaData.Resultset.Count);
+                    break;
+                case ResponseResult.NotFound:
+                    return new JsonContent(dv.Table, resList.Json, resList.Json.MetaData.Message, 0);
+                case ResponseResult.Timeout:
+                    break;
+                case ResponseResult.Invalid://error
+                case ResponseResult.BadRequest://BadRequest
+                case ResponseResult.ServerError://InternalServerError
+                case ResponseResult.Exception:
+                    return null;
+                //case int (int) n when n >= 400 & n < 500:
+                    //break;
+            }
+
+            return new JsonContent(dv.Table, resList.Json, resList.Json.MetaData.Message, resList.Json.MetaData.Resultset.Count);
+        }
+
+        private Json.Metadata CheckKakuteiAndSkip(DateTime target, bool showTable) {
             Json.Metadata prevMetadata = Database.ReadMetadata(target);
-            bool skip = false;
             int count = 0;
             if (prevMetadata != null && prevMetadata.Status == "200") {
                 DateTime processTime = DateTime.Parse(prevMetadata.ProcessDateTime);
@@ -243,91 +306,180 @@ namespace Edinet {
                 bool kakutei = processTime.Date > target.Date;
                 if (prevMetadata.Resultset != null)
                     count = prevMetadata.Resultset.Count;
-                if (count > 0)
-                    table = Database.ReadDisclosure(target);
                 if (kakutei) {
                     //確定でcount0件は追加されることはない　確定24hr以内はスキップ
-                    if (show | DateTime.Now < processTime.AddHours(24) | count == 0)
-                        skip = true;
-                }
-
-            }
-            if (table == null)
-                table = Database.ReadDisclosure(null);
-                //table = Database.GetTableClone("disclosures");
-            if (skip) {
-                //if (show)
-                //    TableDocuments = table;
-                    //    UpdateDocumentsTable(ref table);
-                    Json.ApiResponse apiResponse = new Json.ApiResponse() {
-                    MetaData = prevMetadata
-                };
-                //apiResponse.Status = null;
-                //return new JsonContent(table, apiResponse, "書類一覧キャッシュ");
-                return UpdateListView(table, apiResponse, "書類一覧キャッシュ", count, show);
-            }
-
-            DataView dv = new DataView(table, "", "id", DataViewRowState.CurrentRows);
-            JsonResponse resMetadata = null;
-            if (!skipFirst) {
-                resMetadata = await apiDocument.Request(target, RequestDocument.RequestType.Metadata);
-                Debug.Write($"{DateTime.Now.TimeOfDay} metadata readed");
-            }
-            if (resMetadata != null && resMetadata.Exception != null)
-                return new JsonContent(resMetadata.Exception);
-            else {
-                if (resMetadata != null && resMetadata.Json.Status.Status != "200") {
-                    Debug.WriteLine($" {resMetadata.Json.Status.Status}");
-                    return new JsonContent(dv.Table, resMetadata.Json, resMetadata.Json.Status.Status);
-                    //return UpdateListView(dv.Table, resMetadata.Json, resMetadata.Json.Status.Status, 0, show);
-                }
-                if (resMetadata != null && DateTime.Parse(resMetadata.Json.MetaData.ProcessDateTime).Date > target & resMetadata.Json.MetaData.Resultset.Count == 0) {
-                    Debug.WriteLine($" count:{resMetadata.Json.MetaData.Resultset.Count}");
-                    Database.UpdateMetadata(resMetadata.Json.MetaData);
-                    return new JsonContent(dv.Table, resMetadata.Json, "0");
-                    //return UpdateListView(dv.Table, resMetadata.Json, "0", 0, show);
-                }
-                Debug.WriteLine("");
-                if (resMetadata == null || target < DateTime.Now.Date | resMetadata.Json.MetaData.Resultset.Count > count) {
-                    //await Task.Delay(50);
-                    JsonResponse resList = await apiDocument.Request(target, RequestDocument.RequestType.List);
-                    Debug.Write($"{DateTime.Now.TimeOfDay} metadatalist({target:yyyy-MM-dd}) readed");
-                    if (resList.Exception != null) {
-                        Debug.WriteLine($" exception:{resList.Exception}");
-                        return new JsonContent(resList.Exception);
-                    } else {
-                        if(resList.Json.MetaData.Status == "404") {
-                            return new JsonContent(dv.Table, resList.Json, resList.Json.MetaData.Message, 0);
-                        }
-                        AddJson(resList.Json, ref dv);
-                        Database.UpdateDisclosures(dv, resList.Json.MetaData);
-                        //if (show)
-                        //    TableDocuments = table;
-                        //    UpdateDocumentsTable(ref table);
-                        string message = string.Format("status:{0} 新規[{3}]/計[{2}]({1})",
-                            resList.EdinetStatusCode.Message, resList.Json.MetaData.ProcessDateTime,
-                                resList.Json.MetaData.Resultset.Count, resList.Json.MetaData.Resultset.Count - count);
-                        Debug.Write($" count:{resList.Json.MetaData.Resultset.Count}({resList.Json.MetaData.Resultset.Count - count:+0;-0;0})");
-                        //return new JsonContent(dv.Table, resList.Json, message, count);
-                        return UpdateListView(table, resList.Json, message, count, show);
-                    }
-                } else {
-                    if (DateTime.TryParse(resMetadata.Json.MetaData.ProcessDateTime, out DateTime processDate) && processDate.Date > target.Date) {
-                        Database.UpdateMetadata(resMetadata.Json.MetaData);
-                    }
-                    //if (show)
-                    //    TableDocuments = table;
-                    //    UpdateDocumentsTable(ref table);
-                    string message = string.Format("status:{0} 新規[なし]/計[{2}]({1})",
-                        resMetadata.EdinetStatusCode.Message, resMetadata.Json.MetaData.ProcessDateTime,
-                            resMetadata.Json.MetaData.Resultset.Count);
-                    Debug.Write($"metadata {message}");
-                    return UpdateListView(table, resMetadata.Json, message, count,show);
-                    //return new JsonContent(table, resMetadata.Json, message, count);
+                    if (showTable | DateTime.Now < processTime.AddHours(24) | count == 0)
+                        return prevMetadata;
                 }
             }
-
+            //skipはnull
+            return null;
         }
+        public async Task<JsonContent> ReadDocuments(DateTime target, int retry, bool skipFirst = false, bool show = true) {
+            debug.ProgramCodeInfo.SetDebugQueue();
+            Json.Metadata prev = CheckKakuteiAndSkip(target, show);
+            DataTable table = Database.ReadDisclosure(target);
+            Json.ApiResponse apiResponse = new Json.ApiResponse() { MetaData = prev };
+            if (prev != null) {
+                
+                if (show) {
+                    TableDocuments = table;
+                    DvDocuments = new DataView(TableDocuments, "", "id desc", DataViewRowState.CurrentRows);
+                }
+                return new JsonContent(table, apiResponse, "書類一覧キャッシュ", prev.Resultset.Count);
+            }
+            bool access = skipFirst;
+            JsonResponse response = null;
+            if (!skipFirst) {
+                response = await ReadMetadataType1(target, prev, retry);
+                if(response.ReturnResult ==  ResponseResult.Exception) {
+                    JsonContent content = new JsonContent(response.Exception);
+                    if (show) {
+                        TableDocuments = table;
+                        DvDocuments = new DataView(TableDocuments, "", "id desc", DataViewRowState.CurrentRows);
+                    }
+                    return content;
+                } else if (response.ReturnResult == ResponseResult.Success) {
+                    access = true;
+                } else
+                    access = false;
+
+            }
+            if (access) {
+                JsonContent content = await ReadMetadataType2(target, retry);
+                //DataView dv = new DataView(content.Table, "", "id", DataViewRowState.CurrentRows);
+                //Database.UpdateDisclosures(dv, content.Metadata);
+                string message = string.Format("status:{0} 新規[{3}]/計[{2}]({1})",
+                    content.StatusCode.Message, content.Metadata.ProcessDateTime,
+                       content.Metadata.Resultset.Count, content.Metadata.Resultset.Count - table.Rows.Count);
+                content.OutputMessage = message;
+                Debug.Write($" count:{content.Metadata.Resultset.Count}({content.Metadata.Resultset.Count - table.Rows.Count:+0;-0;0})");
+                if (show) {
+                    TableDocuments = content.Table;
+                    DvDocuments = new DataView(TableDocuments, "", "id desc", DataViewRowState.CurrentRows);
+                }
+                return content;
+            } else {
+                Json.ApiResponse res = new Json.ApiResponse() {
+                    MetaData = response.Json.MetaData,
+                    Documents = response.Json.Documents
+                };
+                if (show) {
+                    TableDocuments = table;
+                    DvDocuments = new DataView(TableDocuments, "", "id desc", DataViewRowState.CurrentRows);
+                }
+                return new JsonContent(table, response != null ? response.Json : res, "Metadata only", table.Rows.Count);
+            }
+        }
+
+//        public async Task<JsonContent> ReadDocumentsOrg(DateTime target, bool skipFirst = false, bool show = true) {
+//#pragma warning disable IDE0059
+//            DataTable table = null;
+//#pragma warning restore IDE0059
+//            Json.Metadata prevMetadata = Database.ReadMetadata(target);
+//            bool skip = false;
+//            int count = 0;
+//            if (prevMetadata != null && prevMetadata.Status == "200") {
+//                DateTime processTime = DateTime.Parse(prevMetadata.ProcessDateTime);
+//                //翌日以降アクセスで確定
+//                bool kakutei = processTime.Date > target.Date;
+//                if (prevMetadata.Resultset != null)
+//                    count = prevMetadata.Resultset.Count;
+//                if (count > 0)
+//                    table = Database.ReadDisclosure(target);
+//                if (kakutei) {
+//                    //確定でcount0件は追加されることはない　確定24hr以内はスキップ
+//                    if (show | DateTime.Now < processTime.AddHours(24) | count == 0)
+//                        skip = true;
+//                }
+
+//            }
+//            if (table == null)
+//                table = Database.ReadDisclosure(null);
+//                //table = Database.GetTableClone("disclosures");
+//            if (skip) {
+//                //if (show)
+//                //    TableDocuments = table;
+//                    //    UpdateDocumentsTable(ref table);
+//                    Json.ApiResponse apiResponse = new Json.ApiResponse() {
+//                    MetaData = prevMetadata
+//                };
+//                //apiResponse.Status = null;
+//                //return new JsonContent(table, apiResponse, "書類一覧キャッシュ");
+//                return UpdateListView(table, apiResponse, "書類一覧キャッシュ", count, show);
+//            }
+
+//            DataView dv = new DataView(table, "", "id", DataViewRowState.CurrentRows);
+//            JsonResponse resMetadata = null;
+//            if (!skipFirst) {
+//                resMetadata = await apiDocument.Request(target, RequestDocument.RequestType.Metadata,0);
+//                Debug.Write($"{DateTime.Now.TimeOfDay} metadata readed");
+//            }
+//            if (resMetadata != null && resMetadata.Exception != null)
+//                return new JsonContent(resMetadata.Exception);
+//            else {
+//                if (resMetadata != null && resMetadata.Json.Status.Status != "200") {
+//                    Debug.WriteLine($" {resMetadata.Json.Status.Status}");
+//                    return new JsonContent(dv.Table, resMetadata.Json, resMetadata.Json.Status.Status);
+//                    //return UpdateListView(dv.Table, resMetadata.Json, resMetadata.Json.Status.Status, 0, show);
+//                }
+//                if (resMetadata != null && DateTime.Parse(resMetadata.Json.MetaData.ProcessDateTime).Date > target & resMetadata.Json.MetaData.Resultset.Count == 0) {
+//                    Debug.WriteLine($" count:{resMetadata.Json.MetaData.Resultset.Count}");
+//                    Database.UpdateMetadata(resMetadata.Json.MetaData);
+//                    return new JsonContent(dv.Table, resMetadata.Json, "0");
+//                    //return UpdateListView(dv.Table, resMetadata.Json, "0", 0, show);
+//                }
+//                Debug.WriteLine("");
+//                if (resMetadata == null || target < DateTime.Now.Date | resMetadata.Json.MetaData.Resultset.Count > count) {
+//                    //await Task.Delay(50);
+//                    JsonResponse resList = await apiDocument.Request(target, RequestDocument.RequestType.List,0);
+//                    Debug.Write($"{DateTime.Now.TimeOfDay} metadatalist({target:yyyy-MM-dd}) readed");
+//                    if (resList.Exception != null) {
+//                        Debug.WriteLine($" exception:{resList.Exception}");
+//                        return new JsonContent(resList.Exception);
+//                    } else {
+//                        if(resList.Json.MetaData.Status == "404") {
+//                            return new JsonContent(dv.Table, resList.Json, resList.Json.MetaData.Message, 0);
+//                        }
+//                        AddJson(resList.Json, ref dv);
+//                        Database.UpdateDisclosures(dv, resList.Json.MetaData);
+//                        //if (show)
+//                        //    TableDocuments = table;
+//                        //    UpdateDocumentsTable(ref table);
+//                        string message = string.Format("status:{0} 新規[{3}]/計[{2}]({1})",
+//                            resList.EdinetStatusCode.Message, resList.Json.MetaData.ProcessDateTime,
+//                                resList.Json.MetaData.Resultset.Count, resList.Json.MetaData.Resultset.Count - count);
+//                        Debug.Write($" count:{resList.Json.MetaData.Resultset.Count}({resList.Json.MetaData.Resultset.Count - count:+0;-0;0})");
+//                        //return new JsonContent(dv.Table, resList.Json, message, count);
+//                        //return UpdateListView(table, resList.Json, message, count, show);
+//                        if (show) {
+//                            TableDocuments = table;
+//                            DvDocuments = new DataView(TableDocuments, "", "id desc", DataViewRowState.CurrentRows);
+//                        }
+//                        return new JsonContent(table, resList.Json, message, count);
+//                    }
+//                } else {
+//                    if (DateTime.TryParse(resMetadata.Json.MetaData.ProcessDateTime, out DateTime processDate) && processDate.Date > target.Date) {
+//                        Database.UpdateMetadata(resMetadata.Json.MetaData);
+//                    }
+//                    //if (show)
+//                    //    TableDocuments = table;
+//                    //    UpdateDocumentsTable(ref table);
+//                    string message = string.Format("status:{0} 新規[なし]/計[{2}]({1})",
+//                        resMetadata.EdinetStatusCode.Message, resMetadata.Json.MetaData.ProcessDateTime,
+//                            resMetadata.Json.MetaData.Resultset.Count);
+//                    Debug.Write($"metadata {message}");
+//                    //return UpdateListView(table, resMetadata.Json, message, count,show);
+//                    //return new JsonContent(table, resMetadata.Json, message, count);
+//                    if (show) {
+//                        TableDocuments = table;
+//                        DvDocuments = new DataView(TableDocuments, "", "id desc", DataViewRowState.CurrentRows);
+//                    }
+//                    return new JsonContent(table, resMetadata.Json, message, count);
+//                }
+//            }
+
+//        }
 
         private void AddJson(Json.ApiResponse json, ref DataView dv) {
             int maxsavedId = dv.Count > 0 ? int.Parse(dv[dv.Count - 1]["id"].ToString()) : 0;
@@ -366,10 +518,11 @@ namespace Edinet {
                                     object value = properties[index].GetValue(json.Documents[i], null);
                                     if (value == null)
                                         r[column.ColumnName] = DBNull.Value;
-                                    else
+                                    else {
                                         r[column.ColumnName] = value;
-                                    if (column.ColumnName == "docTypeCode")
-                                        r["タイプ"] = Const.DocTypeCode[value.ToString()];
+                                        if (column.ColumnName == "docTypeCode" && Const.DocTypeCode.ContainsKey(value.ToString()))
+                                            r["タイプ"] = Const.DocTypeCode[value.ToString()];
+                                    }
                                     System.Diagnostics.Debug.Write($"{value ?? ""}\t");
                                 }
                             }
@@ -418,9 +571,9 @@ namespace Edinet {
         }
 
         #pragma warning disable CS1998
-        public async Task DownloadArchiveNoAwait(int id, string docid, RequestDocument.DocumentType type) {
+        public async Task DownloadArchiveNoAwait(int id, string docid, RequestDocument.DocumentType type, int retry) {
 #pragma warning disable CS4014
-            apiDocument.DownloadAsync(docid, type, id, Database);
+            apiDocument.DownloadAsync(docid, type, id, Database, retry);
         }
 
         public async Task Download(HttpResponseMessage httpResponseMessage, int id, string type) {
@@ -429,8 +582,9 @@ namespace Edinet {
         }
 #pragma warning restore CS1998
 
-        public async Task<ArchiveResponse> DownloadArchive(int id, string docid, RequestDocument.DocumentType type) {
-            ArchiveResponse response = await apiDocument.DownloadArchive(docid, type);
+        public async Task<ArchiveResponse> DownloadArchive(int id, string docid, RequestDocument.DocumentType type, int retry) {
+            //int retry = 1;
+            ArchiveResponse response = await apiDocument.DownloadArchive(docid, type, retry);
             if (response.Exception != null) {
                 return response;
             } else if (response.EdinetStatusCode != null && response.EdinetStatusCode.Status != "200") {
@@ -467,11 +621,11 @@ namespace Edinet {
 
 
 
-        public async Task<ArchiveResponse> ChangeDocumentAsync(int id, string docid, RequestDocument.DocumentType type) {
+        public async Task<ArchiveResponse> ChangeDocumentAsync(int id, string docid, RequestDocument.DocumentType type, int retry) {
             ArchiveResponse response = null;
             bool exist = await zip.LoadAsync(id, docid, (int)type);
             if(!exist) {
-                response = await this.DownloadArchive(id, docid, type);
+                response = await this.DownloadArchive(id, docid, type, retry);
                 zip.Load(response.Buffer, (int)type);
             }
             TableContents = zip.Table;
@@ -538,20 +692,21 @@ namespace Edinet {
 
 
         public async Task<string> UpdateSummary(int id, bool updatedb = true) {
-            if (DvDocuments.Sort.ToLower().IndexOf("id") != 0)
-                DvDocuments.Sort = "id desc";
-            int index = DvDocuments.Find(id);
+            DataView dv = new DataView(TableDocuments, "", "id", DataViewRowState.CurrentRows);
+            //if (DvDocuments.Sort.ToLower().IndexOf("id") != 0)
+            //    DvDocuments.Sort = "id desc";
+            int index = dv.Find(id);
             if (index > -1 | updatedb) {
-                string filepath = zip.Exists(id, DvDocuments[index]["docID"].ToString(), 1);
+                string filepath = zip.Exists(id, dv[index]["docID"].ToString(), 1);
                 //Archive.Zip zip = new Archive.Zip(directory);
                 string source = await Archive.Zip.ReadXbrlSourceAsync(filepath);
                 Xbrl xbrl = new Xbrl();
                 xbrl.Load(source);
                 string summary = xbrl.GetSummaryLargeVolume();
                 if (index > -1) {
-                    DvDocuments[index].BeginEdit();
-                    DvDocuments[index]["summary"] = summary;
-                    DvDocuments[index].EndEdit();
+                    dv[index].BeginEdit();
+                    dv[index]["summary"] = summary;
+                    dv[index].EndEdit();
                 }
                 if (updatedb) {
                     Database.UpdateFieldOfDisclosure("summary", new Dictionary<int, string>() { { id, summary } });
@@ -562,8 +717,41 @@ namespace Edinet {
         }
 
 
-
-
+        public async Task<string> UpdateQuarterAsync(int id, bool updatedb = true) {
+            DataView dv = new DataView(TableDocuments, "", "id", DataViewRowState.CurrentRows);
+            int index = dv.Find(id);
+            if (index > -1 | updatedb) {
+                string filepath = zip.Exists(id, dv[index]["docID"].ToString(), 1);
+                string source = await Archive.Zip.ReadXbrlSourceAsync(filepath);
+                Xbrl xbrl = new Xbrl();
+                xbrl.Load(source);
+                string summary = xbrl.GetSummaryQuaterResult();
+                //if (index > -1) {
+                //    dv[index].BeginEdit();
+                //    dv[index]["summary"] = summary;
+                //    dv[index].EndEdit();
+                //}
+                //if (updatedb) {
+                //    //Database.UpdateFieldOfDisclosure("summary", new Dictionary<int, string>() { { id, summary } });
+                //}
+                return summary;
+            } else
+                return null;
+        }
+        public string UpdateQuarter(int id, bool updatedb = true) {
+            DataView dv = new DataView(TableDocuments, "", "id", DataViewRowState.CurrentRows);
+            int index = dv.Find(id);
+            if (index > -1 | updatedb) {
+                string filepath = zip.Exists(id, dv[index]["docID"].ToString(), 1);
+                string source = Archive.Zip.ReadXbrlSource(filepath);
+                //Xbrl xbrl = new Xbrl();
+                //xbrl.Load(source);
+                Xbrl.Load(source);
+                string summary = Xbrl.GetSummaryQuaterResult();
+                return summary;
+            } else
+                return null;
+        }
 
 
 

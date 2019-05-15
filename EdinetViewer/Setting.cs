@@ -93,12 +93,15 @@ namespace Edinet {
                         if (control is TextBox)
                             control.Text = Setting.Values[control.Name.Substring(dicPosition[type])].Replace("\t", "\r\n");
                         else if (control is NumericUpDown & decimal.TryParse(Setting.Values[control.Name.Substring(dicPosition[type])], out decimal value)) {
-                            if (value < Setting.Min1)
+                            if (control.Name == "numericWait1" & value < Setting.Min1)
                                 value = Setting.Min1;
-                            (control as NumericUpDown).Value = value;
-                        } else if (control is CheckBox & bool.TryParse(Setting.Values[control.Name.Substring(dicPosition[type])], out bool valbool)) {
-                            if (value < Setting.Min2)
+                            if (control.Name == "numericWait2" & value < Setting.Min2)
                                 value = Setting.Min2;
+                            if (control.Name == "numericRetry")
+                                (control as NumericUpDown).Value = (int)value;
+                            else
+                                (control as NumericUpDown).Value = value;
+                        } else if (control is CheckBox & bool.TryParse(Setting.Values[control.Name.Substring(dicPosition[type])], out bool valbool)) {
                             (control as CheckBox).Checked = valbool;
                         }
                     }
@@ -288,6 +291,8 @@ namespace Edinet {
         public string SortToday { get { return Values.ContainsKey("OrderToday") && bool.TryParse(Values["OrderToday"], out bool flag) && flag ? "id" :"id desc"; } }
         public string SortYear5 { get { return Values.ContainsKey("OrderYear5") && bool.TryParse(Values["OrderYear5"], out bool flag) && flag ? "id" : "id desc"; } }
         public string SortList { get { return Values.ContainsKey("OrderList") && bool.TryParse(Values["OrderList"], out bool flag) && flag ? "id" : "id desc"; } }
+        public int Retry { get { return Values.ContainsKey("Retry") && int.TryParse(Values["Retry"], out int value) ? value : 0; } }
+
         public decimal Interval { get { return Values.ContainsKey("Interval") && decimal.TryParse(Values["Interval"], out decimal value) && value > 1 ? value : 1; } }
         public decimal[] Wait { get {
                 return new decimal[] {

@@ -63,12 +63,15 @@
             this.checkOrderList = new System.Windows.Forms.CheckBox();
             this.checkOrderToday = new System.Windows.Forms.CheckBox();
             this.labelUserAgent = new System.Windows.Forms.Label();
+            this.label8 = new System.Windows.Forms.Label();
+            this.numericRetry = new System.Windows.Forms.NumericUpDown();
             this.MenuDocType.SuspendLayout();
             this.groupBox1.SuspendLayout();
             this.MenuTbHoliday.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.numericInterval)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.numericWait1)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.numericWait2)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.numericRetry)).BeginInit();
             this.SuspendLayout();
             // 
             // tbDocumentDirectory
@@ -485,11 +488,35 @@
             this.labelUserAgent.TabIndex = 34;
             this.labelUserAgent.Text = "UserAgent";
             // 
+            // label8
+            // 
+            this.label8.AutoSize = true;
+            this.label8.Location = new System.Drawing.Point(280, 46);
+            this.label8.Name = "label8";
+            this.label8.Size = new System.Drawing.Size(136, 12);
+            this.label8.TabIndex = 35;
+            this.label8.Text = "タイムアウト時のリトライ回数";
+            // 
+            // numericRetry
+            // 
+            this.numericRetry.Location = new System.Drawing.Point(419, 44);
+            this.numericRetry.Maximum = new decimal(new int[] {
+            3,
+            0,
+            0,
+            0});
+            this.numericRetry.Name = "numericRetry";
+            this.numericRetry.Size = new System.Drawing.Size(28, 19);
+            this.numericRetry.TabIndex = 36;
+            this.numericRetry.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
+            // 
             // SettingDialog
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(584, 655);
+            this.Controls.Add(this.numericRetry);
+            this.Controls.Add(this.label8);
             this.Controls.Add(this.labelUserAgent);
             this.Controls.Add(this.checkOrderToday);
             this.Controls.Add(this.checkOrderList);
@@ -527,6 +554,7 @@
             ((System.ComponentModel.ISupportInitialize)(this.numericInterval)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.numericWait1)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.numericWait2)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.numericRetry)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -572,5 +600,7 @@
         private System.Windows.Forms.CheckBox checkOrderList;
         private System.Windows.Forms.CheckBox checkOrderToday;
         private System.Windows.Forms.Label labelUserAgent;
+        private System.Windows.Forms.Label label8;
+        private System.Windows.Forms.NumericUpDown numericRetry;
     }
 }

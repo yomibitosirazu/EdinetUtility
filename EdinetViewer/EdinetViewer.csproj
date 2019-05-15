@@ -89,6 +89,12 @@
       <DependentUpon>DialogSearch.cs</DependentUpon>
     </Compile>
     <Compile Include="Json.cs" />
+    <Compile Include="ReportTable.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="ReportTable.Designer.cs">
+      <DependentUpon>ReportTable.cs</DependentUpon>
+    </Compile>
     <Compile Include="Setting.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -110,6 +116,9 @@
     <Compile Include="Xbrl.cs" />
     <EmbeddedResource Include="DialogSearch.resx">
       <DependentUpon>DialogSearch.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="ReportTable.resx">
+      <DependentUpon>ReportTable.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Setting.resx">
       <DependentUpon>Setting.cs</DependentUpon>
