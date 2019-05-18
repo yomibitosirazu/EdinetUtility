@@ -571,12 +571,14 @@ namespace Edinet {
                         using (OpenFileDialog dialog = new OpenFileDialog()) {
                             dialog.InitialDirectory = setting.Directory;
                             dialog.Multiselect = false;
-                            dialog.Filter = "ZIP Files (.ZIP)|*.zip";
+                            dialog.Filter = "ZIP Files (.ZIP)|*.zip|検索結果csv|XbrlSearchDlInfo.csv";
                             DialogResult result = dialog.ShowDialog();
                             if (result == DialogResult.OK) {
-                                Archive.Downloaded downloaded = new Archive.Downloaded(dialog.FileName);
-                                downloaded.Import();
-
+                                //Archive.Downloaded downloaded = new Archive.Downloaded(dialog.FileName);
+                                //downloaded.Import(disclosures.Database);
+                                Dictionary<string, DateTime> dic = disclosures.ImportArchives(dialog.FileName);
+                                if (dic.Count > 0)
+                                    await disclosures.ReadMetadataAndUpdateDownloaded(dic, setting);
                             }
                         }
                     }
@@ -747,7 +749,7 @@ namespace Edinet {
                 int count = disclosures.SearchBrand(code);
                 if (count > 0) {
                     LabelMetadata.Text = string.Format("コード{0}　{1}件見つかりました", code, disclosures.TableDocuments.Rows.Count);
-                    //dgvList.DataSource = disclosures.DvDocuments;
+                    dgvList.DataSource = disclosures.DvDocuments;
                     comboFilter.DataSource = disclosures.Types;
                     currentRow1 = -1;
                     if (splitMain.Panel1Collapsed) {
@@ -847,17 +849,11 @@ namespace Edinet {
 
         }
 
-        //private void DgvList_CellDoubleClick(object sender, DataGridViewCellEventArgs e) {
-
-        //}
 
         private void DgvList_DoubleClick(object sender, EventArgs e) {
 
-            Console.WriteLine($"{dgvList.CurrentCell.RowIndex}\t{dgvList.CurrentCell.ColumnIndex}");
-            Console.WriteLine($"{dgvList.Rows[dgvList.CurrentCell.RowIndex].Cells["code"].Value}");
             int type = int.Parse(dgvList.Rows[dgvList.CurrentCell.RowIndex].Cells["docTypeCode"].Value.ToString());
             if(type >= 120 & type <= 150) {
-                //disclosures.Xbrl.
                 int id = int.Parse(dgvList.Rows[dgvList.CurrentCell.RowIndex].Cells["id"].Value.ToString());
                 disclosures.UpdateQuarter(id);
                 //browser.DocumentText = summary;

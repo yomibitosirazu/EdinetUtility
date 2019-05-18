@@ -43,8 +43,8 @@
             this.MenuSummary = new System.Windows.Forms.ToolStripMenuItem();
             this.MenuNotFinalList = new System.Windows.Forms.ToolStripMenuItem();
             this.MenuSearch = new System.Windows.Forms.ToolStripMenuItem();
-            this.MenuApiHistory = new System.Windows.Forms.ToolStripMenuItem();
             this.MenuImprotDownloaded = new System.Windows.Forms.ToolStripMenuItem();
+            this.MenuApiHistory = new System.Windows.Forms.ToolStripMenuItem();
             this.statusStrip1 = new System.Windows.Forms.StatusStrip();
             this.ProgressBar1 = new System.Windows.Forms.ToolStripProgressBar();
             this.StatusLabel1 = new System.Windows.Forms.ToolStripStatusLabel();
@@ -278,20 +278,19 @@
             this.MenuSearch.Text = "取得済みメタデータ検索";
             this.MenuSearch.Click += new System.EventHandler(this.Menu_Click);
             // 
+            // MenuImprotDownloaded
+            // 
+            this.MenuImprotDownloaded.Name = "MenuImprotDownloaded";
+            this.MenuImprotDownloaded.Size = new System.Drawing.Size(292, 22);
+            this.MenuImprotDownloaded.Text = "ウェブページからダウンロードした書類をインポート";
+            this.MenuImprotDownloaded.Click += new System.EventHandler(this.Menu_Click);
+            // 
             // MenuApiHistory
             // 
             this.MenuApiHistory.Name = "MenuApiHistory";
             this.MenuApiHistory.Size = new System.Drawing.Size(292, 22);
             this.MenuApiHistory.Text = "APIリクエスト履歴を確認";
             this.MenuApiHistory.Click += new System.EventHandler(this.Menu_Click);
-            // 
-            // MenuImprotDownloaded
-            // 
-            this.MenuImprotDownloaded.Name = "MenuImprotDownloaded";
-            this.MenuImprotDownloaded.Size = new System.Drawing.Size(292, 22);
-            this.MenuImprotDownloaded.Text = "ウェブページからダウンロードした書類をインポート";
-            this.MenuImprotDownloaded.Visible = false;
-            this.MenuImprotDownloaded.Click += new System.EventHandler(this.Menu_Click);
             // 
             // statusStrip1
             // 

@@ -267,10 +267,10 @@ namespace Edinet {
             DataTable table = Database.ReadDisclosure(target);
             DataView dv = new DataView(table, "", "id", DataViewRowState.CurrentRows);
             JsonResponse resList = await apiDocument.Request(target, RequestDocument.RequestType.List, retry);
-            
+
             Debug.Write($"{DateTime.Now.TimeOfDay} metadatalist({target:yyyy-MM-dd}) readed");
             switch (resList.ReturnResult) {
-                case  ResponseResult.Success:
+                case ResponseResult.Success:
                     AddJson(resList.Json, ref dv);
                     Database.UpdateDisclosures(dv, resList.Json.MetaData);
                     //return new JsonContent(dv.Table, resList.Json, resList.Json.MetaData.Message, resList.Json.MetaData.Resultset.Count);
@@ -290,7 +290,7 @@ namespace Edinet {
                 case ResponseResult.ServerError://InternalServerError
                 case ResponseResult.Exception:
                     return null;
-                //case int (int) n when n >= 400 & n < 500:
+                    //case int (int) n when n >= 400 & n < 500:
                     //break;
             }
 
@@ -321,7 +321,7 @@ namespace Edinet {
             DataTable table = Database.ReadDisclosure(target);
             Json.ApiResponse apiResponse = new Json.ApiResponse() { MetaData = prev };
             if (prev != null) {
-                
+
                 if (show) {
                     TableDocuments = table;
                     DvDocuments = new DataView(TableDocuments, "", "id desc", DataViewRowState.CurrentRows);
@@ -332,7 +332,7 @@ namespace Edinet {
             JsonResponse response = null;
             if (!skipFirst) {
                 response = await ReadMetadataType1(target, prev, retry);
-                if(response.ReturnResult ==  ResponseResult.Exception) {
+                if (response.ReturnResult == ResponseResult.Exception) {
                     JsonContent content = new JsonContent(response.Exception);
                     if (show) {
                         TableDocuments = table;
@@ -372,114 +372,114 @@ namespace Edinet {
             }
         }
 
-//        public async Task<JsonContent> ReadDocumentsOrg(DateTime target, bool skipFirst = false, bool show = true) {
-//#pragma warning disable IDE0059
-//            DataTable table = null;
-//#pragma warning restore IDE0059
-//            Json.Metadata prevMetadata = Database.ReadMetadata(target);
-//            bool skip = false;
-//            int count = 0;
-//            if (prevMetadata != null && prevMetadata.Status == "200") {
-//                DateTime processTime = DateTime.Parse(prevMetadata.ProcessDateTime);
-//                //翌日以降アクセスで確定
-//                bool kakutei = processTime.Date > target.Date;
-//                if (prevMetadata.Resultset != null)
-//                    count = prevMetadata.Resultset.Count;
-//                if (count > 0)
-//                    table = Database.ReadDisclosure(target);
-//                if (kakutei) {
-//                    //確定でcount0件は追加されることはない　確定24hr以内はスキップ
-//                    if (show | DateTime.Now < processTime.AddHours(24) | count == 0)
-//                        skip = true;
-//                }
+        //        public async Task<JsonContent> ReadDocumentsOrg(DateTime target, bool skipFirst = false, bool show = true) {
+        //#pragma warning disable IDE0059
+        //            DataTable table = null;
+        //#pragma warning restore IDE0059
+        //            Json.Metadata prevMetadata = Database.ReadMetadata(target);
+        //            bool skip = false;
+        //            int count = 0;
+        //            if (prevMetadata != null && prevMetadata.Status == "200") {
+        //                DateTime processTime = DateTime.Parse(prevMetadata.ProcessDateTime);
+        //                //翌日以降アクセスで確定
+        //                bool kakutei = processTime.Date > target.Date;
+        //                if (prevMetadata.Resultset != null)
+        //                    count = prevMetadata.Resultset.Count;
+        //                if (count > 0)
+        //                    table = Database.ReadDisclosure(target);
+        //                if (kakutei) {
+        //                    //確定でcount0件は追加されることはない　確定24hr以内はスキップ
+        //                    if (show | DateTime.Now < processTime.AddHours(24) | count == 0)
+        //                        skip = true;
+        //                }
 
-//            }
-//            if (table == null)
-//                table = Database.ReadDisclosure(null);
-//                //table = Database.GetTableClone("disclosures");
-//            if (skip) {
-//                //if (show)
-//                //    TableDocuments = table;
-//                    //    UpdateDocumentsTable(ref table);
-//                    Json.ApiResponse apiResponse = new Json.ApiResponse() {
-//                    MetaData = prevMetadata
-//                };
-//                //apiResponse.Status = null;
-//                //return new JsonContent(table, apiResponse, "書類一覧キャッシュ");
-//                return UpdateListView(table, apiResponse, "書類一覧キャッシュ", count, show);
-//            }
+        //            }
+        //            if (table == null)
+        //                table = Database.ReadDisclosure(null);
+        //                //table = Database.GetTableClone("disclosures");
+        //            if (skip) {
+        //                //if (show)
+        //                //    TableDocuments = table;
+        //                    //    UpdateDocumentsTable(ref table);
+        //                    Json.ApiResponse apiResponse = new Json.ApiResponse() {
+        //                    MetaData = prevMetadata
+        //                };
+        //                //apiResponse.Status = null;
+        //                //return new JsonContent(table, apiResponse, "書類一覧キャッシュ");
+        //                return UpdateListView(table, apiResponse, "書類一覧キャッシュ", count, show);
+        //            }
 
-//            DataView dv = new DataView(table, "", "id", DataViewRowState.CurrentRows);
-//            JsonResponse resMetadata = null;
-//            if (!skipFirst) {
-//                resMetadata = await apiDocument.Request(target, RequestDocument.RequestType.Metadata,0);
-//                Debug.Write($"{DateTime.Now.TimeOfDay} metadata readed");
-//            }
-//            if (resMetadata != null && resMetadata.Exception != null)
-//                return new JsonContent(resMetadata.Exception);
-//            else {
-//                if (resMetadata != null && resMetadata.Json.Status.Status != "200") {
-//                    Debug.WriteLine($" {resMetadata.Json.Status.Status}");
-//                    return new JsonContent(dv.Table, resMetadata.Json, resMetadata.Json.Status.Status);
-//                    //return UpdateListView(dv.Table, resMetadata.Json, resMetadata.Json.Status.Status, 0, show);
-//                }
-//                if (resMetadata != null && DateTime.Parse(resMetadata.Json.MetaData.ProcessDateTime).Date > target & resMetadata.Json.MetaData.Resultset.Count == 0) {
-//                    Debug.WriteLine($" count:{resMetadata.Json.MetaData.Resultset.Count}");
-//                    Database.UpdateMetadata(resMetadata.Json.MetaData);
-//                    return new JsonContent(dv.Table, resMetadata.Json, "0");
-//                    //return UpdateListView(dv.Table, resMetadata.Json, "0", 0, show);
-//                }
-//                Debug.WriteLine("");
-//                if (resMetadata == null || target < DateTime.Now.Date | resMetadata.Json.MetaData.Resultset.Count > count) {
-//                    //await Task.Delay(50);
-//                    JsonResponse resList = await apiDocument.Request(target, RequestDocument.RequestType.List,0);
-//                    Debug.Write($"{DateTime.Now.TimeOfDay} metadatalist({target:yyyy-MM-dd}) readed");
-//                    if (resList.Exception != null) {
-//                        Debug.WriteLine($" exception:{resList.Exception}");
-//                        return new JsonContent(resList.Exception);
-//                    } else {
-//                        if(resList.Json.MetaData.Status == "404") {
-//                            return new JsonContent(dv.Table, resList.Json, resList.Json.MetaData.Message, 0);
-//                        }
-//                        AddJson(resList.Json, ref dv);
-//                        Database.UpdateDisclosures(dv, resList.Json.MetaData);
-//                        //if (show)
-//                        //    TableDocuments = table;
-//                        //    UpdateDocumentsTable(ref table);
-//                        string message = string.Format("status:{0} 新規[{3}]/計[{2}]({1})",
-//                            resList.EdinetStatusCode.Message, resList.Json.MetaData.ProcessDateTime,
-//                                resList.Json.MetaData.Resultset.Count, resList.Json.MetaData.Resultset.Count - count);
-//                        Debug.Write($" count:{resList.Json.MetaData.Resultset.Count}({resList.Json.MetaData.Resultset.Count - count:+0;-0;0})");
-//                        //return new JsonContent(dv.Table, resList.Json, message, count);
-//                        //return UpdateListView(table, resList.Json, message, count, show);
-//                        if (show) {
-//                            TableDocuments = table;
-//                            DvDocuments = new DataView(TableDocuments, "", "id desc", DataViewRowState.CurrentRows);
-//                        }
-//                        return new JsonContent(table, resList.Json, message, count);
-//                    }
-//                } else {
-//                    if (DateTime.TryParse(resMetadata.Json.MetaData.ProcessDateTime, out DateTime processDate) && processDate.Date > target.Date) {
-//                        Database.UpdateMetadata(resMetadata.Json.MetaData);
-//                    }
-//                    //if (show)
-//                    //    TableDocuments = table;
-//                    //    UpdateDocumentsTable(ref table);
-//                    string message = string.Format("status:{0} 新規[なし]/計[{2}]({1})",
-//                        resMetadata.EdinetStatusCode.Message, resMetadata.Json.MetaData.ProcessDateTime,
-//                            resMetadata.Json.MetaData.Resultset.Count);
-//                    Debug.Write($"metadata {message}");
-//                    //return UpdateListView(table, resMetadata.Json, message, count,show);
-//                    //return new JsonContent(table, resMetadata.Json, message, count);
-//                    if (show) {
-//                        TableDocuments = table;
-//                        DvDocuments = new DataView(TableDocuments, "", "id desc", DataViewRowState.CurrentRows);
-//                    }
-//                    return new JsonContent(table, resMetadata.Json, message, count);
-//                }
-//            }
+        //            DataView dv = new DataView(table, "", "id", DataViewRowState.CurrentRows);
+        //            JsonResponse resMetadata = null;
+        //            if (!skipFirst) {
+        //                resMetadata = await apiDocument.Request(target, RequestDocument.RequestType.Metadata,0);
+        //                Debug.Write($"{DateTime.Now.TimeOfDay} metadata readed");
+        //            }
+        //            if (resMetadata != null && resMetadata.Exception != null)
+        //                return new JsonContent(resMetadata.Exception);
+        //            else {
+        //                if (resMetadata != null && resMetadata.Json.Status.Status != "200") {
+        //                    Debug.WriteLine($" {resMetadata.Json.Status.Status}");
+        //                    return new JsonContent(dv.Table, resMetadata.Json, resMetadata.Json.Status.Status);
+        //                    //return UpdateListView(dv.Table, resMetadata.Json, resMetadata.Json.Status.Status, 0, show);
+        //                }
+        //                if (resMetadata != null && DateTime.Parse(resMetadata.Json.MetaData.ProcessDateTime).Date > target & resMetadata.Json.MetaData.Resultset.Count == 0) {
+        //                    Debug.WriteLine($" count:{resMetadata.Json.MetaData.Resultset.Count}");
+        //                    Database.UpdateMetadata(resMetadata.Json.MetaData);
+        //                    return new JsonContent(dv.Table, resMetadata.Json, "0");
+        //                    //return UpdateListView(dv.Table, resMetadata.Json, "0", 0, show);
+        //                }
+        //                Debug.WriteLine("");
+        //                if (resMetadata == null || target < DateTime.Now.Date | resMetadata.Json.MetaData.Resultset.Count > count) {
+        //                    //await Task.Delay(50);
+        //                    JsonResponse resList = await apiDocument.Request(target, RequestDocument.RequestType.List,0);
+        //                    Debug.Write($"{DateTime.Now.TimeOfDay} metadatalist({target:yyyy-MM-dd}) readed");
+        //                    if (resList.Exception != null) {
+        //                        Debug.WriteLine($" exception:{resList.Exception}");
+        //                        return new JsonContent(resList.Exception);
+        //                    } else {
+        //                        if(resList.Json.MetaData.Status == "404") {
+        //                            return new JsonContent(dv.Table, resList.Json, resList.Json.MetaData.Message, 0);
+        //                        }
+        //                        AddJson(resList.Json, ref dv);
+        //                        Database.UpdateDisclosures(dv, resList.Json.MetaData);
+        //                        //if (show)
+        //                        //    TableDocuments = table;
+        //                        //    UpdateDocumentsTable(ref table);
+        //                        string message = string.Format("status:{0} 新規[{3}]/計[{2}]({1})",
+        //                            resList.EdinetStatusCode.Message, resList.Json.MetaData.ProcessDateTime,
+        //                                resList.Json.MetaData.Resultset.Count, resList.Json.MetaData.Resultset.Count - count);
+        //                        Debug.Write($" count:{resList.Json.MetaData.Resultset.Count}({resList.Json.MetaData.Resultset.Count - count:+0;-0;0})");
+        //                        //return new JsonContent(dv.Table, resList.Json, message, count);
+        //                        //return UpdateListView(table, resList.Json, message, count, show);
+        //                        if (show) {
+        //                            TableDocuments = table;
+        //                            DvDocuments = new DataView(TableDocuments, "", "id desc", DataViewRowState.CurrentRows);
+        //                        }
+        //                        return new JsonContent(table, resList.Json, message, count);
+        //                    }
+        //                } else {
+        //                    if (DateTime.TryParse(resMetadata.Json.MetaData.ProcessDateTime, out DateTime processDate) && processDate.Date > target.Date) {
+        //                        Database.UpdateMetadata(resMetadata.Json.MetaData);
+        //                    }
+        //                    //if (show)
+        //                    //    TableDocuments = table;
+        //                    //    UpdateDocumentsTable(ref table);
+        //                    string message = string.Format("status:{0} 新規[なし]/計[{2}]({1})",
+        //                        resMetadata.EdinetStatusCode.Message, resMetadata.Json.MetaData.ProcessDateTime,
+        //                            resMetadata.Json.MetaData.Resultset.Count);
+        //                    Debug.Write($"metadata {message}");
+        //                    //return UpdateListView(table, resMetadata.Json, message, count,show);
+        //                    //return new JsonContent(table, resMetadata.Json, message, count);
+        //                    if (show) {
+        //                        TableDocuments = table;
+        //                        DvDocuments = new DataView(TableDocuments, "", "id desc", DataViewRowState.CurrentRows);
+        //                    }
+        //                    return new JsonContent(table, resMetadata.Json, message, count);
+        //                }
+        //            }
 
-//        }
+        //        }
 
         private void AddJson(Json.ApiResponse json, ref DataView dv) {
             int maxsavedId = dv.Count > 0 ? int.Parse(dv[dv.Count - 1]["id"].ToString()) : 0;
@@ -570,7 +570,7 @@ namespace Edinet {
             return await apiDocument.RequestDownload(docid, doctype);
         }
 
-        #pragma warning disable CS1998
+#pragma warning disable CS1998
         public async Task DownloadArchiveNoAwait(int id, string docid, RequestDocument.DocumentType type, int retry) {
 #pragma warning disable CS4014
             apiDocument.DownloadAsync(docid, type, id, Database, retry);
@@ -597,7 +597,7 @@ namespace Edinet {
 
                 } catch (Exception ex) {
 
-                    throw(ex);
+                    throw (ex);
                 }
 
             }
@@ -619,12 +619,23 @@ namespace Edinet {
             }
         }
 
-
+        //private void SaveToArchive(string filedir, string name, int year) {
+        //    //using (MemoryStream stream = new MemoryStream(buffer)) {
+        //        string dir = Path.Combine(directory, "Documents", year.ToString());
+        //        if (!Directory.Exists(dir))
+        //            Directory.CreateDirectory(dir);
+        //        string filepath = string.Format(@"{0}\{1}", dir, name);
+        //        //using (FileStream fs = new FileStream(filepath, FileMode.Create)) {
+        //        //    stream.Position = 0;
+        //        //    stream.CopyTo(fs);
+        //        //}
+        //    //}
+        //}
 
         public async Task<ArchiveResponse> ChangeDocumentAsync(int id, string docid, RequestDocument.DocumentType type, int retry) {
             ArchiveResponse response = null;
             bool exist = await zip.LoadAsync(id, docid, (int)type);
-            if(!exist) {
+            if (!exist) {
                 response = await this.DownloadArchive(id, docid, type, retry);
                 zip.Load(response.Buffer, (int)type);
             }
@@ -675,16 +686,8 @@ namespace Edinet {
         public int SearchBrand(int code) {
             int count = Database.GetDocumentsCount(code);
             if (count > 0) {
-                //TableDocuments.Rows.Clear();
                 TableDocuments = Database.SearchBrand(code);
-                ////DataTable distinct = new DataView(table, "", "", DataViewRowState.CurrentRows).ToTable(true, "タイプ");
-                ////UpdateDocumentsTable(ref table);
-                //List<string> list = new List<string>() { "" };
-                //foreach (DataRow r in TableDocuments.Rows) {
-                //    if (r["docTypeCode"] != null && !list.Contains(Const.DocTypeCode[r["docTypeCode"].ToString()]))
-                //        list.Add(Const.DocTypeCode[r["docTypeCode"].ToString()]);
-                //}
-                //Types = list.ToArray();
+                DvDocuments = new DataView(TableDocuments, "", "id desc", DataViewRowState.CurrentRows);
             }
             return count;
         }
@@ -759,913 +762,177 @@ namespace Edinet {
 
 
 
-        //private void UpdateDocumentsTable(ref DataTable table) {
-        //    TableDocuments.Rows.Clear();
-        //    List<string> list = new List<string>() { "" };
-        //    for (int i = 0; i < table.Rows.Count; i++) {
-        //        DataRow r = TableDocuments.NewRow();
-        //        for (int j = 0; j < TableDocuments.Columns.Count; j++) {
-        //            if (table.Columns.Contains(TableDocuments.Columns[j].ColumnName)) {
-        //                r[TableDocuments.Columns[j].ColumnName] = table.Rows[i][TableDocuments.Columns[j].ColumnName];
-        //                if (TableDocuments.Columns[j].ColumnName == "docTypeCode") {
-        //                    string docTypeCode = table.Rows[i][TableDocuments.Columns[j].ColumnName].ToString();
-        //                    if (Const.DocTypeCode.ContainsKey(docTypeCode))
-        //                        r["タイプ"] = Const.DocTypeCode[docTypeCode];
-        //                    if (docTypeCode != "" && !list.Contains(Const.DocTypeCode[docTypeCode]))
-        //                        list.Add(Const.DocTypeCode[docTypeCode]);
-        //                }
-        //            }
-        //        }
-        //        TableDocuments.Rows.Add(r);
-        //        //UpdateSummary(ref r, true);
-        //    }
-        //    if (list.Count > 0)
-        //        Types = list.ToArray();
-        //}
-
-
-
-        //private string ReadXbrlSource(int id, string docid) {
-        //    int year = 20 * 100 + id / 100000000;
-        //    string filepath = string.Format(@"{0}\Documents\{1}\{2}_1.zip", directory, year, docid);
-        //    if (File.Exists(filepath)) {
-        //        using (FileStream fs = new FileStream(filepath, FileMode.Open, FileAccess.Read)) {
-        //            //byte[] buffer = new byte[fs.Length];
-        //            //int count = await fs.ReadAsync(buffer, 0, buffer.Length);
-        //            using (MemoryStream stream = new MemoryStream()) {
-        //                fs.CopyTo(stream);
-        //                using (ZipArchive archive = new ZipArchive(stream)) {
-        //                    foreach (ZipArchiveEntry entry in archive.Entries) {
-        //                        FileInfo inf = new FileInfo(entry.FullName);
-        //                        if (inf.FullName.Contains("PublicDoc") && inf.Extension == ".xbrl") {
-        //                            if (Path.GetExtension(entry.FullName) == ".xbrl" | Path.GetFileName(entry.FullName).Contains("ixbrl")) {
-        //                                return ReadEntry(entry);
-        //                            }
-        //                        }
-        //                    }
-        //                }
-        //            }
-        //        }
-        //    }
-        //    return null;
-        //}
-
-
-        //private async Task<string> ReadXbrlSourceAsync(int id, string docid) {
-        //    int year = 20 * 100 + id / 100000000;
-        //    string filepath = string.Format(@"{0}\Documents\{1}\{2}_1.zip", directory, year, docid);
-        //    if (File.Exists(filepath)) {
-        //        using (FileStream fs = new FileStream(filepath, FileMode.Open, FileAccess.Read, FileShare.Read,
-        //bufferSize: 4096, useAsync: true)) {
-        //            //byte[] buffer = new byte[fs.Length];
-        //            //int count = await fs.ReadAsync(buffer, 0, buffer.Length);
-        //            using (MemoryStream stream = new MemoryStream()) {
-        //                await fs.CopyToAsync(stream);
-        //                using (ZipArchive archive = new ZipArchive(stream)) {
-        //                    foreach (ZipArchiveEntry entry in archive.Entries) {
-        //                        FileInfo inf = new FileInfo(entry.FullName);
-        //                        if (inf.FullName.Contains("PublicDoc") && inf.Extension == ".xbrl") {
-        //                            if (Path.GetExtension(entry.FullName) == ".xbrl" | Path.GetFileName(entry.FullName).Contains("ixbrl")) {
-        //                                //Console.WriteLine(ReadEntry(entry));
-        //                                return ReadEntry(entry);
-        //                            }
-        //                        }
-        //                    }
-        //                }
-        //            }
-        //        }
-        //    }
-        //    return null;
-        //}
-
-        //public string UpdateSummary(int id, string docid, bool updateDatabase, bool overwrite = false) {
-        //    System.Diagnostics.Stopwatch sw = new System.Diagnostics.Stopwatch();
-        //    sw.Start();
-        //    string source = ReadXbrlSource(id, docid);
-        //    if (source != null) {
-        //        Xbrl.Load(source, false);
-        //        if (Xbrl.Elements.Count > 0) {
-        //            //int i = 1;
-        //            Dictionary<string, string> dic = new Dictionary<string, string>();
-        //            foreach (var element in Xbrl.Elements) {
-        //                switch (element.Name) {
-        //                    case "SecurityCodeOfIssuer": //証券コード
-        //                        dic["code"] = element.Value;
-        //                        break;
-        //                    case "NameOfIssuer": // 発行者の名称（銘柄名）
-        //                        dic["name"] = element.Value;
-        //                        break;
-        //                    case "NameOfEmployer": // 勤務先名称
-        //                        dic["勤務先"] = element.Value;
-        //                        break;
-        //                    case "PurposeOfHolding": // 保有目的
-        //                        dic["保有目的"] = element.Value;
-        //                        break;
-        //                    case "ActOfMakingImportantProposalEtcNA": // 重要提案行為等
-        //                        dic["提案"] = element.Value;
-        //                        break;
-        //                    case "BaseDate": // 基準日
-        //                        dic["基準日"] = element.Value;
-        //                        break;
-        //                    case "TotalNumberOfStocksEtcHeld": // 保有証券総数
-        //                        dic["保有"] = element.Value;
-        //                        break;
-        //                    case "TotalNumberOfOutstandingStocksEtc": // 発行済株式総数
-        //                        dic["発行"] = element.Value;
-        //                        break;
-        //                    case "HoldingRatioOfShareCertificatesEtc": // 保有割合
-        //                        dic["割合"] = element.Value;
-        //                        break;
-        //                    case "NumberOfSubmissionDEI":
-        //                        dic["回数"] = element.Value;
-        //                        break;
-        //                    case "DateWhenFilingRequirementAroseCoverPage":
-        //                        dic["報告義務発生日"] = element.Value;
-        //                        break;
-        //                    case "FilingDateCoverPage":
-        //                        dic["提出日"] = element.Value;
-        //                        break;
-        //                    case "ReasonForFilingChangeReportCoverPage":
-        //                        dic["事由"] = element.Value;
-        //                        break;
-        //                        //case "AmendmentFlagDEI"://true：訂正提出時、false：当初提出時
-        //                        //    dic[""] = element.Value;
-        //                        //    break;
-        //                        //case "IdentificationOfDocumentSubjectToAmendmentDEI"://該当ある場合、訂正対象の当初提出書類の書類管理番号（EDINET提出時にEDINETにより付与される番号。）を記載する。
-        //                        //    dic[""] = element.Value;
-        //                        //    break;
-        //                        //case "ReportAmendmentFlagDEI"://true：記載事項を訂正する場合（添付書類のみの訂正及びXBRLを同時に訂正する場合を含む）、false：それ以外
-        //                        //    dic[""] = element.Value;
-        //                        //    break;
-        //                        //case "XBRLAmendmentFlagDEI"://true：記載事項を訂正せずXBRLのみを訂正する場合、false：それ以外
-        //                        //    dic[""] = element.Value;
-        //                        //    break;
-        //                }
-        //            }
-
-        //            //FilerNameInJapaneseDEI 氏名
-        //            //foreach(var kv in dic) {
-        //            //    Console.WriteLine($"{kv.Key}\t{kv.Value}");
-        //            //}
-        //            StringBuilder sb = new StringBuilder();
-        //            if (dic.ContainsKey("code"))
-        //                sb.Append($"{dic["code"]} ");
-        //            if (dic.ContainsKey("name"))
-        //                sb.Append($"{dic["name"]} ");
-        //            if (dic.ContainsKey("割合")) {
-        //                decimal ratio = decimal.Parse(dic["割合"]);
-        //                sb.Append($"{ratio:0.0%}");
-        //            }
-        //            if (dic.ContainsKey("保有") & dic.ContainsKey("発行"))
-        //                sb.Append($"({dic["保有"]}/{dic["発行"]}) ");
-        //            if (dic.ContainsKey("基準日"))
-        //                sb.Append($"{dic["基準日"]} ");
-        //            if (dic.ContainsKey("保有目的"))
-        //                sb.Append($"{dic["保有目的"]} ");
-
-        //            if (dic.ContainsKey("回数"))
-        //                sb.Append($"[{dic["回数"]}] ");
-        //            //if (dic.ContainsKey("報告義務発生日"))
-        //            //    sb.Append($"{dic["報告義務発生日"]} ");
-        //            //if (dic.ContainsKey("提出日"))
-        //            //    sb.Append($"{dic["提出日"]} ");
-        //            if (dic.ContainsKey("事由"))
-        //                sb.Append($"{dic["事由"]} ");
-        //            //sb.Append($"{dic["code"]} {dic["name"]} {ratio:0.0%}({dic["保有"]}/{dic["発行"]}) {dic["基準日"]} {dic["保有目的"]}");
-        //            //Console.WriteLine($"{r["filerName"].ToString()} {r["docDescription"].ToString()}" + sb.ToString());
-        //            //r.BeginEdit();
-        //            //r["summary"] = sb.ToString();
-        //            //r.EndEdit();
-        //            if (updateDatabase) {
-        //                Database.UpdateFieldOfDisclosure(id, new Dictionary<string, string>() { { "summary", sb.ToString() } });
-        //            }
-        //            sw.Stop();
-        //            Console.WriteLine(sw.Elapsed.Milliseconds);
-
-        //            return sb.ToString();
-        //        }
-
-        //    }
-        //    return "";
-        //}
-
-
-
-        //public async Task<string> UpdateSummaryAsync(int id, string docid, bool updateDatabase, bool overwrite = false) {
-        //    string source = await ReadXbrlSourceAsync(id, docid);
-        //    if(source != null) {
-        //        Xbrl.Load(source, false);
-        //        if (Xbrl.Elements.Count > 0) {
-        //            //int i = 1;
-        //            Dictionary<string, string> dic = new Dictionary<string, string>();
-        //            foreach (var element in Xbrl.Elements) {
-        //                switch (element.Name) {
-        //                    case "SecurityCodeOfIssuer": //証券コード
-        //                        dic["code"] = element.Value;
-        //                        break;
-        //                    case "NameOfIssuer": // 発行者の名称（銘柄名）
-        //                        dic["name"] = element.Value;
-        //                        break;
-        //                    case "NameOfEmployer": // 勤務先名称
-        //                        dic["勤務先"] = element.Value;
-        //                        break;
-        //                    case "PurposeOfHolding": // 保有目的
-        //                        dic["保有目的"] = element.Value;
-        //                        break;
-        //                    case "ActOfMakingImportantProposalEtcNA": // 重要提案行為等
-        //                        dic["提案"] = element.Value;
-        //                        break;
-        //                    case "BaseDate": // 基準日
-        //                        dic["基準日"] = element.Value;
-        //                        break;
-        //                    case "TotalNumberOfStocksEtcHeld": // 保有証券総数
-        //                        dic["保有"] = element.Value;
-        //                        break;
-        //                    case "TotalNumberOfOutstandingStocksEtc": // 発行済株式総数
-        //                        dic["発行"] = element.Value;
-        //                        break;
-        //                    case "HoldingRatioOfShareCertificatesEtc": // 保有割合
-        //                        dic["割合"] = element.Value;
-        //                        break;
-        //                    case "NumberOfSubmissionDEI":
-        //                        dic["回数"] = element.Value;
-        //                        break;
-        //                    case "DateWhenFilingRequirementAroseCoverPage":
-        //                        dic["報告義務発生日"] = element.Value;
-        //                        break;
-        //                    case "FilingDateCoverPage":
-        //                        dic["提出日"] = element.Value;
-        //                        break;
-        //                    case "ReasonForFilingChangeReportCoverPage":
-        //                        dic["事由"] = element.Value;
-        //                        break;
-        //                        //case "AmendmentFlagDEI"://true：訂正提出時、false：当初提出時
-        //                        //    dic[""] = element.Value;
-        //                        //    break;
-        //                        //case "IdentificationOfDocumentSubjectToAmendmentDEI"://該当ある場合、訂正対象の当初提出書類の書類管理番号（EDINET提出時にEDINETにより付与される番号。）を記載する。
-        //                        //    dic[""] = element.Value;
-        //                        //    break;
-        //                        //case "ReportAmendmentFlagDEI"://true：記載事項を訂正する場合（添付書類のみの訂正及びXBRLを同時に訂正する場合を含む）、false：それ以外
-        //                        //    dic[""] = element.Value;
-        //                        //    break;
-        //                        //case "XBRLAmendmentFlagDEI"://true：記載事項を訂正せずXBRLのみを訂正する場合、false：それ以外
-        //                        //    dic[""] = element.Value;
-        //                        //    break;
-        //                }
-        //            }
-
-        //            //FilerNameInJapaneseDEI 氏名
-        //            //foreach(var kv in dic) {
-        //            //    Console.WriteLine($"{kv.Key}\t{kv.Value}");
-        //            //}
-        //            StringBuilder sb = new StringBuilder();
-        //            if (dic.ContainsKey("code"))
-        //                sb.Append($"{dic["code"]} ");
-        //            if (dic.ContainsKey("name"))
-        //                sb.Append($"{dic["name"]} ");
-        //            if (dic.ContainsKey("割合")) {
-        //                decimal ratio = decimal.Parse(dic["割合"]);
-        //                sb.Append($"{ratio:0.0%}");
-        //            }
-        //            if (dic.ContainsKey("保有") & dic.ContainsKey("発行"))
-        //                sb.Append($"({dic["保有"]}/{dic["発行"]}) ");
-        //            if (dic.ContainsKey("基準日"))
-        //                sb.Append($"{dic["基準日"]} ");
-        //            if (dic.ContainsKey("保有目的"))
-        //                sb.Append($"{dic["保有目的"]} ");
-
-        //            if (dic.ContainsKey("回数"))
-        //                sb.Append($"[{dic["回数"]}] ");
-        //            //if (dic.ContainsKey("報告義務発生日"))
-        //            //    sb.Append($"{dic["報告義務発生日"]} ");
-        //            //if (dic.ContainsKey("提出日"))
-        //            //    sb.Append($"{dic["提出日"]} ");
-        //            if (dic.ContainsKey("事由"))
-        //                sb.Append($"{dic["事由"]} ");
-        //            //sb.Append($"{dic["code"]} {dic["name"]} {ratio:0.0%}({dic["保有"]}/{dic["発行"]}) {dic["基準日"]} {dic["保有目的"]}");
-        //            //Console.WriteLine($"{r["filerName"].ToString()} {r["docDescription"].ToString()}" + sb.ToString());
-        //            //r.BeginEdit();
-        //            //r["summary"] = sb.ToString();
-        //            //r.EndEdit();
-        //            if (updateDatabase) {
-        //                Database.UpdateFieldOfDisclosure(id, new Dictionary<string, string>() { { "summary", sb.ToString() } });
-        //            }
-        //            return sb.ToString();
-        //        }
-
-        //    }
-        //    return "";
-        //}
-
-        ////public async Task<string> UpdateSummary(int id, string docid, bool updateDatabase, bool overwrite = false) {
-        ////    string summary = "";
-        ////    //await Task.Run(() => {
-
-        ////    int year = 20 * 100 + id / 100000000;
-        ////    string filepath = string.Format(@"{0}\Documents\{1}\{2}_1.zip", directory, year, docid);
-        ////    bool exists = File.Exists(filepath);
-        ////    if (exists) {
-        ////        //byte[] buffer = LoadCache(filepath);
-        ////        ///*byte[] */buffer = null;
-        ////        //using (FileStream fs = new FileStream(filepath, FileMode.Open, FileAccess.Read)) {
-        ////        FileStream fs = new FileStream(filepath, FileMode.Open, FileAccess.Read);
-        ////            byte[] buffer = new byte[fs.Length];
-        ////            await fs.ReadAsync(buffer, 0, buffer.Length);
-        ////            fs.Close();
-        ////        fs.Dispose();
-        ////            if (buffer != null) {
-        ////                using (MemoryStream stream = new MemoryStream(buffer)) {
-        ////                    using (ZipArchive archive = new ZipArchive(stream)) {
-        ////                        int i = 0;
-        ////                        foreach (ZipArchiveEntry entry in archive.Entries) {
-        ////                            i++;
-        ////                            System.IO.FileInfo inf = new System.IO.FileInfo(entry.FullName);
-        ////                            if (inf.FullName.Contains("PublicDoc")) {
-        ////                                if (inf.Extension == ".xbrl") {
-        ////                                    string name = entry.Name;
-        ////                                    string fullpath = entry.FullName;
-
-        ////                                    try {
-        ////                                        Dictionary<string, string> dic = new Dictionary<string, string>();
-        ////                                        string source = ReadEntry(buffer, fullpath);
-        ////                                        if (Path.GetExtension(fullpath) == ".xbrl" | Path.GetFileName(fullpath).Contains("ixbrl")) {
-        ////                                            Xbrl.Load(source, Path.GetFileName(fullpath).Contains("ixbrl"));
-        ////                                            if (Xbrl.Elements.Count > 0) {
-        ////                                                //int i = 1;
-        ////                                                foreach (var element in Xbrl.Elements) {
-        ////                                                    switch (element.Name) {
-        ////                                                        case "SecurityCodeOfIssuer": //証券コード
-        ////                                                            dic["code"] = element.Value;
-        ////                                                            break;
-        ////                                                        case "NameOfIssuer": // 発行者の名称（銘柄名）
-        ////                                                            dic["name"] = element.Value;
-        ////                                                            break;
-        ////                                                        case "NameOfEmployer": // 勤務先名称
-        ////                                                            dic["勤務先"] = element.Value;
-        ////                                                            break;
-        ////                                                        case "PurposeOfHolding": // 保有目的
-        ////                                                            dic["保有目的"] = element.Value;
-        ////                                                            break;
-        ////                                                        case "ActOfMakingImportantProposalEtcNA": // 重要提案行為等
-        ////                                                            dic["提案"] = element.Value;
-        ////                                                            break;
-        ////                                                        case "BaseDate": // 基準日
-        ////                                                            dic["基準日"] = element.Value;
-        ////                                                            break;
-        ////                                                        case "TotalNumberOfStocksEtcHeld": // 保有証券総数
-        ////                                                            dic["保有"] = element.Value;
-        ////                                                            break;
-        ////                                                        case "TotalNumberOfOutstandingStocksEtc": // 発行済株式総数
-        ////                                                            dic["発行"] = element.Value;
-        ////                                                            break;
-        ////                                                        case "HoldingRatioOfShareCertificatesEtc": // 保有割合
-        ////                                                            dic["割合"] = element.Value;
-        ////                                                            break;
-        ////                                                        case "NumberOfSubmissionDEI":
-        ////                                                            dic["回数"] = element.Value;
-        ////                                                            break;
-        ////                                                        case "DateWhenFilingRequirementAroseCoverPage":
-        ////                                                            dic["報告義務発生日"] = element.Value;
-        ////                                                            break;
-        ////                                                        case "FilingDateCoverPage":
-        ////                                                            dic["提出日"] = element.Value;
-        ////                                                            break;
-        ////                                                        case "ReasonForFilingChangeReportCoverPage":
-        ////                                                            dic["事由"] = element.Value;
-        ////                                                            break;
-        ////                                                            //case "AmendmentFlagDEI"://true：訂正提出時、false：当初提出時
-        ////                                                            //    dic[""] = element.Value;
-        ////                                                            //    break;
-        ////                                                            //case "IdentificationOfDocumentSubjectToAmendmentDEI"://該当ある場合、訂正対象の当初提出書類の書類管理番号（EDINET提出時にEDINETにより付与される番号。）を記載する。
-        ////                                                            //    dic[""] = element.Value;
-        ////                                                            //    break;
-        ////                                                            //case "ReportAmendmentFlagDEI"://true：記載事項を訂正する場合（添付書類のみの訂正及びXBRLを同時に訂正する場合を含む）、false：それ以外
-        ////                                                            //    dic[""] = element.Value;
-        ////                                                            //    break;
-        ////                                                            //case "XBRLAmendmentFlagDEI"://true：記載事項を訂正せずXBRLのみを訂正する場合、false：それ以外
-        ////                                                            //    dic[""] = element.Value;
-        ////                                                            //    break;
-        ////                                                    }
-        ////                                                }
-
-        ////                                                //FilerNameInJapaneseDEI 氏名
-        ////                                                //foreach(var kv in dic) {
-        ////                                                //    Console.WriteLine($"{kv.Key}\t{kv.Value}");
-        ////                                                //}
-        ////                                                StringBuilder sb = new StringBuilder();
-        ////                                                if (dic.ContainsKey("code"))
-        ////                                                    sb.Append($"{dic["code"]} ");
-        ////                                                if (dic.ContainsKey("name"))
-        ////                                                    sb.Append($"{dic["name"]} ");
-        ////                                                if (dic.ContainsKey("割合")) {
-        ////                                                    decimal ratio = decimal.Parse(dic["割合"]);
-        ////                                                    sb.Append($"{ratio:0.0%}");
-        ////                                                }
-        ////                                                if (dic.ContainsKey("保有") & dic.ContainsKey("発行"))
-        ////                                                    sb.Append($"({dic["保有"]}/{dic["発行"]}) ");
-        ////                                                if (dic.ContainsKey("基準日"))
-        ////                                                    sb.Append($"{dic["基準日"]} ");
-        ////                                                if (dic.ContainsKey("保有目的"))
-        ////                                                    sb.Append($"{dic["保有目的"]} ");
-
-        ////                                                if (dic.ContainsKey("回数"))
-        ////                                                    sb.Append($"[{dic["回数"]}] ");
-        ////                                                //if (dic.ContainsKey("報告義務発生日"))
-        ////                                                //    sb.Append($"{dic["報告義務発生日"]} ");
-        ////                                                //if (dic.ContainsKey("提出日"))
-        ////                                                //    sb.Append($"{dic["提出日"]} ");
-        ////                                                if (dic.ContainsKey("事由"))
-        ////                                                    sb.Append($"{dic["事由"]} ");
-        ////                                                //sb.Append($"{dic["code"]} {dic["name"]} {ratio:0.0%}({dic["保有"]}/{dic["発行"]}) {dic["基準日"]} {dic["保有目的"]}");
-        ////                                                //Console.WriteLine($"{r["filerName"].ToString()} {r["docDescription"].ToString()}" + sb.ToString());
-        ////                                                //r.BeginEdit();
-        ////                                                //r["summary"] = sb.ToString();
-        ////                                                //r.EndEdit();
-        ////                                                if (updateDatabase) {
-        ////                                                    Database.UpdateFieldOfDisclosure(id, new Dictionary<string, string>() { { "summary", sb.ToString() } });
-        ////                                                }
-        ////                                                summary = sb.ToString();
-        ////                                                break;
-        ////                                            }
-        ////                                        }
-        ////                                    } catch (Exception ex) {
-        ////                                        //Console.WriteLine(ex.Message);
-        ////                                        throw;
-        ////                                    }
-
-        ////                                }
-        ////                            }
-        ////                        }
-        ////                    }
-        ////                }
-        ////            }
-        ////        //}
-        ////    }
-        ////    //});
-        ////    return summary;
-        ////}
-
-
-        //public string UpdateSummary(bool inList, int id, bool updateDatabase, bool overwrite = false) {
-        //    if (inList) {
-        //        if (!DvDocuments.Table.Columns.Contains("summary"))
-        //            return "";
-        //        //if (DvDocuments.Sort.Substring(0, 2) != "id") {
-        //        //}
-        //        int index = DvDocuments.Find(id);
-        //        DataRowView r = DvDocuments[index];
-        //        if (!overwrite && r["summary"] != DBNull.Value)
-        //            return "";
-        //        if (r["xbrlFlag"] == DBNull.Value || r["xbrlFlag"].ToString() != "1")
-        //            return "";
-        //        if (r["docTypeCode"] != DBNull.Value) {
-        //            int itype = int.Parse(r["docTypeCode"].ToString());
-        //            if (itype >= 350 & itype <= 360) {
-        //                string docid = r["docID"].ToString();
-        //                string summary = UpdateSummary(id, docid, updateDatabase, overwrite);
-        //                //Console.WriteLine($"{r["filerName"].ToString()} {r["docDescription"].ToString()}" + sb.ToString());
-        //                r.BeginEdit();
-        //                r["summary"] = summary;
-        //                r.EndEdit();
-        //                return summary;
-        //            }
-        //        }
-        //    } else {
-
-        //    }
-        //    return "";
-        //}
-
-        //public void UpdateSummary(Dictionary<int, string> dicDocid) {
-        //    Dictionary<int, string> dic = new Dictionary<int, string>();
-        //    foreach(var kv in dicDocid) {
-        //        string summary = UpdateSummary(kv.Key, kv.Value, false);
-        //        dic[kv.Key] = summary;
-        //    }
-        //    Database.UpdateFieldOfDisclosure("summary", dic);
-        //}
-
-
-
-
-
-        ////private void UpdateSummary(ref DataRow r, bool overwrite = false) {
-        ////    if (!overwrite && r["summary"] != DBNull.Value)
-        ////        return;
-        ////    if (r["xbrlFlag"] == DBNull.Value || r["xbrlFlag"].ToString() != "1")
-        ////        return;
-        ////    if (r["docTypeCode"] != DBNull.Value) {
-        ////        int itype = int.Parse(r["docTypeCode"].ToString());
-        ////        if (itype >= 350 & itype <= 360) {
-
-        ////            int id = int.Parse(r["id"].ToString());
-        ////            string docid = r["docID"].ToString();
-
-        ////            int year = 20 * 100 + id / 100000000;
-        ////            string filepath = string.Format(@"{0}\Documents\{1}\{2}_1.zip", directory, year, docid);
-        ////            bool exists = File.Exists(filepath);
-        ////            if (exists) {
-        ////                byte[] buffer = LoadCache(filepath);
-        ////                if (buffer != null) {
-        ////                    using (MemoryStream stream = new MemoryStream(buffer)) {
-        ////                        using (ZipArchive archive = new ZipArchive(stream)) {
-        ////                            int i = 0;
-        ////                            foreach (ZipArchiveEntry entry in archive.Entries) {
-        ////                                i++;
-        ////                                System.IO.FileInfo inf = new System.IO.FileInfo(entry.FullName);
-        ////                                string folda = null;
-        ////                                if (inf.FullName.Contains("PublicDoc")) {
-        ////                                    folda = "PublicDoc";
-        ////                                    if (inf.Extension == ".xbrl") {
-        ////                                        string name = entry.Name;
-        ////                                        string fullpath = entry.FullName;
-        ////                                        //SelectContent(dgvContents.CurrentCell.RowIndex, out string source);
-
-        ////                                        try {
-        ////                                            Dictionary<string, string> dic = new Dictionary<string, string>();
-        ////                                            string source = ReadEntry(buffer, fullpath);
-        ////                                            if (Path.GetExtension(fullpath) == ".xbrl" | Path.GetFileName(fullpath).Contains("ixbrl")) {
-        ////                                                Xbrl.Load(source, Path.GetFileName(fullpath).Contains("ixbrl"));
-        ////                                                if (Xbrl.Elements.Count > 0) {
-        ////                                                    //int i = 1;
-        ////                                                    foreach (var element in Xbrl.Elements) {
-        ////                                                        //    DataRow r = TableElements.NewRow();
-        ////                                                        //    r["no"] = i;
-        ////                                                        //    r["tag"] = element.Tag;
-        ////                                                        //    r["ラベル"] = element.Label;
-        ////                                                        //    r["prefix"] = element.Prefix;
-        ////                                                        //    r["element"] = element.Name;
-        ////                                                        //    r["contextRef"] = element.ContextRef;
-        ////                                                        //    r["value"] = element.Value;
-        ////                                                        //    r["sign"] = element.Sign;
-        ////                                                        //    r["unitRef"] = element.UnitRef;
-        ////                                                        //    r["decimals"] = element.Decimals;
-        ////                                                        //    r["nil"] = element.Nil;
-        ////                                                        //    r["attributes"] = element.Attributes;
-        ////                                                        //    TableElements.Rows.Add(r);
-        ////                                                        //    i++;
-        ////                                                        switch (element.Name) {
-        ////                                                            case "SecurityCodeOfIssuer": //証券コード
-        ////                                                                dic["code"] = element.Value;
-        ////                                                                break;
-        ////                                                            case "NameOfIssuer": // 発行者の名称（銘柄名）
-        ////                                                                dic["name"] = element.Value;
-        ////                                                                break;
-        ////                                                            case "NameOfEmployer": // 勤務先名称
-        ////                                                                dic["勤務先"] = element.Value;
-        ////                                                                break;
-        ////                                                            case "PurposeOfHolding": // 保有目的
-        ////                                                                dic["保有目的"] = element.Value;
-        ////                                                                break;
-        ////                                                            case "ActOfMakingImportantProposalEtcNA": // 重要提案行為等
-        ////                                                                dic["提案"] = element.Value;
-        ////                                                                break;
-        ////                                                            case "BaseDate": // 基準日
-        ////                                                                dic["基準日"] = element.Value;
-        ////                                                                break;
-        ////                                                            case "TotalNumberOfStocksEtcHeld": // 保有証券総数
-        ////                                                                dic["保有"] = element.Value;
-        ////                                                                break;
-        ////                                                            case "TotalNumberOfOutstandingStocksEtc": // 発行済株式総数
-        ////                                                                dic["発行"] = element.Value;
-        ////                                                                break;
-        ////                                                            case "HoldingRatioOfShareCertificatesEtc": // 保有割合
-        ////                                                                dic["割合"] = element.Value;
-        ////                                                                break;
-        ////                                                            case "NumberOfSubmissionDEI":
-        ////                                                                dic["回数"] = element.Value;
-        ////                                                                break;
-        ////                                                            case "DateWhenFilingRequirementAroseCoverPage":
-        ////                                                                dic["報告義務発生日"] = element.Value;
-        ////                                                                break;
-        ////                                                            case "FilingDateCoverPage":
-        ////                                                                dic["提出日"] = element.Value;
-        ////                                                                break;
-        ////                                                            case "ReasonForFilingChangeReportCoverPage":
-        ////                                                                dic["事由"] = element.Value;
-        ////                                                                break;
-        ////                                                                //case "AmendmentFlagDEI"://true：訂正提出時、false：当初提出時
-        ////                                                                //    dic[""] = element.Value;
-        ////                                                                //    break;
-        ////                                                                //case "IdentificationOfDocumentSubjectToAmendmentDEI"://該当ある場合、訂正対象の当初提出書類の書類管理番号（EDINET提出時にEDINETにより付与される番号。）を記載する。
-        ////                                                                //    dic[""] = element.Value;
-        ////                                                                //    break;
-        ////                                                                //case "ReportAmendmentFlagDEI"://true：記載事項を訂正する場合（添付書類のみの訂正及びXBRLを同時に訂正する場合を含む）、false：それ以外
-        ////                                                                //    dic[""] = element.Value;
-        ////                                                                //    break;
-        ////                                                                //case "XBRLAmendmentFlagDEI"://true：記載事項を訂正せずXBRLのみを訂正する場合、false：それ以外
-        ////                                                                //    dic[""] = element.Value;
-        ////                                                                //    break;
-        ////                                                        }
-        ////                                                    }
-
-        ////                                                    //FilerNameInJapaneseDEI 氏名
-        ////                                                    //foreach(var kv in dic) {
-        ////                                                    //    Console.WriteLine($"{kv.Key}\t{kv.Value}");
-        ////                                                    //}
-        ////                                                    StringBuilder sb = new StringBuilder();
-        ////                                                    if (dic.ContainsKey("code"))
-        ////                                                        sb.Append($"{dic["code"]} ");
-        ////                                                    if (dic.ContainsKey("name"))
-        ////                                                        sb.Append($"{dic["name"]} ");
-        ////                                                    if (dic.ContainsKey("割合")) {
-        ////                                                        decimal ratio = decimal.Parse(dic["割合"]);
-        ////                                                        sb.Append($"{ratio:0.0%}");
-        ////                                                    }
-        ////                                                    if (dic.ContainsKey("保有") & dic.ContainsKey("発行"))
-        ////                                                        sb.Append($"({dic["保有"]}/{dic["発行"]}) ");
-        ////                                                    if (dic.ContainsKey("基準日"))
-        ////                                                        sb.Append($"{dic["基準日"]} ");
-        ////                                                    if (dic.ContainsKey("保有目的"))
-        ////                                                        sb.Append($"{dic["保有目的"]} ");
-
-        ////                                                    if (dic.ContainsKey("回数"))
-        ////                                                        sb.Append($"[{dic["回数"]}] ");
-        ////                                                    //if (dic.ContainsKey("報告義務発生日"))
-        ////                                                    //    sb.Append($"{dic["報告義務発生日"]} ");
-        ////                                                    //if (dic.ContainsKey("提出日"))
-        ////                                                    //    sb.Append($"{dic["提出日"]} ");
-        ////                                                    if (dic.ContainsKey("事由"))
-        ////                                                        sb.Append($"{dic["事由"]} ");
-        ////                                                    //sb.Append($"{dic["code"]} {dic["name"]} {ratio:0.0%}({dic["保有"]}/{dic["発行"]}) {dic["基準日"]} {dic["保有目的"]}");
-        ////                                                    Console.WriteLine($"{r["filerName"].ToString()} {r["docDescription"].ToString()}" + sb.ToString());
-        ////                                                    r.BeginEdit();
-        ////                                                    r["summary"] = sb.ToString();
-        ////                                                    r.EndEdit();
-        ////                                                }
-        ////                                            }
-        ////                                        } catch (Exception ex) {
-        ////                                            Console.WriteLine(ex.Message);
-        ////                                            throw;
-        ////                                        }
-
-        ////                                    }
-        ////                                } else if (inf.FullName.Contains("AuditDoc"))
-        ////                                    folda = "AuditDoc";
-        ////                                else if (inf.FullName.Contains("Summary")) {
-        ////                                    folda = "Summary";
-        ////                                } else if (inf.FullName.Contains("Attachment"))
-        ////                                    folda = "Attachment";
-        ////                                //DataRow r = TableContents.NewRow();
-        ////                                //r["type"] = inf.Extension;
-        ////                                //r["folda"] = folda;
-        ////                                //r["name"] = entry.Name;
-        ////                                //r["fullpath"] = entry.FullName;
-        ////                                //r["no"] = i;
-        ////                                //TableContents.Rows.Add(r);
-        ////                            }
-        ////                        }
-        ////                    }
-        ////                }
-
-        ////            }
-
-
-        ////        }
-        ////    }
-        ////}
-
-
-
-        //private void UpdateSummary(ref DataRow r, bool updateDatabase, bool overwrite = false) {
-        //    if (!overwrite && r["summary"] != DBNull.Value)
-        //        return;
-        //    if (r["xbrlFlag"] == DBNull.Value || r["xbrlFlag"].ToString() != "1")
-        //        return;
-        //    if (r["docTypeCode"] != DBNull.Value) {
-        //        int itype = int.Parse(r["docTypeCode"].ToString());
-        //        if (itype >= 350 & itype <= 360) {
-
-        //            int id = int.Parse(r["id"].ToString());
-        //            string docid = r["docID"].ToString();
-
-        //            string summary = UpdateSummary(id, docid, updateDatabase, overwrite);
-
-        //            //Console.WriteLine($"{r["filerName"].ToString()} {r["docDescription"].ToString()}" + sb.ToString());
-        //            r.BeginEdit();
-        //            r["summary"] = summary;
-        //            r.EndEdit();
-        //        }
-        //    }
-        //}
-
-
-
-
-        //private async Task<DataTable> UpdateDocumentsTableAsync(ref DataTable table) {
-        //    TableDocuments.Rows.Clear();
-        //    List<string> list = new List<string>() { "" };
-        //    for (int i = 0; i < table.Rows.Count; i++) {
-        //        DataRow r = TableDocuments.NewRow();
-        //        for (int j = 0; j < TableDocuments.Columns.Count; j++) {
-        //            if (table.Columns.Contains(TableDocuments.Columns[j].ColumnName)) {
-        //                r[TableDocuments.Columns[j].ColumnName] = table.Rows[i][TableDocuments.Columns[j].ColumnName];
-        //                if (TableDocuments.Columns[j].ColumnName == "docTypeCode") {
-        //                    string docTypeCode = table.Rows[i][TableDocuments.Columns[j].ColumnName].ToString();
-        //                    if (Const.DocTypeCode.ContainsKey(docTypeCode))
-        //                        r["タイプ"] = Const.DocTypeCode[docTypeCode];
-        //                    if (docTypeCode != "" && !list.Contains(Const.DocTypeCode[docTypeCode]))
-        //                        list.Add(Const.DocTypeCode[docTypeCode]);
-        //                }
-        //            }
-        //        }
-        //        TableDocuments.Rows.Add(r);
-        //        //UpdateSummary(ref r);
-        //        //UpdateSummary(int.Parse(r["id"].ToString()), true);
-        //        UpdateSummary(ref r, true);
-        //    }
-        //    if (list.Count > 0)
-        //        Types = list.ToArray();
-        //}
-
-
-        //public async Task<ArchiveResponse> ChangeDocument(int id, string docid, RequestDocument.DocumentType type) {
-        //    ArchiveResponse response = null;
-        //    TableContents.Rows.Clear();
-        //    int year = 20 * 100 + id / 100000000;
-        //    string filepath = string.Format(@"{0}\Documents\{1}\{2}_{3}.{4}", directory, year, docid, (int)type, type ==  RequestDocument.DocumentType.Pdf ? "pdf" : "zip");
-        //    bool exists = File.Exists(filepath);
-        //    if (exists) {
-        //        Buffer = LoadCache(filepath);
-        //    } else {
-
-        //        response = await this.DownloadArchive(id, docid, type);
-        //        Buffer = response.Buffer;
-        //    }
-
-        //    if (Buffer != null && type !=  RequestDocument.DocumentType.Pdf) {
-        //        using (MemoryStream stream = new MemoryStream(Buffer)) {
-        //            using (ZipArchive archive = new ZipArchive(stream)) {
-        //                int i = 0;
-        //                foreach (ZipArchiveEntry entry in archive.Entries) {
-        //                    i++;
-        //                    System.IO.FileInfo inf = new System.IO.FileInfo(entry.FullName);
-        //                    string folda = null;
-        //                    if (inf.FullName.Contains("PublicDoc")) {
-        //                        folda = "PublicDoc";
-        //                    } else if (inf.FullName.Contains("AuditDoc"))
-        //                        folda = "AuditDoc";
-        //                    else if (inf.FullName.Contains("Summary")) {
-        //                        folda = "Summary";
-        //                    } else if (inf.FullName.Contains("Attachment"))
-        //                        folda = "Attachment";
-        //                    DataRow r = TableContents.NewRow();
-        //                    r["type"] = inf.Extension;
-        //                    r["folda"] = folda;
-        //                    r["name"] = entry.Name;
-        //                    r["fullpath"] = entry.FullName;
-        //                    r["no"] = i;
-        //                    TableContents.Rows.Add(r);
-        //                }
-        //            }
-        //        }
-        //    }
-
-        //    return response;
-        //}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        //private byte[] LoadCache(string filepath) {
-        //    byte[] buffer = null;
-        //    using (FileStream fs = new FileStream(filepath, FileMode.Open, FileAccess.Read)) {
-        //        buffer = new byte[fs.Length];
-        //        fs.Read(buffer, 0, buffer.Length);
-        //        fs.Close();
-        //        //ArchiveResult = new ApiArchiveResult(null, null, buffer, filepath);
-        //    }
-        //    return buffer;
-        //}
-
-        //public void SelectContentOrg(int row, out string source) {
-        //    TableElements.Rows.Clear();
-        //    string fullpath = DvContents[row]["fullpath"].ToString();
-        //    try {
-        //        source = ReadEntry(Buffer, fullpath);
-        //        if (Path.GetExtension(fullpath) == ".xbrl" | Path.GetFileName(fullpath).Contains("ixbrl")) {
-        //            Xbrl.Load(source, Path.GetFileName(fullpath).Contains("ixbrl"));
-        //            if (Xbrl.Elements.Count > 0) {
-        //                int i = 1;
-        //                foreach (var element in Xbrl.Elements) {
-        //                    DataRow r = TableElements.NewRow();
-        //                    r["no"] = i;
-        //                    r["tag"] = element.Tag;
-        //                    r["ラベル"] = element.Label;
-        //                    r["prefix"] = element.Prefix;
-        //                    r["element"] = element.Name;
-        //                    r["contextRef"] = element.ContextRef;
-        //                    r["value"] = element.Value;
-        //                    r["sign"] = element.Sign;
-        //                    r["unitRef"] = element.UnitRef;
-        //                    r["decimals"] = element.Decimals;
-        //                    r["nil"] = element.Nil;
-        //                    r["attributes"] = element.Attributes;
-        //                    TableElements.Rows.Add(r);
-        //                    i++;
-        //                }
-        //            }
-        //        }
-        //    } catch (Exception ex) {
-        //        Console.WriteLine(ex.Message);
-        //        throw;
-        //    }
-        //}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        //    public string ReadEntry(byte[] buffer, string fullpath) {
-        //        using (MemoryStream stream = new MemoryStream(buffer)) {
-        //            using (ZipArchive archive = new ZipArchive(stream)) {
-        //                foreach (ZipArchiveEntry entry in archive.Entries) {
-        //                    if (entry.FullName == fullpath) {
-        //                        return ReadEntry(entry);
-        //                    }
-        //                }
-        //            }
-        //        }
-        //        return null;
-        //    }
-        //    public string ReadEntry(ZipArchiveEntry entry) {
-        //        Encoding enc = Encoding.UTF8;
-        //        if (entry.Name.EndsWith(".txt", false, System.Globalization.CultureInfo.CurrentCulture)
-        //            | entry.Name.EndsWith(".csv", false, System.Globalization.CultureInfo.CurrentCulture))
-        //            enc = Encoding.GetEncoding("shift_jis");
-        //        using (Stream stream = entry.Open()) {
-        //            using (StreamReader reader = new StreamReader(stream, enc)) {
-        //                return reader.ReadToEnd();
-        //            }
-
-        //        }
-        //    }
-
-        //    public string ExtractImageInArchive(string entryFullName, string dest) {
-        //        using (Stream st = new MemoryStream(Buffer)) {
-        //            using (var archive = new ZipArchive(st)) {
-        //                foreach (ZipArchiveEntry entry in archive.Entries) {
-        //                    if (entry.FullName == entryFullName) {
-        //                        using (Stream stream = entry.Open()) {
-        //                            using (MemoryStream ms = new MemoryStream()) {
-        //                                stream.CopyTo(ms);
-        //                                using (System.Drawing.Image image = System.Drawing.Image.FromStream(ms)) {
-        //                                    string extension = Path.GetExtension(entryFullName);
-        //                                    string imagefile = Path.Combine(dest, "image" + extension);
-        //                                    image.Save(imagefile);
-        //                                    return imagefile;
-        //                                }
-        //                            }
-        //                        }
-        //                    }
-        //                }
-        //            }
-        //        }
-        //        return null;
-        //    }
-
-        //    public string ExtractPdfInArchive(string entryFullName, string dest) {
-        //        using (Stream st = new MemoryStream(Buffer)) {
-        //            using (var archive = new ZipArchive(st)) {
-        //                foreach (ZipArchiveEntry entry in archive.Entries) {
-        //                    if (entry.FullName == entryFullName) {
-        //                        string filepath = string.Format(@"{0}\{1}", dest, entry.Name);
-        //                        entry.ExtractToFile(filepath, true);
-        //                        return filepath;
-        //                    }
-        //                }
-        //            }
-        //        }
-        //        return null;
-        //    }
-
+        public Dictionary<string, DateTime> ImportArchives(string filepath) {
+            Dictionary<string, DateTime> dicAccessDocidDate = new Dictionary<string, DateTime>();
+            string extension = Path.GetExtension(filepath).ToLower();
+            //string dir = "temp";
+            //if (!Directory.Exists(dir))
+            //    Directory.CreateDirectory(dir);
+            Dictionary<int, string> dicUpdate = new Dictionary<int, string>();
+            Console.WriteLine(filepath);
+            if (extension == ".zip") {
+                using (FileStream fs = new FileStream(filepath, FileMode.Open, FileAccess.Read)) {
+                    using (MemoryStream stream = new MemoryStream()) {
+                        fs.CopyTo(stream);
+                        using (ZipArchive archive = new ZipArchive(stream)) {
+                            Dictionary<string, List<ZipArchiveEntry>> dic = new Dictionary<string, List<ZipArchiveEntry>>();
+                            foreach (ZipArchiveEntry entry in archive.Entries) {
+                                //Console.WriteLine(entry.FullName);
+                                string docid = entry.FullName.Split('/')[0];
+                                if (docid.ToLower().Contains(".csv"))
+                                    continue;
+                                if (dic.ContainsKey(docid))
+                                    dic[docid].Add(entry);
+                                else
+                                    dic[docid] = new List<ZipArchiveEntry>() { entry };
+                            }
+                            string filter = $"docid in ('{string.Join("', '", dic.Keys)}')";
+                            DataTable table = Database.ReadDisclosure(filter);
+                            DataView dv = new DataView(table, "", "docid", DataViewRowState.CurrentRows);
+
+                            foreach (var kv in dic) {
+                                string docid = kv.Key;
+                                string sdate = "";
+                                foreach (ZipArchiveEntry entry in kv.Value) {
+                                    if (entry.Name.ToLower().EndsWith(".xbrl")) {
+                                        string[] ss = entry.Name.Replace(".xbrl", "").Split('_');
+                                        sdate = ss[ss.Length - 1];
+                                    }
+                                }
+                                if (sdate != "" && DateTime.TryParse(sdate, out DateTime date)) {
+                                    string dest = $"{directory}\\Documents\\{date.Year}\\{docid}_1.zip";
+                                    if (!File.Exists(dest)) {
+                                        int index = dv.Find(docid);
+                                        if (index > -1) {
+                                            dicUpdate.Add(int.Parse(dv[index]["id"].ToString()), $"{docid}_1.zip");
+                                        } else {
+                                            if (date >= DateTime.Now.Date.AddYears(-5))
+                                                dicAccessDocidDate.Add(docid, date);
+                                        }
+                                        using (MemoryStream ms = new MemoryStream()) {
+                                            using (ZipArchive zipArchive = new ZipArchive(ms, ZipArchiveMode.Create, true)) {
+                                                foreach (ZipArchiveEntry entry in kv.Value) {
+                                                    using (Stream st = entry.Open()) {
+                                                        byte[] buffer;
+                                                        using (var ms1 = new MemoryStream()) {
+                                                            st.CopyTo(ms1);
+                                                            buffer = ms1.ToArray();
+                                                        }
+
+                                                        string[] ss = entry.FullName.Split('/');
+                                                        string path = string.Join("/", ss, 1, ss.Length - 1);
+                                                        ZipArchiveEntry e = zipArchive.CreateEntry(path);
+
+                                                        using (var es = e.Open()) {
+                                                            es.Write(buffer, 0, buffer.Length);
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                            using (FileStream fstream = new FileStream(dest, FileMode.Create)) {
+                                                ms.Position = 0;
+                                                ms.CopyTo(fstream);
+                                            }
+                                        }
+                                        Console.Write($"{docid} ");
+                                    }
+                                } else {
+
+                                }
+                            }
+                        }
+                    }
+                }
+            } else if (extension == ".csv") {
+                string dir = Directory.GetParent(filepath).FullName;
+                string[] subdirs = Directory.GetDirectories(dir);
+                List<string> list = new List<string>();
+                foreach (string subdir in subdirs) {
+                    string docid = Path.GetFileName(subdir);
+                    list.Add(docid);
+                }
+                string filter = $"docid in ('{string.Join("', '", list)}')";
+                DataTable table = Database.ReadDisclosure(filter);
+                DataView dv = new DataView(table, "", "docid", DataViewRowState.CurrentRows);
+                foreach (string docid in list) {
+                    string dest = "";
+                    string subdir = Path.Combine(dir, docid);
+                    string[] files = Directory.GetFiles(subdir, "*.xbrl", SearchOption.AllDirectories);
+                    foreach (string file in files) {
+                        if (file.Contains("PublicDoc")) {
+                            using (StreamReader reader = new StreamReader(file)) {
+                                string source = reader.ReadToEnd();
+                                Edinet.Xbrl xbrl = new Edinet.Xbrl();
+                                xbrl.Load(source);
+                                string fn = Path.GetFileName(file);
+                                string releasedate = xbrl.GetValue("FilingDateCoverPage");
+                                if (releasedate != "" && DateTime.TryParse(releasedate, out DateTime date)) {
+                                    dest = $"{directory}\\Documents\\{date.Year}\\{docid}_1.zip";
+                                    if (File.Exists(dest))
+                                        dest = "";
+                                    else {
+                                        int index = dv.Find(docid);
+                                        if (index > -1) {
+                                            dicUpdate.Add(int.Parse(dv[index]["id"].ToString()), $"{docid}_1.zip");
+                                        } else {
+                                            if (date >= DateTime.Now.Date.AddYears(-5))
+                                                dicAccessDocidDate.Add(docid, date);
+                                        }
+                                    }
+                                }
+                            }
+                            break;
+                        }
+                    }
+
+                    if (dest != null) {
+                        string folda = $"{dir}\\{docid}";
+                        ZipFile.CreateFromDirectory(folda, dest);
+
+                    }
+                }
+
+            }
+            if (dicUpdate.Count > 0) {
+                Database.UpdateFieldOfDisclosure("xbrl", dicUpdate);
+            }
+            if (dicUpdate.Count + dicAccessDocidDate.Count > 0)
+                Console.WriteLine("import complete");
+            return dicAccessDocidDate;
+
+        }
+
+        public async Task ReadMetadataAndUpdateDownloaded(Dictionary<string, DateTime> dic, Setting setting) {
+            if (dic.Count > 0) {
+                List<DateTime> dates = new List<DateTime>();
+                foreach (var kv in dic)
+                    if (!dates.Contains(kv.Value))
+                        dates.Add(kv.Value);
+                int i = 0;
+                Random random = new Random();
+                foreach (DateTime date in dates) {
+                    if (i > 0) {
+                        int wait = random.Next(Math.Min((int)(setting.Wait[0] * 1000), (int)(setting.Wait[1] * 1000)),
+                                Math.Max((int)(setting.Wait[0] * 1000), (int)(setting.Wait[1] * 1000)));
+                        await Task.Delay(wait);
+                    }
+                    await ReadMetadataType2(date, setting.Retry);
+                    i++;
+                }
+                string filter = $"docid in ('{string.Join("', '", dic.Keys)}')";
+                DataTable table = Database.ReadDisclosure(filter);
+                Dictionary<int, string> dicUpdate = new Dictionary<int, string>();
+                foreach(DataRow r in table.Rows) {
+                    int id = int.Parse(r["id"].ToString());
+                    dicUpdate[id] = $"{r["docid"].ToString()}_1.zip";
+                }
+                Database.UpdateFieldOfDisclosure("xbrl", dicUpdate);
+            }
+
+        }
 
     }
 
-
-
-
-
-
-
 }
+
 

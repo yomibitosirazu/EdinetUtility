@@ -189,25 +189,19 @@ namespace Edinet {
             return sb.ToString();
         }
 
-
+        public string GetValue(string element) {
+            //element = "FilingDateCoverPage";
+            //XmlNodeList list = doc.GetElementsByTagName(element);
+            foreach (XmlNode node in NodeList) {
+                string[] names = node.Name.Split(':');
+                if (names.Length > 1 && names[1] == element)
+                    return node.InnerText;
+                //Console.WriteLine($"{node.Name}\t{node.InnerText}");
+            }
+                return "";
+        }
         public string GetSummaryQuaterResult() {
             DataTable table = new DataTable();
-            //table.Columns.Add("period", typeof(string));
-            //table.Columns.Add("start", typeof(DateTime));
-            //table.Columns.Add("end", typeof(DateTime));
-            //table.Columns.Add("sales", typeof(decimal));
-            //table.Columns.Add("saleschange", typeof(decimal));
-            //table.Columns.Add("opeincome", typeof(decimal));
-            //table.Columns.Add("opeincomechange", typeof(decimal));
-            //table.Columns.Add("ordinary", typeof(decimal));
-            //table.Columns.Add("ordinarychange", typeof(decimal));
-            //table.Columns.Add("netincome", typeof(decimal));
-            //table.Columns.Add("netincomechange", typeof(decimal));
-            //table.Columns.Add("eps", typeof(decimal));
-            //table.Columns.Add("epsadjusted", typeof(decimal));
-            //table.Columns.Add("totalasset", typeof(decimal));
-            //table.Columns.Add("netasset", typeof(decimal));
-            //table.Columns.Add("equityratio", typeof(decimal));
             table.Columns.Add("no", typeof(int));
             table.Columns.Add("element", typeof(string));
             table.Columns.Add("context", typeof(string));
@@ -370,7 +364,7 @@ namespace Edinet {
 
                 sb.Append("</table>");
 
-                if (reportViewer == null) {
+                if (reportViewer == null || reportViewer.IsDisposed) {
                     reportViewer = new EdinetViewer.ReportTable();
                     reportViewer.Show();
                 }
@@ -582,7 +576,7 @@ namespace Archive {
         public Downloaded(string zipfile) {
             filepath = zipfile;
         }
-        public void Import() {
+        public void Import(Database.Sqlite db) {
             //using (ZipArchive archive = ZipFile.Open(filepath, ZipArchiveMode.Read)) {
             //    //foreach (ZipArchiveEntry entry in archive.Entries) {
             //    //    FileInfo inf = new FileInfo(entry.FullName);
@@ -601,29 +595,89 @@ namespace Archive {
             //    //}
 
             //}
+            //Console.WriteLine(filepath);
+            string extension = Path.GetExtension(filepath).ToLower();
+            string dir = "temp";
+            if (!Directory.Exists(dir))
+                Directory.CreateDirectory(dir);
+            //Database.Sqlite db = new Database.Sqlite()
+            if (extension == ".zip") {
+                using (FileStream fs = new FileStream(filepath, FileMode.Open, FileAccess.Read)) {
+                    using (MemoryStream stream = new MemoryStream()) {
+                        fs.CopyTo(stream);
+                        using (ZipArchive archive = new ZipArchive(stream)) {
+                            foreach (ZipArchiveEntry entry in archive.Entries) {
+                                Console.WriteLine(entry.Name);
+                                //FileInfo inf = new FileInfo(entry.FullName);
 
-
-
-            //if (File.Exists(filepath)) {
-            using (FileStream fs = new FileStream(filepath, FileMode.Open, FileAccess.Read)) {
-                using (MemoryStream stream = new MemoryStream()) {
-                    fs.CopyTo(stream);
-                    using (ZipArchive archive = new ZipArchive(stream)) {
-                        foreach (ZipArchiveEntry entry in archive.Entries) {
-                            Console.WriteLine(entry.Name);
-                            //FileInfo inf = new FileInfo(entry.FullName);
-
-                            //if (inf.FullName.Contains("PublicDoc") && inf.Extension == ".xbrl") {
-                            //    using (Stream stream2 = entry.Open()) {
-                            //        using (StreamReader reader = new StreamReader(stream2, Encoding.UTF8)) {
-                            //            return reader.ReadToEnd();
-                            //        }
-                            //    }
-                            //}
+                                //if (inf.FullName.Contains("PublicDoc") && inf.Extension == ".xbrl") {
+                                //    using (Stream stream2 = entry.Open()) {
+                                //        using (StreamReader reader = new StreamReader(stream2, Encoding.UTF8)) {
+                                //            return reader.ReadToEnd();
+                                //        }
+                                //    }
+                                //}
+                            }
+                        }
+                    }
+                }
+            } else if (extension == ".csv") {
+                dir = Directory.GetParent(filepath).FullName;
+                string[] subdirs = Directory.GetDirectories(dir);
+                List<string> list = new List<string>();
+                foreach(string subdir in subdirs) {
+                    string docid = Path.GetFileName(subdir);
+                    //Console.WriteLine(docid);
+                    list.Add(docid);
+                }
+                string filter = $"docid in ('{string.Join("', '", list)}')";
+                DataTable table = db.ReadDisclosure(filter);
+                DataView dv = new DataView(table, "", "docid", DataViewRowState.CurrentRows);
+                if(table.Rows.Count < list.Count) {
+                    foreach(string docid in list) {
+                        int index = dv.Find(docid);
+                        if(index < 0) {
+                            string subdir = Path.Combine(dir, docid);
+                            string[] files = Directory.GetFiles(subdir, "*.xbrl", SearchOption.AllDirectories);
+                            foreach(string file in files) {
+                                if (file.Contains("PublicDoc")) {
+                                    using (StreamReader reader = new StreamReader(file)) {
+                                        string source = reader.ReadToEnd();
+                                        Edinet.Xbrl xbrl = new Edinet.Xbrl();
+                                        xbrl.Load(source);
+                                        string fn = Path.GetFileName(file);
+                                        string releasedate = xbrl.GetValue("FilingDateCoverPage");
+                                    }
+                                        break;
+                                }
+                            }
+                        }
+                    }
+                }
+                foreach(string docid in list) {
+                    string subdir = Path.Combine(dir, docid);
+                    string[] files = Directory.GetFiles(subdir, "*.xbrl", SearchOption.AllDirectories);
+                    foreach (string file in files) {
+                        if (file.Contains("PublicDoc")) {
+                            using (StreamReader reader = new StreamReader(file)) {
+                                string source = reader.ReadToEnd();
+                                Edinet.Xbrl xbrl = new Edinet.Xbrl();
+                                xbrl.Load(source);
+                                string fn = Path.GetFileName(file);
+                                string releasedate = xbrl.GetValue("FilingDateCoverPage");
+                                if(releasedate != "" && DateTime.TryParse(releasedate, out DateTime date)) {
+                                    int year = date.Year;
+                                    
+                                }
+                            }
+                            break;
                         }
                     }
                 }
             }
+
+            //if (File.Exists(filepath)) {
+
         }
     
     }

@@ -114,10 +114,7 @@ namespace debug {
 
         public static void SetDebugQueue([CallerLineNumber]int line = 0,
                              [CallerMemberName]string name = "",
-                             [CallerFilePath]string path = "",
-                             [CallerMemberName] string callername = "",
-                             [CallerFilePath] string callerpath = "",
-                             [CallerLineNumber] int callerline = 0) {
+                             [CallerFilePath]string path = "") {
             if (QueueDebugInfo == null)
                 QueueDebugInfo = new Queue<DebugInfo>();
             if (QueueDebugInfo.Count > 10) {
@@ -128,15 +125,15 @@ namespace debug {
                 Method = name,
                 File = Path.GetFileName(path),
             };
-            CodeInfo caller = new CodeInfo() {
-                Line = callerline,
-                Method = callername,
-                File = Path.GetFileName(callerpath),
-            };
+            //CodeInfo caller = new CodeInfo() {
+            //    Line = callerline,
+            //    Method = callername,
+            //    File = Path.GetFileName(callerpath),
+            //};
             DebugInfo info = new DebugInfo() {
                 Time = DateTime.Now.TimeOfDay,
                 Position = target,
-                Caller = caller
+                //Caller = caller
             };
             QueueDebugInfo.Enqueue(info);
         }
@@ -158,12 +155,14 @@ namespace debug {
             sw.WriteLine($"{DateTime.Now}:{ex.Message}<br>");
             sw.WriteLine(ex.StackTrace.Replace("\n", "\n<br>"));
             if(QueueDebugInfo != null) {
-                sw.WriteLine("<table><th>time</th>><th>line</th>><th>method</th>><th>file</th>><th>cline</th>><th>cmethod</th>><th>cfile</th></tr>");
-                foreach(var info in QueueDebugInfo) {
+                sw.WriteLine("<br>エラー発生前の成功したチェックポイント");
+                //sw.WriteLine("<table><th>time</th>><th>line</th>><th>method</th>><th>file</th>><th>cline</th>><th>cmethod</th>><th>cfile</th></tr>");
+                sw.WriteLine("<table border=\"1\" cellspacing=\"0\" width=\"90%\"><th>time</th><th>line</th><th>method</th><th>file</th></tr>");
+                foreach (var info in QueueDebugInfo) {
                     sw.Write("<tr>");
                     sw.Write($"<td>{info.Time}</td>");
                     sw.Write($"<td>{info.Position.Line}</td><td>{info.Position.Method}</td><td>{info.Position.File}</td>");
-                    sw.Write($"<td>{info.Caller.Line}</td><td>{info.Caller.Method}</td><td>{info.Caller.File}</td>");
+                    //sw.Write($"<td>{info.Caller.Line}</td><td>{info.Caller.Method}</td><td>{info.Caller.File}</td>");
                     sw.WriteLine("</tr>");
                 }
                 sw.WriteLine("</table>");
@@ -178,28 +177,6 @@ namespace debug {
 
 
     }
-    //public static class ErrorUtil {
-    //    public static void OutputLog(Exception ex) {
-    //        Debug.WriteLine(ex.Message);
-    //        Debug.WriteLine(ex.StackTrace);
-    //        //エラーファイルに追記
-    //        string errorfile = "error.log";
-    //        string html = "error.html";
 
-    //        StreamWriter sw = new StreamWriter(errorfile, true);
-    //        sw.WriteLine(DateTime.Now.ToString() + " : " + ex.Message);
-    //        sw.WriteLine(ex.StackTrace);
-    //        sw.Close();
-    //        sw = new StreamWriter(html, false);
-    //        sw.WriteLine("<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\"/></head><body>");
-    //        sw.WriteLine($"{DateTime.Now}:{ex.Message}<br>");
-    //        sw.WriteLine(ex.StackTrace.Replace("\n","\n<br>"));
-    //        sw.WriteLine("</body></html>");
-    //        sw.Close();
-    //        //Process.Start("notepad.exe", errorfile);
-    //        Process.Start(html);
-    //        //MessageBox.Show($"{ex.Message}\r\n{ex.StackTrace}");
-    //    }
-    //}
 
 }
