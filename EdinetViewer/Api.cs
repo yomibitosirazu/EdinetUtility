@@ -131,6 +131,7 @@ namespace Edinet {
             int i = 0;
             do {
                 if (i > 0) {
+                    SaveLog($"  retry[{i}] {date} {type}");
                     Debug.Write($"retry Request[{i}] ");
                     await Task.Delay(2000);
                 }
@@ -175,6 +176,7 @@ namespace Edinet {
             int i = 0;
             do {
                 if (i > 0) {
+                    SaveLog($"  retry[{i}] {docid} {type}");
                     Debug.Write($"retry Download[{i}] ");
                     await Task.Delay(2000);
                 }

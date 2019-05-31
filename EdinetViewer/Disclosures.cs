@@ -486,6 +486,7 @@ namespace Edinet {
             dv.Table.Columns.Add("edit", typeof(string));
             if (json.Documents != null) {
                 for (int i = 0; i < json.Documents.Length; i++) {
+                    Console.WriteLine($"{json.Documents[i].SeqNumber}  {json.Documents[i].DocDescription}");
                     PropertyInfo[] properties = json.Documents[i].GetType().GetProperties();
                     List<string> fields = new List<string>();
                     foreach (PropertyInfo property in properties)
@@ -494,15 +495,20 @@ namespace Edinet {
                     if (id > maxsavedId) {
                         DataRowView r = dv.AddNew();
                         foreach (DataColumn column in dv.Table.Columns) {
-                            int index = fields.IndexOf(column.ColumnName.ToLower());
-                            if (index > -1) {
-                                object value = properties[index].GetValue(json.Documents[i], null);
-                                if (value == null)
-                                    r[column.ColumnName] = DBNull.Value;
-                                else
-                                    r[column.ColumnName] = value;
-                                if (column.ColumnName == "docTypeCode")
-                                    r["タイプ"] = Const.DocTypeCode[value.ToString()];
+                            try {
+                                int index = fields.IndexOf(column.ColumnName.ToLower());
+                                if (index > -1) {
+                                    object value = properties[index].GetValue(json.Documents[i], null);
+                                    if (value == null)
+                                        r[column.ColumnName] = DBNull.Value;
+                                    else
+                                        r[column.ColumnName] = value;
+                                    if (column.ColumnName == "docTypeCode" && value != null)
+                                        r["タイプ"] = Const.DocTypeCode[value.ToString()];
+                                }
+                            } catch (Exception ex) {
+
+                                Console.WriteLine(ex.ToString());
                             }
                         }
                         r["edit"] = "new";

@@ -517,7 +517,8 @@ namespace Edinet {
                     sb.Append("<body><table>");
                     for(int i=lines.Length - 1; i >= 0; i--) {
                         string[] cols = lines[i].Replace("DocumentListAPI:", "DocumentListAPI status:").Split();
-                        sb.AppendFormat("<tr><td nowrap>{0} {1}</td>", cols[0], cols[1]);
+                        
+                        sb.AppendFormat("<tr><td nowrap>{0} {1}</td>", cols[0], cols.Length>1 ?cols[1]:"");
                         sb.AppendFormat("<td>{0}</td><td>{1}</td><td>{2}</td></tr>", cols[2].Replace("Document", ""), cols[3], string.Join(" ", cols, 4, cols.Length - 4));
                     }
                     sb.Append("</table></body>");

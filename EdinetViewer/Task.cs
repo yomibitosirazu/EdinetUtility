@@ -1256,7 +1256,6 @@ namespace Edinet {
                         table = content.Table;
                     } else {
                         table = disclosures.TableDocuments;
-                        //table = disclosures.Database.ReadDisclosure(DateTime.Now.Date);
                     }
                     debug.ProgramCodeInfo.SetDebugQueue();
                     DataView dv = new DataView(table, "", sort, DataViewRowState.CurrentRows);
